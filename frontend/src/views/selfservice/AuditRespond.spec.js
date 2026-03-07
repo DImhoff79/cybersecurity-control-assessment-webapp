@@ -55,8 +55,8 @@ describe('AuditRespond', () => {
       if (url === '/api/audits/1/controls') {
         return Promise.resolve({
           data: [
-            { id: 201, controlId: 11, controlControlId: 'AC-1', controlName: 'Access Policy', status: 'NOT_STARTED' },
-            { id: 202, controlId: 12, controlControlId: 'PCI-7', controlName: 'Restrict Access', status: 'NOT_STARTED' }
+            { id: 11, controlId: 11, controlControlId: 'AC-1', controlName: 'Access Policy', status: 'NOT_STARTED' },
+            { id: 12, controlId: 12, controlControlId: 'PCI-7', controlName: 'Restrict Access', status: 'NOT_STARTED' }
           ]
         })
       }
@@ -90,5 +90,23 @@ describe('AuditRespond', () => {
         { questionId: 101, auditControlId: 202, answerText: 'YES' }
       ]
     })
+  })
+
+  it('submits assessment for admin review when complete', async () => {
+    api.post.mockImplementation((url) => {
+      if (url === '/api/audits/1/submit') return Promise.resolve({ data: { status: 'SUBMITTED' } })
+      return Promise.resolve({ data: {} })
+    })
+
+    const wrapper = mount(AuditRespond)
+    await flushPromises()
+
+    const select = wrapper.find('select.form-select')
+    await select.setValue('YES')
+    const submitBtn = wrapper.findAll('button').find((b) => b.text() === 'Submit assessment for review')
+    await submitBtn.trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/api/audits/1/submit')
   })
 })

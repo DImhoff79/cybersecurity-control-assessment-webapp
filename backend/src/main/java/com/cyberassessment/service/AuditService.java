@@ -246,8 +246,49 @@ public class AuditService {
                 auditControlAnswerRepository.save(a);
             }
         }
-        audit.setStatus(AuditStatus.IN_PROGRESS);
+        if (audit.getStatus() == AuditStatus.DRAFT) {
+            audit.setStatus(AuditStatus.IN_PROGRESS);
+        }
         auditRepository.save(audit);
+    }
+
+    @Transactional
+    public AuditDto submitAudit(Long auditId) {
+        Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
+        ensureCanAccessAudit(audit);
+        if (!isAuditCompleteForOwner(audit)) {
+            throw new IllegalArgumentException("Please answer all questions before submitting.");
+        }
+        audit.setStatus(AuditStatus.SUBMITTED);
+        if (audit.getCompletedAt() == null) {
+            audit.setCompletedAt(Instant.now());
+        }
+        audit = auditRepository.save(audit);
+        return toDto(audit);
+    }
+
+    private boolean isAuditCompleteForOwner(Audit audit) {
+        List<AuditControl> auditControls = auditControlRepository.findByAudit(audit);
+        for (AuditControl ac : auditControls) {
+            List<Question> ownerQuestions = questionControlMappingRepository
+                    .findByControl_IdOrderByQuestionDisplayOrderAsc(ac.getControl().getId()).stream()
+                    .map(QuestionControlMapping::getQuestion)
+                    .filter(q -> Boolean.TRUE.equals(q.getAskOwner()))
+                    .toList();
+
+            if (!ownerQuestions.isEmpty()) {
+                for (Question q : ownerQuestions) {
+                    Optional<AuditControlAnswer> answer = auditControlAnswerRepository
+                            .findByAuditControlIdAndQuestionId(ac.getId(), q.getId());
+                    if (answer.isEmpty() || answer.get().getAnswerText() == null || answer.get().getAnswerText().isBlank()) {
+                        return false;
+                    }
+                }
+            } else if (!(ac.getStatus() == ControlAssessmentStatus.PASS || ac.getStatus() == ControlAssessmentStatus.FAIL || ac.getStatus() == ControlAssessmentStatus.NA)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void ensureCanAccessAudit(Audit audit) {

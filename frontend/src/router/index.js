@@ -11,9 +11,11 @@ const router = createRouter({
     { path: '/admin', redirect: '/admin/applications' },
     { path: '/admin/applications', name: 'AdminApplications', component: () => import('../views/admin/Applications.vue') },
     { path: '/admin/audits', name: 'AdminAudits', component: () => import('../views/admin/KickoffAudit.vue') },
+    { path: '/admin/review-queue', name: 'AdminReviewQueue', component: () => import('../views/admin/ReviewQueue.vue') },
     { path: '/admin/controls', name: 'AdminControls', component: () => import('../views/admin/ControlCatalog.vue') },
     { path: '/admin/questions', name: 'AdminQuestions', component: () => import('../views/admin/QuestionManager.vue') },
     { path: '/admin/audits/:auditId', name: 'AuditDetail', component: () => import('../views/audits/Assessment.vue') },
+    { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue') },
   ]
 })
 

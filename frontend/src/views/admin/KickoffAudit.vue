@@ -42,7 +42,7 @@
               <tbody>
                 <tr v-for="a in auditsByApp[app.id] || []" :key="a.id">
                   <td>{{ a.year }}</td>
-                  <td>{{ a.status }}</td>
+                  <td>{{ formatAuditStatus(a.status) }}</td>
                   <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
                   <td class="text-nowrap">
                     <button class="btn btn-secondary btn-sm me-2" @click="openAssignModal(a)">Assign / Send</button>
@@ -155,6 +155,21 @@ async function deleteAudit(auditId) {
     await load()
   } catch (e) {
     alert(e.response?.data?.error || 'Failed to delete audit')
+  }
+}
+
+function formatAuditStatus(status) {
+  switch (status) {
+    case 'SUBMITTED':
+      return 'Completed - pending admin review'
+    case 'COMPLETE':
+      return 'Validated complete'
+    case 'IN_PROGRESS':
+      return 'In progress'
+    case 'DRAFT':
+      return 'Draft'
+    default:
+      return status || '-'
   }
 }
 </script>

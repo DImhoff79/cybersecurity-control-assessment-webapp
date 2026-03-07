@@ -2,7 +2,7 @@
   <div>
     <h1 class="h3 mb-2">{{ audit?.applicationName }} - {{ audit?.year }} (Assessment view)</h1>
     <p v-if="audit" class="text-muted">
-      Status: {{ audit.status }} |
+      Status: {{ statusLabel(audit.status) }} |
       Assigned to: {{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }}
     </p>
 
@@ -150,6 +150,21 @@ async function openControlDetails(controlId) {
     detailsModal.value = res.data
   } catch (e) {
     alert(e.response?.data?.error || 'Failed to load control details')
+  }
+}
+
+function statusLabel(status) {
+  switch (status) {
+    case 'SUBMITTED':
+      return 'Completed - pending admin review'
+    case 'COMPLETE':
+      return 'Validated complete'
+    case 'IN_PROGRESS':
+      return 'In progress'
+    case 'DRAFT':
+      return 'Draft'
+    default:
+      return status || '-'
   }
 }
 </script>

@@ -82,6 +82,16 @@ public class AuditController {
         }
     }
 
+    @PostMapping("/audits/{auditId}/submit")
+    public ResponseEntity<AuditDto> submitAudit(@PathVariable Long auditId) {
+        try {
+            AuditDto updated = auditService.submitAudit(auditId);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/audits/{auditId}/questions")
     public List<AuditQuestionItemDto> getQuestions(@PathVariable Long auditId) {
         return auditService.getQuestionsForAudit(auditId);

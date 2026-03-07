@@ -9,6 +9,12 @@
     <div v-else-if="totalSteps === 0" class="card shadow-sm">
       <div class="card-body">No questions are configured for this audit. Contact your administrator.</div>
     </div>
+    <div v-else-if="isSubmitted" class="card shadow-sm">
+      <div class="card-body">
+        <p class="mb-2 fw-semibold">This assessment was already submitted.</p>
+        <p class="text-muted mb-0">It is now waiting for admin review and validation.</p>
+      </div>
+    </div>
 
     <div v-else>
       <div class="card shadow-sm mb-3">
@@ -81,7 +87,7 @@
         <button type="button" class="btn btn-secondary" :disabled="saving" @click="saveDraft">Save draft</button>
 
         <button
-          v-if="currentStage === 'human'"
+          v-if="currentStage === 'human' && (!isLastHumanStep || additionalControls.length > 0)"
           type="button"
           class="btn btn-primary"
           :disabled="saving"
@@ -91,7 +97,7 @@
         </button>
 
         <button
-          v-else-if="!isLastAdditionalStep"
+          v-else-if="currentStage === 'additional' && !isLastAdditionalStep"
           type="button"
           class="btn btn-primary"
           :disabled="saving"
@@ -107,7 +113,7 @@
           :disabled="saving"
           @click="finishAudit"
         >
-          Submit and complete audit
+          Submit assessment for review
         </button>
       </div>
     </div>
@@ -203,6 +209,7 @@ const completionPct = computed(() => {
 })
 
 const humanComplete = computed(() => humanAnsweredCount.value === guidedQuestions.value.length)
+const isSubmitted = computed(() => audit.value?.status === 'SUBMITTED' || audit.value?.status === 'COMPLETE')
 
 const isLastHumanStep = computed(() => {
   return currentHumanIndex.value >= guidedQuestions.value.length - 1
@@ -345,11 +352,11 @@ async function finishAudit() {
   }
 
   try {
-    await api.put(`/api/audits/${auditId}`, { status: 'COMPLETE' })
-    if (audit.value) audit.value.status = 'COMPLETE'
-    alert('Audit submitted and marked complete.')
+    const res = await api.post(`/api/audits/${auditId}/submit`)
+    if (audit.value) audit.value.status = res.data?.status || 'SUBMITTED'
+    alert('Assessment submitted. An admin will now review it.')
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to mark audit complete.')
+    alert(e.response?.data?.error || 'Failed to submit assessment.')
   }
 }
 
@@ -419,7 +426,9 @@ function statusLabel(status) {
     case 'IN_PROGRESS':
       return 'In progress'
     case 'COMPLETE':
-      return 'Complete'
+      return 'Validated complete'
+    case 'SUBMITTED':
+      return 'Submitted - pending admin review'
     default:
       return status || '-'
   }

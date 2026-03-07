@@ -133,6 +133,38 @@ class AuditServiceIntegrationTest {
                 .hasMessageContaining("do not have access");
     }
 
+    @Test
+    void submitAuditMarksSubmittedWhenComplete() {
+        User owner = userRepository.save(User.builder()
+                .email("owner-submit@test.com")
+                .passwordHash("x")
+                .displayName("Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Submit App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        AuditDto created = auditService.create(app.getId(), 2034);
+        auditService.assign(created.getId(), owner.getId());
+        auditService.sendToOwner(created.getId());
+        authenticate(owner.getEmail());
+
+        List<AuditQuestionItemDto> questions = auditService.getQuestionsForAudit(created.getId());
+        SubmitAnswersRequest request = new SubmitAnswersRequest(
+                questions.stream()
+                        .map(q -> new SubmitAnswersRequest.AnswerItem(q.getQuestionId(), q.getAuditControlId(), "YES"))
+                        .toList()
+        );
+        auditService.submitAnswers(created.getId(), request);
+
+        AuditDto submitted = auditService.submitAudit(created.getId());
+        assertThat(submitted.getStatus()).isEqualTo(AuditStatus.SUBMITTED);
+        assertThat(submitted.getCompletedAt()).isNotNull();
+    }
+
     private void authenticate(String email) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(email, "x", Collections.emptyList())

@@ -19,7 +19,7 @@
               <tr v-for="a in items" :key="a.id">
                 <td>{{ a.applicationName }}</td>
                 <td>{{ a.year }}</td>
-                <td>{{ a.status }}</td>
+                <td>{{ statusLabel(a.status) }}</td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
                     <div class="progress flex-grow-1" style="height: 8px; min-width: 120px;">
@@ -36,8 +36,12 @@
                   </div>
                 </td>
                 <td class="text-nowrap">
-                  <router-link :to="`/audits/${a.id}/respond`" class="btn btn-primary btn-sm">
-                    {{ (a.completionPct || 0) > 0 ? 'Resume audit' : 'Start audit' }}
+                  <router-link
+                    :to="`/audits/${a.id}/respond`"
+                    class="btn btn-primary btn-sm"
+                    :class="{ disabled: a.status === 'SUBMITTED' || a.status === 'COMPLETE' }"
+                  >
+                    {{ actionLabel(a) }}
                   </router-link>
                 </td>
               </tr>
@@ -105,4 +109,24 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function statusLabel(status) {
+  switch (status) {
+    case 'SUBMITTED':
+      return 'Completed - pending admin review'
+    case 'COMPLETE':
+      return 'Validated complete'
+    case 'IN_PROGRESS':
+      return 'In progress'
+    case 'DRAFT':
+      return 'Draft'
+    default:
+      return status || '-'
+  }
+}
+
+function actionLabel(audit) {
+  if (audit.status === 'SUBMITTED' || audit.status === 'COMPLETE') return 'View submission'
+  return (audit.completionPct || 0) > 0 ? 'Resume audit' : 'Start audit'
+}
 </script>
