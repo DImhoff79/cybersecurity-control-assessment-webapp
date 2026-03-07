@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: cybersecurity-assessment
+  datasource:
+    url: jdbc:h2:file:./data/assessment;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    locations: classpath:db/migration
+  mail:
+    host: localhost
+    port: 3025
+    username:
+    password:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+server:
+  port: 8080
+
+# CORS allowed origins (Vue dev server)
+app:
+  cors-allowed-origins: http://localhost:5173,http://localhost:3000
+  frontend-base-url: http://localhost:5173
