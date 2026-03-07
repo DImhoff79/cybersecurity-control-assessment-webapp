@@ -1,78 +1,84 @@
 <template>
   <div>
-    <h1 class="page-title">Audits</h1>
+    <h1 class="h3 mb-3">Audits</h1>
 
-    <section class="card">
-      <h2>Kick off new audit</h2>
-      <form @submit.prevent="createAudit" class="inline-form">
-        <div class="form-group">
-          <label>Application</label>
-          <select v-model="createForm.applicationId" required>
-            <option :value="null">— Select —</option>
-            <option v-for="a in applications" :key="a.id" :value="a.id">{{ a.name }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Year</label>
-          <input v-model.number="createForm.year" type="number" min="2020" max="2030" required />
-        </div>
-        <button type="submit" class="btn btn-primary">Create audit</button>
-      </form>
-    </section>
-
-    <section class="card">
-      <h2>Audit history by application</h2>
-      <div v-for="app in applications" :key="app.id" class="app-audits">
-        <h3>{{ app.name }}</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Year</th>
-              <th>Status</th>
-              <th>Assigned to</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="a in auditsByApp[app.id] || []" :key="a.id">
-              <td>{{ a.year }}</td>
-              <td>{{ a.status }}</td>
-              <td>{{ a.assignedToDisplayName || a.assignedToEmail || '—' }}</td>
-              <td>
-                <button class="btn btn-secondary btn-sm" @click="openAssignModal(a)">Assign / Send</button>
-                <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm">View / Edit</router-link>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <div v-if="assignModal" class="modal-overlay" @click.self="assignModal = null">
-      <div class="modal card">
-        <h2>Assign & send audit</h2>
-        <p v-if="assignModal">{{ assignModal.applicationName }} – {{ assignModal.year }}</p>
-        <form @submit.prevent>
-          <div class="form-group">
-            <label>Assign to</label>
-            <select v-model="assignForm.userId">
-              <option :value="null">— Select —</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+    <section class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Kick off new audit</h2>
+        <form @submit.prevent="createAudit" class="row g-3 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label">Application</label>
+            <select v-model="createForm.applicationId" required class="form-select">
+              <option :value="null">- Select -</option>
+              <option v-for="a in applications" :key="a.id" :value="a.id">{{ a.name }}</option>
             </select>
           </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary" @click="assignModal = null">Cancel</button>
-            <button type="button" class="btn btn-primary" @click="assignAndSend">Assign only</button>
-            <button type="button" class="btn btn-primary" @click="sendToOwner">Assign &amp; send to owner</button>
+          <div class="col-md-3">
+            <label class="form-label">Year</label>
+            <input v-model.number="createForm.year" type="number" min="2020" max="2030" required class="form-control" />
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn btn-primary">Create audit</button>
           </div>
         </form>
       </div>
-    </div>
+    </section>
+
+    <section class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Audit history by application</h2>
+        <div v-for="app in applications" :key="app.id" class="mb-4">
+          <h3 class="h6 mb-2">{{ app.name }}</h3>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Status</th>
+                  <th>Assigned to</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="a in auditsByApp[app.id] || []" :key="a.id">
+                  <td>{{ a.year }}</td>
+                  <td>{{ a.status }}</td>
+                  <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
+                  <td class="text-nowrap">
+                    <button class="btn btn-secondary btn-sm me-2" @click="openAssignModal(a)">Assign / Send</button>
+                    <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm">View / Edit</router-link>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <BsModal v-model="isAssignModalOpen" title="Assign and send audit">
+      <p v-if="assignModal" class="text-muted">{{ assignModal.applicationName }} - {{ assignModal.year }}</p>
+      <form @submit.prevent>
+        <div class="mb-3">
+          <label class="form-label">Assign to</label>
+          <select v-model="assignForm.userId" class="form-select">
+            <option :value="null">- Select -</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+          </select>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="isAssignModalOpen = false">Cancel</button>
+        <button type="button" class="btn btn-primary" @click="assignAndSend">Assign only</button>
+        <button type="button" class="btn btn-primary" @click="sendToOwner">Assign and send to owner</button>
+      </template>
+    </BsModal>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
+import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 
 const applications = ref([])
@@ -80,8 +86,14 @@ const users = ref([])
 const createForm = reactive({ applicationId: null, year: new Date().getFullYear() })
 const assignModal = ref(null)
 const assignForm = reactive({ userId: null })
-
 const auditsByApp = ref({})
+
+const isAssignModalOpen = computed({
+  get: () => !!assignModal.value,
+  set: (open) => {
+    if (!open) assignModal.value = null
+  }
+})
 
 onMounted(load)
 
@@ -135,15 +147,3 @@ async function sendToOwner() {
   }
 }
 </script>
-
-<style scoped>
-.inline-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
-.inline-form .form-group { margin-bottom: 0; min-width: 160px; }
-.app-audits { margin-bottom: 1.5rem; }
-.app-audits h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
-.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.85rem; margin-right: 0.25rem; }
-.form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { max-width: 480px; width: 90%; }
-.modal h2 { margin-top: 0; }
-</style>

@@ -1,62 +1,64 @@
 <template>
   <div>
-    <h1 class="page-title">Applications</h1>
-    <div class="card">
-      <button class="btn btn-primary" @click="openModal()">Add application</button>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Owner</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="a in applications" :key="a.id">
-            <td>{{ a.name }}</td>
-            <td>{{ a.description || '—' }}</td>
-            <td>{{ a.ownerDisplayName || a.ownerEmail || '—' }}</td>
-            <td>
-              <button class="btn btn-secondary btn-sm" @click="openModal(a)">Edit</button>
-              <button class="btn btn-danger btn-sm" @click="remove(a.id)">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal card">
-        <h2>{{ editing?.id ? 'Edit' : 'Add' }} Application</h2>
-        <form @submit.prevent="save">
-          <div class="form-group">
-            <label>Name</label>
-            <input v-model="form.name" required />
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea v-model="form.description" />
-          </div>
-          <div class="form-group">
-            <label>Owner</label>
-            <select v-model="form.ownerId">
-              <option :value="null">— Select —</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
-            </select>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save</button>
-          </div>
-        </form>
+    <h1 class="h3 mb-3">Applications</h1>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <button class="btn btn-primary mb-3" @click="openModal()">Add application</button>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Owner</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in applications" :key="a.id">
+                <td>{{ a.name }}</td>
+                <td>{{ a.description || '-' }}</td>
+                <td>{{ a.ownerDisplayName || a.ownerEmail || '-' }}</td>
+                <td class="text-nowrap">
+                  <button class="btn btn-secondary btn-sm me-2" @click="openModal(a)">Edit</button>
+                  <button class="btn btn-danger btn-sm" @click="remove(a.id)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
+
+    <BsModal v-model="showModal" :title="`${editing?.id ? 'Edit' : 'Add'} Application`">
+      <form id="application-form" @submit.prevent="save">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input v-model="form.name" required class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea v-model="form.description" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Owner</label>
+          <select v-model="form.ownerId" class="form-select">
+            <option :value="null">- Select -</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+          </select>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
+        <button type="submit" form="application-form" class="btn btn-primary">Save</button>
+      </template>
+    </BsModal>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 
 const applications = ref([])
@@ -108,11 +110,3 @@ async function remove(id) {
   }
 }
 </script>
-
-<style scoped>
-.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.85rem; margin-right: 0.25rem; }
-.form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { max-width: 500px; width: 90%; }
-.modal h2 { margin-top: 0; }
-</style>
