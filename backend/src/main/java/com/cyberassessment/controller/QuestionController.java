@@ -27,11 +27,12 @@ public class QuestionController {
         String questionText = (String) body.get("questionText");
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
         String helpText = (String) body.get("helpText");
+        Boolean askOwner = body.containsKey("askOwner") ? (Boolean) body.get("askOwner") : null;
         if (questionText == null || questionText.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
         try {
-            QuestionDto created = questionService.create(controlId, questionText, displayOrder, helpText);
+            QuestionDto created = questionService.create(controlId, questionText, displayOrder, helpText, askOwner);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
@@ -43,8 +44,9 @@ public class QuestionController {
         String questionText = body.containsKey("questionText") ? (String) body.get("questionText") : null;
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
         String helpText = body.containsKey("helpText") ? (String) body.get("helpText") : null;
+        Boolean askOwner = body.containsKey("askOwner") ? (Boolean) body.get("askOwner") : null;
         try {
-            QuestionDto updated = questionService.update(id, questionText, displayOrder, helpText);
+            QuestionDto updated = questionService.update(controlId, id, questionText, displayOrder, helpText, askOwner);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -54,10 +56,10 @@ public class QuestionController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long controlId, @PathVariable Long id) {
         try {
-            questionService.delete(id);
+            questionService.delete(controlId, id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 }

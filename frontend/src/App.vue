@@ -7,6 +7,7 @@
           <router-link to="/admin/applications" class="nav-link text-white">Applications</router-link>
           <router-link to="/admin/audits" class="nav-link text-white">Audits</router-link>
           <router-link to="/admin/controls" class="nav-link text-white">Controls</router-link>
+          <router-link to="/admin/questions" class="nav-link text-white">Questions</router-link>
         </template>
         <router-link to="/my-audits" class="nav-link text-white">My Audits</router-link>
         <span class="text-white-50 small">{{ authStore.user?.displayName || authStore.user?.email }}</span>

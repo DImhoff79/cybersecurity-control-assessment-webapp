@@ -15,4 +15,5 @@ public class QuestionDto {
     private String questionText;
     private Integer displayOrder;
     private String helpText;
+    private Boolean askOwner;
 }

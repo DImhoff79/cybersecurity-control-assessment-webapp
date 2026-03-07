@@ -24,19 +24,23 @@ public class AuditService {
     private final ControlRepository controlRepository;
     private final AuditControlRepository auditControlRepository;
     private final AuditControlAnswerRepository auditControlAnswerRepository;
+    private final QuestionControlMappingRepository questionControlMappingRepository;
     private final CurrentUserService currentUserService;
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
 
     public AuditService(AuditRepository auditRepository, ApplicationRepository applicationRepository,
                         ControlRepository controlRepository, AuditControlRepository auditControlRepository,
-                        AuditControlAnswerRepository auditControlAnswerRepository, CurrentUserService currentUserService,
-                        UserRepository userRepository, @Autowired(required = false) JavaMailSender mailSender) {
+                        AuditControlAnswerRepository auditControlAnswerRepository,
+                        QuestionControlMappingRepository questionControlMappingRepository,
+                        CurrentUserService currentUserService, UserRepository userRepository,
+                        @Autowired(required = false) JavaMailSender mailSender) {
         this.auditRepository = auditRepository;
         this.applicationRepository = applicationRepository;
         this.controlRepository = controlRepository;
         this.auditControlRepository = auditControlRepository;
         this.auditControlAnswerRepository = auditControlAnswerRepository;
+        this.questionControlMappingRepository = questionControlMappingRepository;
         this.currentUserService = currentUserService;
         this.userRepository = userRepository;
         this.mailSender = mailSender;
@@ -110,6 +114,15 @@ public class AuditService {
     }
 
     @Transactional
+    public void delete(Long auditId) {
+        if (!currentUserService.isAdmin()) {
+            throw new IllegalArgumentException("Only admins can delete audits");
+        }
+        Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
+        auditRepository.delete(audit);
+    }
+
+    @Transactional
     public AuditDto assign(Long auditId, Long userId) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         User user = userId != null ? userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId)) : null;
@@ -158,7 +171,10 @@ public class AuditService {
         List<AuditQuestionItemDto> result = new ArrayList<>();
         for (AuditControl ac : auditControls) {
             Control c = ac.getControl();
-            List<Question> questions = new ArrayList<>(c.getQuestions());
+            List<Question> questions = questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(c.getId()).stream()
+                    .map(QuestionControlMapping::getQuestion)
+                    .filter(q -> Boolean.TRUE.equals(q.getAskOwner()))
+                    .collect(Collectors.toList());
             questions.sort(Comparator.comparingInt(Question::getDisplayOrder));
             for (Question q : questions) {
                 Optional<AuditControlAnswer> existing = ac.getAnswers().stream().filter(a -> a.getQuestion().getId().equals(q.getId())).findFirst();
@@ -215,7 +231,11 @@ public class AuditService {
                 a.setAnsweredAt(Instant.now());
                 auditControlAnswerRepository.save(a);
             } else {
-                Question q = ac.getControl().getQuestions().stream().filter(qu -> qu.getId().equals(item.getQuestionId())).findFirst().orElse(null);
+                Question q = questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(ac.getControl().getId()).stream()
+                        .map(QuestionControlMapping::getQuestion)
+                        .filter(qu -> qu.getId().equals(item.getQuestionId()))
+                        .findFirst()
+                        .orElse(null);
                 if (q == null) continue;
                 AuditControlAnswer a = AuditControlAnswer.builder()
                         .auditControl(ac)

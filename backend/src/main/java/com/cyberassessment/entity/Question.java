@@ -31,4 +31,8 @@ public class Question {
 
     @Column(name = "help_text", length = 2000)
     private String helpText;
+
+    @Column(name = "ask_owner", nullable = false)
+    @Builder.Default
+    private Boolean askOwner = true;
 }

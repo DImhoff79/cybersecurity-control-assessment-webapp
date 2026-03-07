@@ -51,6 +51,16 @@ public class AuditController {
         }
     }
 
+    @DeleteMapping("/audits/{auditId}")
+    public ResponseEntity<Void> deleteAudit(@PathVariable Long auditId) {
+        try {
+            auditService.delete(auditId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PutMapping("/audits/{auditId}/assign")
     public ResponseEntity<AuditDto> assign(@PathVariable Long auditId, @RequestBody Map<String, Object> body) {
         Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;

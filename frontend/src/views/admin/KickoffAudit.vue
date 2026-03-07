@@ -46,7 +46,8 @@
                   <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
                   <td class="text-nowrap">
                     <button class="btn btn-secondary btn-sm me-2" @click="openAssignModal(a)">Assign / Send</button>
-                    <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm">View / Edit</router-link>
+                    <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm me-2">View / Edit</router-link>
+                    <button class="btn btn-danger btn-sm" @click="deleteAudit(a.id)">Delete</button>
                   </td>
                 </tr>
               </tbody>
@@ -144,6 +145,16 @@ async function sendToOwner() {
     assignModal.value = null
   } catch (e) {
     alert(e.response?.data?.error || 'Failed to send')
+  }
+}
+
+async function deleteAudit(auditId) {
+  if (!confirm('Delete this audit and all of its responses? This cannot be undone.')) return
+  try {
+    await api.delete(`/api/audits/${auditId}`)
+    await load()
+  } catch (e) {
+    alert(e.response?.data?.error || 'Failed to delete audit')
   }
 }
 </script>
