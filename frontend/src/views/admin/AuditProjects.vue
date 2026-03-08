@@ -31,96 +31,106 @@
           </div>
           <div class="col-12">
             <label class="form-label">Applications in scope</label>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <small class="text-muted">
-                Selected {{ selectedApplications.length }} of {{ applications.length }}
-              </small>
-              <button type="button" class="btn btn-link btn-sm p-0" @click="form.applicationIds = []">Clear all selected</button>
+            <div class="alert alert-light border py-2 small mb-2">
+              1) Search in <strong>Available applications</strong>, 2) check rows, 3) click <strong>Add checked</strong>.
+              Use <strong>Remove checked</strong> on the right to take apps back out.
             </div>
-            <div class="row g-2 align-items-center">
-              <div class="col-md-5">
-                <input v-model.trim="appSearch" class="form-control form-control-sm" placeholder="Search by app name, owner, or scope..." />
-              </div>
-              <div class="col-md-7 d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm me-2" @click="selectFiltered(true)">Select filtered</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" @click="selectFiltered(false)">Clear filtered</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!form.frameworkTag" @click="selectByFrameworkTag">
-                  Select matching framework tag
-                </button>
-                <div class="form-check ms-2">
-                  <input id="showSelectedOnly" v-model="showSelectedOnly" class="form-check-input" type="checkbox" />
-                  <label for="showSelectedOnly" class="form-check-label small">Show selected only</label>
+            <div class="row g-3">
+              <div class="col-lg-6">
+                <div class="card border">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h3 class="h6 mb-0">Available applications</h3>
+                      <span class="small text-muted">{{ availableApps.length }} available</span>
+                    </div>
+                    <input v-model.trim="appSearch" class="form-control form-control-sm mb-2" placeholder="Search by app name, owner, or scope..." />
+                    <div class="d-flex gap-2 mb-2">
+                      <button type="button" class="btn btn-outline-primary btn-sm" :disabled="!availableSelection.length" @click="addChecked">
+                        Add checked
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!availableApps.length" @click="addAllVisible">
+                        Add all visible
+                      </button>
+                    </div>
+                    <div class="transfer-list border rounded">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width: 34px;"></th>
+                            <th>Application</th>
+                            <th style="width: 80px;"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="app in availableApps" :key="`available-${app.id}`">
+                            <td><input v-model="availableSelection" class="form-check-input" type="checkbox" :value="app.id" /></td>
+                            <td>
+                              {{ app.name }}
+                              <div class="small text-muted">{{ app.regulatoryScope || '-' }}</div>
+                            </td>
+                            <td><button type="button" class="btn btn-outline-primary btn-sm" @click="addApplication(app.id)">Add</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div v-if="!availableApps.length" class="text-muted small p-2">No available apps match your search.</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="row g-2 align-items-center mt-1">
-              <div class="col-md-3">
-                <label class="form-label small mb-1">Rows per page</label>
-                <select v-model.number="pageSize" class="form-select form-select-sm">
-                  <option :value="10">10</option>
-                  <option :value="25">25</option>
-                  <option :value="50">50</option>
-                </select>
-              </div>
-              <div class="col-md-9 d-flex flex-wrap gap-2 align-items-end">
-                <button type="button" class="btn btn-outline-secondary btn-sm" @click="selectCurrentPage(true)">Select page</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" @click="selectCurrentPage(false)">Clear page</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" @click="selectFiltered(true)">
-                  Select all results ({{ filteredApplications.length }})
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" @click="selectFiltered(false)">Clear all results</button>
-              </div>
-            </div>
-            <div v-if="selectedApplications.length" class="selected-chips mt-2">
-              <span v-for="app in selectedApplications" :key="`chip-${app.id}`" class="badge text-bg-primary me-1 mb-1">
-                {{ app.name }}
-              </span>
-            </div>
-            <div class="scope-list border rounded mt-2">
-              <table class="table table-sm align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th style="width: 40px;"></th>
-                    <th>Application</th>
-                    <th>Scope</th>
-                    <th>Owner</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="app in pagedApplications" :key="app.id">
-                    <td>
-                      <input
-                        :id="`scope-app-${app.id}`"
-                        :checked="isSelected(app.id)"
-                        class="form-check-input"
-                        type="checkbox"
-                        @change="toggleApplication(app.id, $event.target.checked)"
-                      />
-                    </td>
-                    <td>
-                      <label :for="`scope-app-${app.id}`" class="form-check-label">
-                        {{ app.name }}
-                      </label>
-                    </td>
-                    <td>{{ app.regulatoryScope || '-' }}</td>
-                    <td>{{ app.ownerDisplayName || app.ownerEmail || '-' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div v-if="!filteredApplications.length" class="text-muted small p-2">
-                No applications match the current search/filter.
-              </div>
-            </div>
-            <div v-if="filteredApplications.length" class="d-flex justify-content-between align-items-center mt-2 small text-muted">
-              <span>Showing {{ pageStart }}-{{ pageEnd }} of {{ filteredApplications.length }}</span>
-              <div class="d-flex gap-2 align-items-center">
-                <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="page <= 1" @click="page--">Previous</button>
-                <span>Page {{ page }} of {{ totalPages }}</span>
-                <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="page >= totalPages" @click="page++">Next</button>
+              <div class="col-lg-6">
+                <div class="card border">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h3 class="h6 mb-0">In this project</h3>
+                      <span class="small text-muted">{{ selectedApplications.length }} selected</span>
+                    </div>
+                    <div class="d-flex gap-2 mb-2">
+                      <button type="button" class="btn btn-outline-danger btn-sm" :disabled="!selectedSelection.length" @click="removeChecked">
+                        Remove checked
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!selectedApplications.length" @click="form.applicationIds = []">
+                        Remove all
+                      </button>
+                    </div>
+                    <div class="transfer-list border rounded">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width: 34px;"></th>
+                            <th>Application</th>
+                            <th style="width: 90px;"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="app in selectedApplications" :key="`selected-${app.id}`">
+                            <td><input v-model="selectedSelection" class="form-check-input" type="checkbox" :value="app.id" /></td>
+                            <td>
+                              {{ app.name }}
+                              <div class="small text-muted">{{ app.regulatoryScope || '-' }}</div>
+                            </td>
+                            <td><button type="button" class="btn btn-outline-danger btn-sm" @click="removeApplication(app.id)">Remove</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div v-if="!selectedApplications.length" class="text-muted small p-2">No apps in this project yet.</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <div class="col-12">
+            <div class="alert alert-secondary py-2 mb-2">
+              <div class="fw-semibold small mb-1">Project scope summary before create</div>
+              <div class="small">
+                This project will include <strong>{{ selectedApplications.length }}</strong> application(s):
+                <span v-if="selectedApplications.length">
+                  {{ selectedPreview }}
+                  <span v-if="selectedApplications.length > 5"> (+{{ selectedApplications.length - 5 }} more)</span>
+                </span>
+                <span v-else>No apps selected yet.</span>
+              </div>
+            </div>
             <button type="submit" class="btn btn-primary">Create project and audits</button>
           </div>
         </form>
@@ -169,9 +179,8 @@ import { toastError, toastSuccess } from '../../services/toast'
 const applications = ref([])
 const projects = ref([])
 const appSearch = ref('')
-const showSelectedOnly = ref(false)
-const page = ref(1)
-const pageSize = ref(10)
+const availableSelection = ref([])
+const selectedSelection = ref([])
 const form = reactive({
   name: '',
   frameworkTag: '',
@@ -181,40 +190,30 @@ const form = reactive({
   applicationIds: []
 })
 
-const filteredApplications = computed(() => {
+const availableApps = computed(() => {
   const term = appSearch.value.trim().toLowerCase()
-  let rows = applications.value
-  if (term) {
-    rows = rows.filter((a) => {
+  const selected = new Set(form.applicationIds)
+  const rows = applications.value
+    .filter((a) => !selected.has(a.id))
+    .filter((a) => {
+      if (!term) return true
       const hay = `${a.name} ${a.regulatoryScope || ''} ${a.ownerDisplayName || ''} ${a.ownerEmail || ''}`.toLowerCase()
       return hay.includes(term)
     })
-  }
-  if (showSelectedOnly.value) {
-    const selected = new Set(form.applicationIds)
-    rows = rows.filter((a) => selected.has(a.id))
-  }
-  return rows.slice().sort((a, b) => a.name.localeCompare(b.name))
+  return rows
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
 })
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredApplications.value.length / pageSize.value)))
-
-const pagedApplications = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredApplications.value.slice(start, start + pageSize.value)
-})
-
-const pageStart = computed(() => {
-  if (!filteredApplications.value.length) return 0
-  return (page.value - 1) * pageSize.value + 1
-})
-
-const pageEnd = computed(() => Math.min(page.value * pageSize.value, filteredApplications.value.length))
 
 const selectedApplications = computed(() => {
   const selected = new Set(form.applicationIds)
-  return applications.value.filter((a) => selected.has(a.id)).sort((a, b) => a.name.localeCompare(b.name))
+  return applications.value
+    .filter((a) => selected.has(a.id))
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
 })
+
+const selectedPreview = computed(() => selectedApplications.value.slice(0, 5).map((a) => a.name).join(', '))
 
 onMounted(load)
 
@@ -227,51 +226,38 @@ async function load() {
   projects.value = projectsRes.data || []
 }
 
-function selectFiltered(checked) {
-  const ids = filteredApplications.value.map((a) => a.id)
-  if (checked) {
-    form.applicationIds = Array.from(new Set([...form.applicationIds, ...ids]))
-  } else {
-    form.applicationIds = form.applicationIds.filter((id) => !ids.includes(id))
-  }
+function addApplication(appId) {
+  if (!form.applicationIds.includes(appId)) form.applicationIds.push(appId)
+  availableSelection.value = availableSelection.value.filter((id) => id !== appId)
 }
 
-function selectCurrentPage(checked) {
-  const ids = pagedApplications.value.map((a) => a.id)
-  if (checked) {
-    form.applicationIds = Array.from(new Set([...form.applicationIds, ...ids]))
-  } else {
-    form.applicationIds = form.applicationIds.filter((id) => !ids.includes(id))
-  }
+function addChecked() {
+  if (!availableSelection.value.length) return
+  form.applicationIds = Array.from(new Set([...form.applicationIds, ...availableSelection.value]))
+  availableSelection.value = []
 }
 
-function isSelected(appId) {
-  return form.applicationIds.includes(appId)
+function addAllVisible() {
+  form.applicationIds = Array.from(new Set([...form.applicationIds, ...availableApps.value.map((a) => a.id)]))
+  availableSelection.value = []
 }
 
-function toggleApplication(appId, checked) {
-  if (checked) {
-    if (!form.applicationIds.includes(appId)) form.applicationIds.push(appId)
-    return
-  }
+function removeApplication(appId) {
   form.applicationIds = form.applicationIds.filter((id) => id !== appId)
+  selectedSelection.value = selectedSelection.value.filter((id) => id !== appId)
 }
 
-function selectByFrameworkTag() {
-  const tag = form.frameworkTag.trim().toLowerCase()
-  if (!tag) return
-  const matches = applications.value
-    .filter((a) => String(a.regulatoryScope || '').toLowerCase().includes(tag))
-    .map((a) => a.id)
-  form.applicationIds = Array.from(new Set([...form.applicationIds, ...matches]))
+function removeChecked() {
+  if (!selectedSelection.value.length) return
+  const toRemove = new Set(selectedSelection.value)
+  form.applicationIds = form.applicationIds.filter((id) => !toRemove.has(id))
+  selectedSelection.value = []
 }
 
-watch([appSearch, showSelectedOnly, pageSize], () => {
-  page.value = 1
-})
-
-watch(filteredApplications, () => {
-  if (page.value > totalPages.value) page.value = totalPages.value
+watch(selectedApplications, () => {
+  const selected = new Set(form.applicationIds)
+  availableSelection.value = availableSelection.value.filter((id) => !selected.has(id))
+  selectedSelection.value = selectedSelection.value.filter((id) => selected.has(id))
 })
 
 async function createProject() {
@@ -303,8 +289,8 @@ function formatDate(value) {
 </script>
 
 <style scoped>
-.scope-list {
-  max-height: 260px;
+.transfer-list {
+  max-height: 420px;
   overflow-y: auto;
 }
 </style>

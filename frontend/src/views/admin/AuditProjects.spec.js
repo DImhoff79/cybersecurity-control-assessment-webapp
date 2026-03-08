@@ -32,16 +32,32 @@ describe('AuditProjects', () => {
     api.post.mockResolvedValue({ data: { id: 99 } })
   })
 
-  it('supports paging and selecting all filtered results', async () => {
+  it('supports clear add/remove selection between available and in-project lists', async () => {
     const wrapper = mount(AuditProjects)
     await flushPromises()
 
     expect(wrapper.text()).toContain('Existing projects')
     expect(wrapper.text()).toContain('PCI 2026')
+    expect(wrapper.text()).toContain('Available applications')
+    expect(wrapper.text()).toContain('In this project')
 
-    expect(wrapper.text()).toContain('Page 1 of 2')
-    const selectAllResultsBtn = wrapper.findAll('button').find((b) => b.text().includes('Select all results'))
-    await selectAllResultsBtn.trigger('click')
+    const availableChecks = wrapper.findAll('input[type="checkbox"]')
+    await availableChecks[0].setValue(true)
+    const addCheckedBtn = wrapper.findAll('button').find((b) => b.text().includes('Add checked'))
+    await addCheckedBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('1 selected')
+
+    const removeBtn = wrapper.findAll('button').find((b) => b.text() === 'Remove')
+    await removeBtn.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('No apps in this project yet.')
+
+    const addAllVisibleBtn = wrapper.findAll('button').find((b) => b.text().includes('Add all visible'))
+    await addAllVisibleBtn.trigger('click')
+    await flushPromises()
+
     await wrapper.find('input[type="number"]').setValue(2027)
     await wrapper.find('input[required]').setValue('PCI 2027')
     await wrapper.find('input[placeholder="PCI, SOX, SOC2..."]').setValue('PCI')
