@@ -1,12 +1,12 @@
 <template>
   <div>
     <h1 class="h3 mb-2">{{ audit?.applicationName }} - {{ audit?.year }} (Assessment view)</h1>
-    <p v-if="audit" class="text-muted">
+    <p v-if="audit" class="text-muted assessment-meta">
       Status: {{ statusLabel(audit.status) }} |
       Assigned to: {{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }} |
       Due: {{ formatDate(audit.dueAt) }}
     </p>
-    <div class="mb-3 d-flex gap-2">
+    <div class="mb-3 assessment-top-actions">
       <button
         class="btn btn-outline-success btn-sm"
         :disabled="!audit || (audit.status !== 'SUBMITTED' && audit.status !== 'ATTESTED')"
@@ -27,7 +27,7 @@
       <div class="card-body">
         <h2 class="h5 mb-3">Collaborators</h2>
         <div v-if="!assignments.length" class="text-muted small mb-2">No collaborators assigned.</div>
-        <div v-for="as in assignments" :key="as.id" class="d-flex justify-content-between align-items-center border-top pt-2 mt-2 small">
+        <div v-for="as in assignments" :key="as.id" class="d-flex justify-content-between align-items-center border-top pt-2 mt-2 small gap-2">
           <div>
             <strong>{{ as.userDisplayName || as.userEmail }}</strong>
             <span class="badge text-bg-light border ms-2">{{ as.assignmentRole }}</span>
@@ -59,7 +59,7 @@
     <div v-else class="card shadow-sm">
       <div class="card-body">
         <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table table-striped table-hover align-middle mb-0 assessment-table">
             <thead>
               <tr>
                 <th>Control</th>
@@ -93,19 +93,19 @@
                       <button class="btn btn-outline-danger btn-sm" @click="removeControlAssignment(ac, ta.id)">Remove</button>
                     </div>
                     <div class="row g-1 mt-1">
-                      <div class="col-6">
+                      <div class="col-12 col-lg-5">
                         <select v-model="controlAssignmentDraft(ac.id).userId" class="form-select form-select-sm">
                           <option :value="null">Select user</option>
                           <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
                         </select>
                       </div>
-                      <div class="col-4">
+                      <div class="col-8 col-lg-4">
                         <select v-model="controlAssignmentDraft(ac.id).role" class="form-select form-select-sm">
                           <option value="CONTRIBUTOR">CONTRIBUTOR</option>
                           <option value="REVIEWER">REVIEWER</option>
                         </select>
                       </div>
-                      <div class="col-2">
+                      <div class="col-4 col-lg-3">
                         <button class="btn btn-primary btn-sm w-100" @click="addControlAssignment(ac)">Add</button>
                       </div>
                     </div>
@@ -145,7 +145,7 @@
                     </div>
 
                     <div class="row g-2 mt-2">
-                      <div class="col-md-3">
+                      <div class="col-12 col-xl-3">
                         <select v-model="evidenceDraft(ac.id).evidenceType" class="form-select form-select-sm">
                           <option value="DOCUMENT">DOCUMENT</option>
                           <option value="SCREENSHOT">SCREENSHOT</option>
@@ -154,21 +154,21 @@
                           <option value="OTHER">OTHER</option>
                         </select>
                       </div>
-                      <div class="col-md-4">
+                      <div class="col-12 col-xl-4">
                         <input v-model="evidenceDraft(ac.id).title" class="form-control form-control-sm" placeholder="Evidence title" />
                       </div>
-                      <div class="col-md-4">
+                      <div class="col-12 col-xl-4">
                         <input v-model="evidenceDraft(ac.id).uri" class="form-control form-control-sm" placeholder="https://..." />
                       </div>
-                      <div class="col-md-1">
+                      <div class="col-12 col-xl-1">
                         <button class="btn btn-primary btn-sm w-100" @click="addEvidence(ac)">Add</button>
                       </div>
                     </div>
                     <div class="row g-2 mt-2">
-                      <div class="col-md-10">
+                      <div class="col-12 col-xl-10">
                         <input type="file" class="form-control form-control-sm" @change="setEvidenceFile(ac.id, $event)" />
                       </div>
-                      <div class="col-md-2">
+                      <div class="col-12 col-xl-2">
                         <button class="btn btn-outline-primary btn-sm w-100" @click="uploadEvidence(ac)">Upload File</button>
                       </div>
                     </div>
@@ -504,3 +504,44 @@ function formatDateTime(value) {
   return new Date(value).toLocaleString()
 }
 </script>
+
+<style scoped>
+.assessment-meta {
+  line-height: 1.5;
+}
+
+.assessment-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.assessment-table td {
+  vertical-align: top;
+}
+
+.assessment-table th:nth-child(1),
+.assessment-table td:nth-child(1) {
+  min-width: 90px;
+}
+
+.assessment-table th:nth-child(2),
+.assessment-table td:nth-child(2) {
+  min-width: 200px;
+}
+
+.assessment-table th:nth-child(3),
+.assessment-table td:nth-child(3) {
+  min-width: 320px;
+}
+
+.assessment-table th:nth-child(4),
+.assessment-table td:nth-child(4) {
+  min-width: 430px;
+}
+
+.assessment-table th:nth-child(5),
+.assessment-table td:nth-child(5) {
+  min-width: 280px;
+}
+</style>

@@ -5,7 +5,7 @@
     <div v-else class="card shadow-sm">
       <div class="card-body">
         <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table table-striped table-hover align-middle mb-0 my-audits-table">
             <thead>
               <tr>
                 <th>Application</th>
@@ -39,10 +39,10 @@
                     <span class="small text-muted">{{ a.completionPct || 0 }}%</span>
                   </div>
                 </td>
-                <td class="text-nowrap">
+                <td class="audit-action-cell">
                   <router-link
                     :to="`/audits/${a.id}/respond`"
-                    class="btn btn-primary btn-sm"
+                    class="btn btn-primary btn-sm audit-action-btn"
                     :class="{ disabled: a.status === 'SUBMITTED' || a.status === 'ATTESTED' || a.status === 'COMPLETE' }"
                   >
                     {{ actionLabel(a) }}
@@ -153,3 +153,29 @@ function statusBadgeClass(status) {
   }
 }
 </script>
+
+<style scoped>
+.my-audits-table th:nth-child(1),
+.my-audits-table td:nth-child(1) {
+  min-width: 220px;
+}
+
+.my-audits-table th:nth-child(4),
+.my-audits-table td:nth-child(4) {
+  min-width: 220px;
+}
+
+.audit-action-cell {
+  min-width: 140px;
+}
+
+.audit-action-btn {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .audit-action-btn {
+    width: auto;
+  }
+}
+</style>

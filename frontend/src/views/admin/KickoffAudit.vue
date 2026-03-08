@@ -21,8 +21,8 @@
             <label class="form-label">Due Date</label>
             <input v-model="createForm.dueAt" type="date" class="form-control" />
           </div>
-          <div class="col-md-1">
-            <button type="submit" class="btn btn-primary">Create audit</button>
+          <div class="col-12 col-md-3 col-lg-1">
+            <button type="submit" class="btn btn-primary w-100 w-lg-auto">Create audit</button>
           </div>
         </form>
       </div>
@@ -58,25 +58,27 @@
                   </td>
                   <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
                   <td>{{ formatDate(a.dueAt) }}</td>
-                  <td class="text-nowrap">
-                    <button class="btn btn-secondary btn-sm me-2" @click="openAssignModal(a)">Assign / Send</button>
-                    <button class="btn btn-outline-primary btn-sm me-2" @click="remind(a.id)">Remind</button>
-                    <button
-                      class="btn btn-outline-success btn-sm me-2"
-                      :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'"
-                      @click="attest(a.id)"
-                    >
-                      Attest
-                    </button>
-                    <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm me-2">View / Edit</router-link>
-                    <button class="btn btn-danger btn-sm" @click="deleteAudit(a.id)">Delete</button>
+                  <td class="audit-actions-cell">
+                    <div class="audit-actions">
+                      <button class="btn btn-secondary btn-sm" @click="openAssignModal(a)">Assign / Send</button>
+                      <button class="btn btn-outline-primary btn-sm" @click="remind(a.id)">Remind</button>
+                      <button
+                        class="btn btn-outline-success btn-sm"
+                        :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'"
+                        @click="attest(a.id)"
+                      >
+                        Attest
+                      </button>
+                      <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm">View / Edit</router-link>
+                      <button class="btn btn-danger btn-sm" @click="deleteAudit(a.id)">Delete</button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div class="mt-2 d-flex gap-2">
-            <select v-model="bulkUserId" class="form-select form-select-sm" style="max-width: 260px;">
+          <div class="mt-3 bulk-actions">
+            <select v-model="bulkUserId" class="form-select form-select-sm bulk-user-select">
               <option :value="null">Bulk assign selected to...</option>
               <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
             </select>
@@ -304,3 +306,27 @@ function statusBadgeClass(status) {
   }
 }
 </script>
+
+<style scoped>
+.audit-actions-cell {
+  min-width: 520px;
+}
+
+.audit-actions {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.bulk-user-select {
+  max-width: 300px;
+}
+</style>
