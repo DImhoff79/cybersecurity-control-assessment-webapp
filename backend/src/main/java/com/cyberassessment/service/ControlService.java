@@ -35,10 +35,14 @@ public class ControlService {
     }
 
     public static QuestionDto questionToDto(Question q) {
-        return questionToDto(q, q.getControl().getId());
+        return questionToDto(q, q.getControl().getId(), null);
     }
 
     public static QuestionDto questionToDto(Question q, Long controlId) {
+        return questionToDto(q, controlId, null);
+    }
+
+    public static QuestionDto questionToDto(Question q, Long controlId, com.cyberassessment.entity.QuestionControlMapping mapping) {
         if (q == null) return null;
         return QuestionDto.builder()
                 .id(q.getId())
@@ -47,6 +51,10 @@ public class ControlService {
                 .displayOrder(q.getDisplayOrder())
                 .helpText(q.getHelpText())
                 .askOwner(q.getAskOwner())
+                .mappingRationale(mapping != null ? mapping.getMappingRationale() : null)
+                .mappingWeight(mapping != null ? mapping.getMappingWeight() : null)
+                .effectiveFrom(mapping != null ? mapping.getEffectiveFrom() : null)
+                .effectiveTo(mapping != null ? mapping.getEffectiveTo() : null)
                 .build();
     }
 
@@ -66,7 +74,7 @@ public class ControlService {
             ControlDto dto = toDto(c);
             if (includeQuestions) {
                 dto.setQuestions(questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(c.getId()).stream()
-                        .map(m -> questionToDto(m.getQuestion(), c.getId()))
+                        .map(m -> questionToDto(m.getQuestion(), c.getId(), m))
                         .collect(Collectors.toList()));
             }
             return dto;
@@ -79,7 +87,7 @@ public class ControlService {
             ControlDto dto = toDto(c);
             if (includeQuestions) {
                 dto.setQuestions(questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(c.getId()).stream()
-                        .map(m -> questionToDto(m.getQuestion(), c.getId()))
+                        .map(m -> questionToDto(m.getQuestion(), c.getId(), m))
                         .collect(Collectors.toList()));
             }
             return dto;

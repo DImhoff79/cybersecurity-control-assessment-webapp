@@ -17,6 +17,7 @@
               <tr>
                 <th>Application</th>
                 <th>Year</th>
+                <th>Status</th>
                 <th>Submitted by</th>
                 <th>Submitted at</th>
                 <th></th>
@@ -26,12 +27,25 @@
               <tr v-for="audit in submittedAudits" :key="audit.id">
                 <td>{{ audit.applicationName }}</td>
                 <td>{{ audit.year }}</td>
+                <td>
+                  <span class="badge status-badge" :class="statusBadgeClass(audit.status)">
+                    {{ audit.status }}
+                  </span>
+                </td>
                 <td>{{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }}</td>
                 <td>{{ formatDate(audit.completedAt) }}</td>
                 <td class="text-nowrap">
                   <router-link :to="`/admin/audits/${audit.id}`" class="btn btn-primary btn-sm me-2">
                     Review assessment
                   </router-link>
+                  <button
+                    type="button"
+                    class="btn btn-outline-success btn-sm me-2"
+                    :disabled="audit.status !== 'SUBMITTED' && audit.status !== 'ATTESTED'"
+                    @click="attest(audit.id)"
+                  >
+                    Attest
+                  </button>
                   <button type="button" class="btn btn-success btn-sm" @click="markReviewed(audit.id)">
                     Mark reviewed
                   </button>
@@ -48,13 +62,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import api from '../../services/api'
+import { toastError, toastSuccess } from '../../services/toast'
 
 const audits = ref([])
 const loading = ref(true)
 
 const submittedAudits = computed(() => {
   return audits.value
-    .filter((a) => a.status === 'SUBMITTED')
+    .filter((a) => a.status === 'SUBMITTED' || a.status === 'ATTESTED')
     .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
 })
 
@@ -74,13 +89,41 @@ async function markReviewed(auditId) {
   try {
     await api.put(`/api/audits/${auditId}`, { status: 'COMPLETE' })
     await load()
+    toastSuccess('Assessment marked reviewed.')
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to mark assessment as reviewed.')
+    toastError(e.response?.data?.error || 'Failed to mark assessment as reviewed.')
+  }
+}
+
+async function attest(auditId) {
+  try {
+    await api.post(`/api/audits/${auditId}/attest`, { statement: 'Attested during review queue processing.' })
+    await load()
+    toastSuccess('Assessment attested.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to attest assessment.')
   }
 }
 
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function statusBadgeClass(status) {
+  switch (status) {
+    case 'COMPLETE':
+      return 'text-bg-success'
+    case 'ATTESTED':
+      return 'text-bg-primary'
+    case 'SUBMITTED':
+      return 'text-bg-info'
+    case 'IN_PROGRESS':
+      return 'text-bg-warning'
+    case 'DRAFT':
+      return 'text-bg-secondary'
+    default:
+      return 'text-bg-secondary'
+  }
 }
 </script>

@@ -1,0 +1,56 @@
+:root {
+  --brand-primary: #21409a;
+  --brand-secondary: #0468b3;
+  --brand-bg: #f4f7ff;
+  --brand-surface: #ffffff;
+}
+
+body {
+  background: var(--brand-bg);
+  color: #1f2937;
+}
+
+.brand-header {
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+}
+
+.navbar-brand {
+  letter-spacing: 0.2px;
+}
+
+.card {
+  border: 1px solid #dbe4ff;
+  border-radius: 12px;
+}
+
+.btn-primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #1a337b;
+  border-color: #1a337b;
+}
+
+.btn-outline-primary {
+  color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.table thead th {
+  background-color: #eaf0ff;
+  color: #1b2b62;
+}
+
+.status-badge {
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}

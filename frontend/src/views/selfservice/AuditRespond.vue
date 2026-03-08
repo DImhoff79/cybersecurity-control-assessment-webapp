@@ -3,6 +3,7 @@
     <h1 class="h3 mb-1">{{ audit?.applicationName }} - {{ audit?.year }} Assessment</h1>
     <p v-if="audit" class="text-muted mb-3">
       Status: {{ statusLabel(audit.status) }} | Progress: {{ completionPct }}%
+      <span v-if="audit.dueAt"> | Due: {{ new Date(audit.dueAt).toLocaleDateString() }}</span>
     </p>
 
     <div v-if="loading" class="text-muted">Loading...</div>
@@ -124,6 +125,7 @@
 import { computed, reactive, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../services/api'
+import { toastError, toastSuccess, toastWarning } from '../../services/toast'
 
 const route = useRoute()
 const auditId = Number(route.params.auditId)
@@ -209,7 +211,7 @@ const completionPct = computed(() => {
 })
 
 const humanComplete = computed(() => humanAnsweredCount.value === guidedQuestions.value.length)
-const isSubmitted = computed(() => audit.value?.status === 'SUBMITTED' || audit.value?.status === 'COMPLETE')
+const isSubmitted = computed(() => ['SUBMITTED', 'ATTESTED', 'COMPLETE'].includes(audit.value?.status))
 
 const isLastHumanStep = computed(() => {
   return currentHumanIndex.value >= guidedQuestions.value.length - 1
@@ -323,7 +325,7 @@ function goNext() {
     }
 
     if (!humanComplete.value) {
-      alert('Please answer all guided questions before moving to additional questions.')
+      toastWarning('Please answer all guided questions before moving to additional questions.')
       return
     }
 
@@ -347,16 +349,16 @@ async function finishAudit() {
   await saveAllProgress()
 
   if (completionPct.value < 100) {
-    alert('Please complete all remaining questions before submitting the audit.')
+    toastWarning('Please complete all remaining questions before submitting the audit.')
     return
   }
 
   try {
     const res = await api.post(`/api/audits/${auditId}/submit`)
     if (audit.value) audit.value.status = res.data?.status || 'SUBMITTED'
-    alert('Assessment submitted. An admin will now review it.')
+    toastSuccess('Assessment submitted. An admin will now review it.')
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to submit assessment.')
+    toastError(e.response?.data?.error || 'Failed to submit assessment.')
   }
 }
 
@@ -369,9 +371,9 @@ async function saveAllProgress() {
       await api.put(`/api/audits/${auditId}`, { status: 'IN_PROGRESS' })
       audit.value.status = 'IN_PROGRESS'
     }
-    alert('Progress saved.')
+    toastSuccess('Progress saved.')
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to save progress.')
+    toastError(e.response?.data?.error || 'Failed to save progress.')
   } finally {
     saving.value = false
   }
@@ -427,6 +429,8 @@ function statusLabel(status) {
       return 'In progress'
     case 'COMPLETE':
       return 'Validated complete'
+    case 'ATTESTED':
+      return 'Attested by audit team'
     case 'SUBMITTED':
       return 'Submitted - pending admin review'
     default:

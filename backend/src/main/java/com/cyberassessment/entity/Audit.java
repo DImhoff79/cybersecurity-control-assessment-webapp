@@ -52,7 +52,30 @@ public class Audit {
     @Column(name = "sent_at")
     private Instant sentAt;
 
+    @Column(name = "due_at")
+    private Instant dueAt;
+
+    @Column(name = "reminder_sent_at")
+    private Instant reminderSentAt;
+
+    @Column(name = "escalated_at")
+    private Instant escalatedAt;
+
+    @Column(name = "attested_at")
+    private Instant attestedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "attested_by_user_id")
+    private User attestedBy;
+
+    @Column(name = "attestation_statement", length = 2000)
+    private String attestationStatement;
+
     @OneToMany(mappedBy = "audit", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<AuditControl> auditControls = new ArrayList<>();
+
+    @OneToMany(mappedBy = "audit", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AuditAssignment> assignments = new ArrayList<>();
 }

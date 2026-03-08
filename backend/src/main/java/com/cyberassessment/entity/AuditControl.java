@@ -47,4 +47,12 @@ public class AuditControl {
     @OneToMany(mappedBy = "auditControl", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<AuditControlAnswer> answers = new ArrayList<>();
+
+    @OneToMany(mappedBy = "auditControl", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AuditEvidence> evidences = new ArrayList<>();
+
+    @OneToMany(mappedBy = "auditControl", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<AuditControlAssignment> assignments = new ArrayList<>();
 }

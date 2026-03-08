@@ -26,7 +26,7 @@ public class QuestionService {
     @Transactional(readOnly = true)
     public List<QuestionDto> findByControlId(Long controlId) {
         return questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(controlId).stream()
-                .map(m -> ControlService.questionToDto(m.getQuestion(), controlId))
+                .map(m -> ControlService.questionToDto(m.getQuestion(), controlId, m))
                 .collect(Collectors.toList());
     }
 
@@ -47,7 +47,8 @@ public class QuestionService {
                         .control(control)
                         .build());
             }
-            return ControlService.questionToDto(existing, controlId);
+            QuestionControlMapping mapping = questionControlMappingRepository.findById(new QuestionControlId(existing.getId(), controlId)).orElse(null);
+            return ControlService.questionToDto(existing, controlId, mapping);
         }
 
         if (displayOrder == null) {
@@ -62,12 +63,12 @@ public class QuestionService {
                 .askOwner(askOwner != null ? askOwner : true)
                 .build();
         q = questionRepository.save(q);
-        questionControlMappingRepository.save(QuestionControlMapping.builder()
+        QuestionControlMapping mapping = questionControlMappingRepository.save(QuestionControlMapping.builder()
                 .id(new QuestionControlId(q.getId(), controlId))
                 .question(q)
                 .control(control)
                 .build());
-        return ControlService.questionToDto(q, controlId);
+        return ControlService.questionToDto(q, controlId, mapping);
     }
 
     @Transactional
@@ -81,7 +82,21 @@ public class QuestionService {
         if (helpText != null) q.setHelpText(helpText);
         if (askOwner != null) q.setAskOwner(askOwner);
         q = questionRepository.save(q);
-        return ControlService.questionToDto(q, controlId);
+        QuestionControlMapping mapping = questionControlMappingRepository.findById(new QuestionControlId(id, controlId)).orElse(null);
+        return ControlService.questionToDto(q, controlId, mapping);
+    }
+
+    @Transactional
+    public QuestionDto updateMapping(Long controlId, Long id, String mappingRationale, java.math.BigDecimal mappingWeight,
+                                     java.time.Instant effectiveFrom, java.time.Instant effectiveTo) {
+        QuestionControlMapping mapping = questionControlMappingRepository.findById(new QuestionControlId(id, controlId))
+                .orElseThrow(() -> new IllegalArgumentException("Question mapping not found"));
+        if (mappingRationale != null) mapping.setMappingRationale(mappingRationale);
+        if (mappingWeight != null) mapping.setMappingWeight(mappingWeight);
+        if (effectiveFrom != null) mapping.setEffectiveFrom(effectiveFrom);
+        if (effectiveTo != null) mapping.setEffectiveTo(effectiveTo);
+        mapping = questionControlMappingRepository.save(mapping);
+        return ControlService.questionToDto(mapping.getQuestion(), controlId, mapping);
     }
 
     @Transactional

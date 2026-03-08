@@ -19,7 +19,11 @@
               <tr v-for="a in items" :key="a.id">
                 <td>{{ a.applicationName }}</td>
                 <td>{{ a.year }}</td>
-                <td>{{ statusLabel(a.status) }}</td>
+                <td>
+                  <span class="badge status-badge" :class="statusBadgeClass(a.status)">
+                    {{ statusLabel(a.status) }}
+                  </span>
+                </td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
                     <div class="progress flex-grow-1" style="height: 8px; min-width: 120px;">
@@ -39,7 +43,7 @@
                   <router-link
                     :to="`/audits/${a.id}/respond`"
                     class="btn btn-primary btn-sm"
-                    :class="{ disabled: a.status === 'SUBMITTED' || a.status === 'COMPLETE' }"
+                    :class="{ disabled: a.status === 'SUBMITTED' || a.status === 'ATTESTED' || a.status === 'COMPLETE' }"
                   >
                     {{ actionLabel(a) }}
                   </router-link>
@@ -116,6 +120,8 @@ function statusLabel(status) {
       return 'Completed - pending admin review'
     case 'COMPLETE':
       return 'Validated complete'
+    case 'ATTESTED':
+      return 'Attested by audit team'
     case 'IN_PROGRESS':
       return 'In progress'
     case 'DRAFT':
@@ -126,7 +132,24 @@ function statusLabel(status) {
 }
 
 function actionLabel(audit) {
-  if (audit.status === 'SUBMITTED' || audit.status === 'COMPLETE') return 'View submission'
+  if (audit.status === 'SUBMITTED' || audit.status === 'ATTESTED' || audit.status === 'COMPLETE') return 'View submission'
   return (audit.completionPct || 0) > 0 ? 'Resume audit' : 'Start audit'
+}
+
+function statusBadgeClass(status) {
+  switch (status) {
+    case 'COMPLETE':
+      return 'text-bg-success'
+    case 'ATTESTED':
+      return 'text-bg-primary'
+    case 'SUBMITTED':
+      return 'text-bg-info'
+    case 'IN_PROGRESS':
+      return 'text-bg-warning'
+    case 'DRAFT':
+      return 'text-bg-secondary'
+    default:
+      return 'text-bg-secondary'
+  }
 }
 </script>

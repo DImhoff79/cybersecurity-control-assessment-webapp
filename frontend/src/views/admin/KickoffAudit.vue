@@ -17,7 +17,11 @@
             <label class="form-label">Year</label>
             <input v-model.number="createForm.year" type="number" min="2020" max="2030" required class="form-control" />
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
+            <label class="form-label">Due Date</label>
+            <input v-model="createForm.dueAt" type="date" class="form-control" />
+          </div>
+          <div class="col-md-1">
             <button type="submit" class="btn btn-primary">Create audit</button>
           </div>
         </form>
@@ -33,25 +37,55 @@
             <table class="table table-striped table-hover align-middle mb-0">
               <thead>
                 <tr>
+                  <th>
+                    <input type="checkbox" :checked="allSelected(app.id)" @change="toggleSelectAll(app.id, $event.target.checked)" />
+                  </th>
                   <th>Year</th>
                   <th>Status</th>
                   <th>Assigned to</th>
+                  <th>Due</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="a in auditsByApp[app.id] || []" :key="a.id">
+                  <td><input type="checkbox" :checked="isSelected(a.id)" @change="toggleSelected(a.id, $event.target.checked)" /></td>
                   <td>{{ a.year }}</td>
-                  <td>{{ formatAuditStatus(a.status) }}</td>
+                  <td>
+                    <span class="badge status-badge" :class="statusBadgeClass(a.status)">
+                      {{ formatAuditStatus(a.status) }}
+                    </span>
+                  </td>
                   <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
+                  <td>{{ formatDate(a.dueAt) }}</td>
                   <td class="text-nowrap">
                     <button class="btn btn-secondary btn-sm me-2" @click="openAssignModal(a)">Assign / Send</button>
+                    <button class="btn btn-outline-primary btn-sm me-2" @click="remind(a.id)">Remind</button>
+                    <button
+                      class="btn btn-outline-success btn-sm me-2"
+                      :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'"
+                      @click="attest(a.id)"
+                    >
+                      Attest
+                    </button>
                     <router-link :to="`/admin/audits/${a.id}`" class="btn btn-primary btn-sm me-2">View / Edit</router-link>
                     <button class="btn btn-danger btn-sm" @click="deleteAudit(a.id)">Delete</button>
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div class="mt-2 d-flex gap-2">
+            <select v-model="bulkUserId" class="form-select form-select-sm" style="max-width: 260px;">
+              <option :value="null">Bulk assign selected to...</option>
+              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+            </select>
+            <button class="btn btn-outline-primary btn-sm" :disabled="!selectedAuditIds.length || !bulkUserId" @click="bulkAssign(false)">
+              Bulk Assign
+            </button>
+            <button class="btn btn-outline-primary btn-sm" :disabled="!selectedAuditIds.length || !bulkUserId" @click="bulkAssign(true)">
+              Bulk Assign + Send
+            </button>
           </div>
         </div>
       </div>
@@ -81,13 +115,16 @@
 import { computed, ref, reactive, onMounted } from 'vue'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
+import { toastError, toastSuccess } from '../../services/toast'
 
 const applications = ref([])
 const users = ref([])
-const createForm = reactive({ applicationId: null, year: new Date().getFullYear() })
+const createForm = reactive({ applicationId: null, year: new Date().getFullYear(), dueAt: '' })
 const assignModal = ref(null)
 const assignForm = reactive({ userId: null })
 const auditsByApp = ref({})
+const selectedAuditIds = ref([])
+const bulkUserId = ref(null)
 
 const isAssignModalOpen = computed({
   get: () => !!assignModal.value,
@@ -113,10 +150,15 @@ async function load() {
 
 async function createAudit() {
   try {
-    await api.post(`/api/applications/${createForm.applicationId}/audits`, { year: createForm.year })
+    const payload = { year: createForm.year }
+    if (createForm.dueAt) {
+      payload.dueAt = `${createForm.dueAt}T23:59:59Z`
+    }
+    await api.post(`/api/applications/${createForm.applicationId}/audits`, payload)
+    toastSuccess('Audit created.')
     load()
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to create audit')
+    toastError(e.response?.data?.error || 'Failed to create audit')
   }
 }
 
@@ -129,10 +171,11 @@ async function assignAndSend() {
   if (!assignModal.value) return
   try {
     await api.put(`/api/audits/${assignModal.value.id}/assign`, { userId: assignForm.userId })
+    toastSuccess('Audit assigned.')
     load()
     assignModal.value = null
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to assign')
+    toastError(e.response?.data?.error || 'Failed to assign')
   }
 }
 
@@ -141,10 +184,11 @@ async function sendToOwner() {
   try {
     await api.put(`/api/audits/${assignModal.value.id}/assign`, { userId: assignForm.userId })
     await api.post(`/api/audits/${assignModal.value.id}/send`)
+    toastSuccess('Audit sent to owner.')
     load()
     assignModal.value = null
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to send')
+    toastError(e.response?.data?.error || 'Failed to send')
   }
 }
 
@@ -153,8 +197,71 @@ async function deleteAudit(auditId) {
   try {
     await api.delete(`/api/audits/${auditId}`)
     await load()
+    toastSuccess('Audit deleted.')
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to delete audit')
+    toastError(e.response?.data?.error || 'Failed to delete audit')
+  }
+}
+
+async function remind(auditId) {
+  try {
+    await api.post(`/api/audits/${auditId}/remind`)
+    await load()
+    toastSuccess('Reminder sent.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to send reminder')
+  }
+}
+
+async function attest(auditId) {
+  const statement = prompt('Optional attestation statement', 'Audit reviewed and attested by security.')
+  try {
+    await api.post(`/api/audits/${auditId}/attest`, { statement: statement || '' })
+    await load()
+    toastSuccess('Audit attested.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to attest audit')
+  }
+}
+
+function toggleSelected(auditId, selected) {
+  if (selected) {
+    if (!selectedAuditIds.value.includes(auditId)) selectedAuditIds.value.push(auditId)
+  } else {
+    selectedAuditIds.value = selectedAuditIds.value.filter((x) => x !== auditId)
+  }
+}
+
+function isSelected(auditId) {
+  return selectedAuditIds.value.includes(auditId)
+}
+
+function allSelected(appId) {
+  const ids = (auditsByApp.value[appId] || []).map((a) => a.id)
+  return ids.length > 0 && ids.every((id) => selectedAuditIds.value.includes(id))
+}
+
+function toggleSelectAll(appId, checked) {
+  const ids = (auditsByApp.value[appId] || []).map((a) => a.id)
+  if (checked) {
+    selectedAuditIds.value = Array.from(new Set([...selectedAuditIds.value, ...ids]))
+  } else {
+    selectedAuditIds.value = selectedAuditIds.value.filter((id) => !ids.includes(id))
+  }
+}
+
+async function bulkAssign(sendNow) {
+  try {
+    await api.post('/api/audits/bulk-assign', {
+      auditIds: selectedAuditIds.value,
+      userId: bulkUserId.value,
+      sendNow
+    })
+    selectedAuditIds.value = []
+    await load()
+    toastSuccess(sendNow ? 'Bulk assignment and send complete.' : 'Bulk assignment complete.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to bulk assign')
   }
 }
 
@@ -162,6 +269,8 @@ function formatAuditStatus(status) {
   switch (status) {
     case 'SUBMITTED':
       return 'Completed - pending admin review'
+    case 'ATTESTED':
+      return 'Attested - pending final completion'
     case 'COMPLETE':
       return 'Validated complete'
     case 'IN_PROGRESS':
@@ -170,6 +279,28 @@ function formatAuditStatus(status) {
       return 'Draft'
     default:
       return status || '-'
+  }
+}
+
+function formatDate(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString()
+}
+
+function statusBadgeClass(status) {
+  switch (status) {
+    case 'COMPLETE':
+      return 'text-bg-success'
+    case 'ATTESTED':
+      return 'text-bg-primary'
+    case 'SUBMITTED':
+      return 'text-bg-info'
+    case 'IN_PROGRESS':
+      return 'text-bg-warning'
+    case 'DRAFT':
+      return 'text-bg-secondary'
+    default:
+      return 'text-bg-secondary'
   }
 }
 </script>

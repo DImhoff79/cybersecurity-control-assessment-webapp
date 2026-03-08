@@ -3,11 +3,10 @@ package com.cyberassessment.controller;
 import com.cyberassessment.dto.UserDto;
 import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.service.UserService;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,17 +20,20 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<UserDto> list() {
         return userService.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> get(@PathVariable Long id) {
         UserDto dto = userService.findById(id);
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> create(@RequestBody Map<String, String> body) {
         String email = body.get("email");
         String password = body.get("password");
@@ -50,6 +52,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String displayName = body.containsKey("displayName") ? (String) body.get("displayName") : null;
         UserRole role = body.containsKey("role") ? UserRole.valueOf((String) body.get("role")) : null;

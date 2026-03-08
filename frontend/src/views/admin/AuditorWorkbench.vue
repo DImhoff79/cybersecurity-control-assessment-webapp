@@ -1,0 +1,382 @@
+<template>
+  <div>
+    <h1 class="h3 mb-3">Auditor Workbench</h1>
+
+    <div v-if="loading" class="text-muted">Loading...</div>
+    <div v-else>
+      <div class="row g-3 mb-3">
+        <div class="col-md-3" v-for="card in cards" :key="card.label">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="text-muted small">{{ card.label }}</div>
+              <div class="h3 mb-0">{{ card.value }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Queue</label>
+              <select v-model="auditFilter.queue" class="form-select form-select-sm">
+                <option value="all">All</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="mine">Assigned To Me</option>
+                <option value="others">Assigned To Others</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Status</label>
+              <select v-model="auditFilter.status" class="form-select form-select-sm">
+                <option value="all">All</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="SUBMITTED">SUBMITTED</option>
+                <option value="ATTESTED">ATTESTED</option>
+                <option value="COMPLETE">COMPLETE</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Framework</label>
+              <select v-model="auditFilter.framework" class="form-select form-select-sm">
+                <option value="all">All</option>
+                <option v-for="f in frameworkOptions" :key="`af-${f}`" :value="f">{{ f }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1">Search</label>
+              <input v-model="auditFilter.search" class="form-control form-control-sm" placeholder="Application, assignee..." />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1">Saved Filter</label>
+              <div class="d-flex gap-1">
+                <input v-model="filterName" class="form-control form-control-sm" placeholder="Filter name" />
+                <button class="btn btn-outline-primary btn-sm" @click="saveCurrentFilter">Save</button>
+              </div>
+            </div>
+            <div class="col-12" v-if="savedFilters.length">
+              <div class="d-flex flex-wrap gap-2">
+                <button
+                  v-for="f in savedFilters"
+                  :key="f.id"
+                  class="btn btn-outline-secondary btn-sm"
+                  @click="loadSavedFilter(f.id)"
+                >
+                  {{ f.name }}
+                </button>
+                <button class="btn btn-outline-danger btn-sm" @click="clearSavedFilters">Clear Saved</button>
+              </div>
+            </div>
+          </div>
+
+          <h2 class="h5 mb-3">Audits Needing Attention</h2>
+          <div class="small text-muted mb-2">
+            Showing {{ filteredAudits.length }} of {{ (dashboard.auditsNeedingAttention || []).length }} audits
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Application</th>
+                  <th>Year</th>
+                  <th>Status</th>
+                  <th>Assigned</th>
+                  <th>Frameworks</th>
+                  <th>Due</th>
+                  <th>Pending Evidence</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="a in filteredAudits" :key="a.auditId">
+                  <td>{{ a.applicationName }}</td>
+                  <td>{{ a.year }}</td>
+                  <td><span class="badge status-badge" :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                  <td>{{ a.assignedToEmail || '-' }}</td>
+                  <td>{{ a.frameworks || '-' }}</td>
+                  <td>{{ formatDate(a.dueAt) }}</td>
+                  <td>{{ a.pendingEvidenceCount }}</td>
+                  <td class="text-nowrap">
+                    <router-link :to="`/admin/audits/${a.auditId}`" class="btn btn-outline-primary btn-sm me-2">Open</router-link>
+                    <button class="btn btn-outline-primary btn-sm me-2" @click="remind(a.auditId)">Remind</button>
+                    <button class="btn btn-outline-success btn-sm" :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'" @click="attest(a.auditId)">Attest</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-md-3">
+              <label class="form-label small mb-1">Framework</label>
+              <select v-model="evidenceFilter.framework" class="form-select form-select-sm">
+                <option value="all">All</option>
+                <option v-for="f in frameworkOptions" :key="`ef-${f}`" :value="f">{{ f }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1">Type</label>
+              <select v-model="evidenceFilter.type" class="form-select form-select-sm">
+                <option value="all">All</option>
+                <option value="DOCUMENT">DOCUMENT</option>
+                <option value="SCREENSHOT">SCREENSHOT</option>
+                <option value="URL">URL</option>
+                <option value="TICKET">TICKET</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small mb-1">Search</label>
+              <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, title..." />
+            </div>
+          </div>
+          <h2 class="h5 mb-3">Evidence Review Queue</h2>
+          <div class="small text-muted mb-2">
+            Showing {{ filteredEvidence.length }} of {{ (dashboard.evidenceQueue || []).length }} documents
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Application</th>
+                  <th>Control</th>
+                  <th>Framework</th>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Created</th>
+                  <th>Document</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="e in filteredEvidence" :key="e.evidenceId">
+                  <td>{{ e.applicationName }} ({{ e.year }})</td>
+                  <td>{{ e.controlControlId }}</td>
+                  <td>{{ e.framework || '-' }}</td>
+                  <td>{{ e.title }}</td>
+                  <td>{{ e.evidenceType }}</td>
+                  <td>{{ formatDateTime(e.createdAt) }}</td>
+                  <td>
+                    <a v-if="e.uri" :href="e.uri" target="_blank" rel="noopener noreferrer">Open</a>
+                    <span v-else>-</span>
+                  </td>
+                  <td class="text-nowrap">
+                    <button class="btn btn-outline-success btn-sm me-2" @click="reviewEvidence(e.evidenceId, 'ACCEPTED')">Accept</button>
+                    <button class="btn btn-outline-danger btn-sm" @click="reviewEvidence(e.evidenceId, 'REJECTED')">Reject</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import api from '../../services/api'
+import { toastError, toastSuccess } from '../../services/toast'
+
+const loading = ref(true)
+const dashboard = ref({ summary: {}, auditsNeedingAttention: [], evidenceQueue: [] })
+const currentUserEmail = ref('')
+const filterName = ref('')
+const savedFilters = ref([])
+const STORAGE_KEY = 'auditor_workbench_saved_filters'
+const auditFilter = reactive({
+  queue: 'all',
+  status: 'all',
+  framework: 'all',
+  search: ''
+})
+const evidenceFilter = reactive({
+  framework: 'all',
+  type: 'all',
+  search: ''
+})
+
+const cards = computed(() => {
+  const s = dashboard.value.summary || {}
+  return [
+    { label: 'Total Audits', value: s.totalAudits ?? 0 },
+    { label: 'Open Audits', value: s.openAudits ?? 0 },
+    { label: 'Overdue Audits', value: s.overdueAudits ?? 0 },
+    { label: 'Submitted', value: s.submittedAudits ?? 0 }
+  ]
+})
+
+onMounted(load)
+
+async function load() {
+  loading.value = true
+  try {
+    const [res, meRes] = await Promise.all([
+      api.get('/api/reports/auditor-dashboard'),
+      api.get('/api/auth/me')
+    ])
+    dashboard.value = res.data || { summary: {}, auditsNeedingAttention: [], evidenceQueue: [] }
+    currentUserEmail.value = meRes.data?.email || ''
+    loadSavedFilters()
+  } finally {
+    loading.value = false
+  }
+}
+
+async function remind(auditId) {
+  try {
+    await api.post(`/api/audits/${auditId}/remind`)
+    await load()
+    toastSuccess('Reminder sent.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to send reminder')
+  }
+}
+
+async function attest(auditId) {
+  try {
+    await api.post(`/api/audits/${auditId}/attest`, { statement: 'Attested from Auditor Workbench.' })
+    await load()
+    toastSuccess('Audit attested.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to attest audit')
+  }
+}
+
+async function reviewEvidence(evidenceId, reviewStatus) {
+  try {
+    await api.put(`/api/evidences/${evidenceId}/review`, { reviewStatus })
+    await load()
+    toastSuccess(`Evidence ${reviewStatus === 'ACCEPTED' ? 'accepted' : 'rejected'}.`)
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to review evidence')
+  }
+}
+
+function formatDate(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString()
+}
+
+function formatDateTime(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString()
+}
+
+function statusBadge(status) {
+  switch (status) {
+    case 'SUBMITTED':
+      return 'text-bg-info'
+    case 'ATTESTED':
+      return 'text-bg-primary'
+    case 'IN_PROGRESS':
+      return 'text-bg-warning'
+    case 'COMPLETE':
+      return 'text-bg-success'
+    default:
+      return 'text-bg-secondary'
+  }
+}
+
+const frameworkOptions = computed(() => {
+  const options = new Set()
+  ;(dashboard.value.auditsNeedingAttention || []).forEach((a) => {
+    ;(a.frameworks || '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .forEach((f) => options.add(f))
+  })
+  ;(dashboard.value.evidenceQueue || []).forEach((e) => {
+    if (e.framework) options.add(e.framework)
+  })
+  return Array.from(options).sort()
+})
+
+const filteredAudits = computed(() => {
+  const now = Date.now()
+  return (dashboard.value.auditsNeedingAttention || []).filter((a) => {
+    if (auditFilter.queue === 'unassigned' && !!a.assignedToEmail) return false
+    if (auditFilter.queue === 'mine' && a.assignedToEmail !== currentUserEmail.value) return false
+    if (auditFilter.queue === 'others' && (!a.assignedToEmail || a.assignedToEmail === currentUserEmail.value)) return false
+    if (auditFilter.queue === 'overdue') {
+      if (!a.dueAt) return false
+      if (new Date(a.dueAt).getTime() >= now) return false
+    }
+    if (auditFilter.status !== 'all' && a.status !== auditFilter.status) return false
+    if (auditFilter.framework !== 'all' && !(a.frameworks || '').includes(auditFilter.framework)) return false
+    const haystack = `${a.applicationName} ${a.assignedToEmail || ''} ${a.status} ${a.frameworks || ''}`.toLowerCase()
+    const term = auditFilter.search.trim().toLowerCase()
+    if (term && !haystack.includes(term)) return false
+    return true
+  })
+})
+
+const filteredEvidence = computed(() => {
+  return (dashboard.value.evidenceQueue || []).filter((e) => {
+    if (evidenceFilter.framework !== 'all' && e.framework !== evidenceFilter.framework) return false
+    if (evidenceFilter.type !== 'all' && e.evidenceType !== evidenceFilter.type) return false
+    const term = evidenceFilter.search.trim().toLowerCase()
+    if (!term) return true
+    const haystack = `${e.applicationName} ${e.controlControlId} ${e.controlName} ${e.title}`.toLowerCase()
+    return haystack.includes(term)
+  })
+})
+
+function loadSavedFilters() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    savedFilters.value = raw ? JSON.parse(raw) : []
+  } catch {
+    savedFilters.value = []
+  }
+}
+
+function persistSavedFilters() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(savedFilters.value))
+}
+
+function saveCurrentFilter() {
+  const name = filterName.value.trim()
+  if (!name) {
+    toastError('Enter a filter name first.')
+    return
+  }
+  const record = {
+    id: `${Date.now()}`,
+    name,
+    auditFilter: { ...auditFilter },
+    evidenceFilter: { ...evidenceFilter }
+  }
+  savedFilters.value.push(record)
+  persistSavedFilters()
+  filterName.value = ''
+  toastSuccess('Filter saved.')
+}
+
+function loadSavedFilter(id) {
+  const found = savedFilters.value.find((f) => f.id === id)
+  if (!found) return
+  Object.assign(auditFilter, found.auditFilter || {})
+  Object.assign(evidenceFilter, found.evidenceFilter || {})
+  toastSuccess(`Loaded filter "${found.name}".`)
+}
+
+function clearSavedFilters() {
+  savedFilters.value = []
+  persistSavedFilters()
+  toastSuccess('Saved filters cleared.')
+}
+
+watch([auditFilter, evidenceFilter], () => {
+  // Keep UI reactive and deterministic for saved-filter snapshots.
+}, { deep: true })
+</script>
