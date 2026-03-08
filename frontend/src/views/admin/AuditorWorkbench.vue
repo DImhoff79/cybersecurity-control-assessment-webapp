@@ -1,6 +1,9 @@
 <template>
   <div>
     <h1 class="h3 mb-3">Auditor Workbench</h1>
+    <div class="alert alert-info py-2">
+      Use this page to triage active audits and evidence: filter queues, send reminders, attest submitted audits, and review pending evidence from one place.
+    </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
     <div v-else>

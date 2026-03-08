@@ -1,10 +1,26 @@
 <template>
   <div>
     <h1 class="h3 mb-3">Questionnaire Templates</h1>
+    <div class="alert alert-info">
+      <div class="fw-semibold mb-1">What this does</div>
+      <div class="small">
+        Templates freeze your current question-control mappings into versioned releases. New audits snapshot from the latest published template so in-flight audits stay stable even if live mappings change later.
+      </div>
+      <div class="small mt-2">
+        Recommended flow: 1) update controls/questions/mappings, 2) create draft from current, 3) review items, 4) publish, 5) kickoff audits.
+      </div>
+    </div>
     <div class="card shadow-sm mb-3">
       <div class="card-body d-flex gap-2 align-items-center">
         <input v-model="draftNotes" class="form-control" placeholder="Draft notes (optional)" />
         <button class="btn btn-primary" @click="createDraft">Create Draft from Current</button>
+        <button
+          v-if="!loading && templates.length === 0"
+          class="btn btn-outline-success"
+          @click="bootstrapInitial"
+        >
+          Create Initial Snapshot
+        </button>
       </div>
     </div>
     <div class="card shadow-sm">
@@ -106,6 +122,19 @@ async function createDraft() {
     await load()
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to create draft')
+  }
+}
+
+async function bootstrapInitial() {
+  try {
+    await api.post('/api/questionnaire-templates/bootstrap-initial', {
+      notes: draftNotes.value || null
+    })
+    toastSuccess('Initial baseline template created and published.')
+    draftNotes.value = ''
+    await load()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to create initial snapshot')
   }
 }
 

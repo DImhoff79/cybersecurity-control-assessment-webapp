@@ -20,6 +20,9 @@
             <label class="form-check-label" for="enabledOnly">Enabled only</label>
           </div>
         </div>
+        <div class="col-md-4 text-md-end">
+          <button class="btn btn-primary" @click="openCreate">Add control</button>
+        </div>
       </div>
     </div>
 
@@ -51,6 +54,7 @@
                 <td class="text-nowrap">
                   <button class="btn btn-secondary btn-sm me-2" @click="openEdit(c)">Edit</button>
                   <button class="btn btn-secondary btn-sm" @click="openQuestions(c)">Questions</button>
+                  <button class="btn btn-danger btn-sm ms-2" @click="deleteControl(c)">Delete</button>
                 </td>
               </tr>
             </tbody>
@@ -77,6 +81,45 @@
       <template #footer>
         <button type="button" class="btn btn-secondary" @click="isEditOpen = false">Cancel</button>
         <button type="submit" form="edit-control-form" class="btn btn-primary">Save</button>
+      </template>
+    </BsModal>
+
+    <BsModal v-model="isCreateOpen" title="Add control">
+      <form id="create-control-form" @submit.prevent="createControl">
+        <div class="mb-3">
+          <label class="form-label">Control ID</label>
+          <input v-model="createForm.controlId" class="form-control" placeholder="AC-1" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input v-model="createForm.name" class="form-control" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Framework</label>
+          <select v-model="createForm.framework" class="form-select" required>
+            <option disabled value="">Select framework</option>
+            <option value="NIST_800_53_LOW">NIST 800-53 Low</option>
+            <option value="PCI_DSS_V4">PCI DSS v4</option>
+            <option value="HIPAA">HIPAA</option>
+            <option value="SOX">SOX</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Category</label>
+          <input v-model="createForm.category" class="form-control" placeholder="Access Control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea v-model="createForm.description" class="form-control" />
+        </div>
+        <div class="form-check mb-3">
+          <input type="checkbox" v-model="createForm.enabled" class="form-check-input" id="enabledNewControl" />
+          <label class="form-check-label" for="enabledNewControl">Enabled</label>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="isCreateOpen = false">Cancel</button>
+        <button type="submit" form="create-control-form" class="btn btn-primary">Create</button>
       </template>
     </BsModal>
 
@@ -134,10 +177,13 @@
 import { computed, ref, onMounted } from 'vue'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
+import { toastError, toastSuccess } from '../../services/toast'
 
 const controls = ref([])
 const filterFramework = ref('')
 const filterEnabled = ref(false)
+const createModal = ref(false)
+const createForm = ref({ controlId: '', name: '', framework: '', description: '', enabled: true, category: '' })
 const editModal = ref(null)
 const editForm = ref({ id: null, name: '', description: '', enabled: true })
 const questionsModal = ref(null)
@@ -156,6 +202,13 @@ const isEditOpen = computed({
   get: () => !!editModal.value,
   set: (open) => {
     if (!open) editModal.value = null
+  }
+})
+
+const isCreateOpen = computed({
+  get: () => createModal.value,
+  set: (open) => {
+    createModal.value = open
   }
 })
 
@@ -198,12 +251,36 @@ async function load() {
   controls.value = res.data || []
 }
 
+function openCreate() {
+  createForm.value = { controlId: '', name: '', framework: '', description: '', enabled: true, category: '' }
+  createModal.value = true
+}
+
+async function createControl() {
+  try {
+    await api.post('/api/controls', {
+      controlId: createForm.value.controlId,
+      name: createForm.value.name,
+      framework: createForm.value.framework,
+      description: createForm.value.description || null,
+      enabled: createForm.value.enabled,
+      category: createForm.value.category || null
+    })
+    createModal.value = false
+    await load()
+    toastSuccess('Control created.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to create control')
+  }
+}
+
 async function toggleEnabled(c) {
   try {
     await api.patch(`/api/controls/${c.id}`, { enabled: !c.enabled })
-    load()
+    await load()
+    toastSuccess('Control updated.')
   } catch (e) {
-    alert('Failed to update')
+    toastError(e.response?.data?.error || 'Failed to update')
   }
 }
 
@@ -220,9 +297,21 @@ async function saveControl() {
       enabled: editForm.value.enabled
     })
     editModal.value = null
-    load()
+    await load()
+    toastSuccess('Control saved.')
   } catch (e) {
-    alert('Failed to save')
+    toastError(e.response?.data?.error || 'Failed to save')
+  }
+}
+
+async function deleteControl(control) {
+  if (!confirm(`Delete control ${control.controlId}? This removes its mappings.`)) return
+  try {
+    await api.delete(`/api/controls/${control.id}`)
+    await load()
+    toastSuccess('Control deleted.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to delete control')
   }
 }
 
@@ -239,9 +328,10 @@ async function addQuestion() {
     await api.post(`/api/controls/${questionsModal.value.id}/questions`, {
       questionText: newQuestionText.value.trim()
     })
-    openQuestions(questionsModal.value)
+    await openQuestions(questionsModal.value)
+    toastSuccess('Question added.')
   } catch (e) {
-    alert('Failed to add question')
+    toastError(e.response?.data?.error || 'Failed to add question')
   }
 }
 
@@ -249,9 +339,10 @@ async function deleteQuestion(id) {
   if (!confirm('Delete this question?')) return
   try {
     await api.delete(`/api/controls/${questionsModal.value.id}/questions/${id}`)
-    openQuestions(questionsModal.value)
+    await openQuestions(questionsModal.value)
+    toastSuccess('Question deleted.')
   } catch (e) {
-    alert('Failed to delete')
+    toastError(e.response?.data?.error || 'Failed to delete')
   }
 }
 
@@ -259,8 +350,11 @@ function editQuestion(q) {
   const text = prompt('Edit question text:', q.questionText)
   if (text == null) return
   api.put(`/api/controls/${questionsModal.value.id}/questions/${q.id}`, { questionText: text })
-    .then(() => openQuestions(questionsModal.value))
-    .catch(() => alert('Failed to update'))
+    .then(() => {
+      toastSuccess('Question updated.')
+      return openQuestions(questionsModal.value)
+    })
+    .catch((e) => toastError(e.response?.data?.error || 'Failed to update'))
 }
 
 async function openControlDetails(controlId) {
@@ -268,7 +362,7 @@ async function openControlDetails(controlId) {
     const res = await api.get(`/api/controls/${controlId}?includeQuestions=true`)
     detailsModal.value = res.data
   } catch (e) {
-    alert('Failed to load control details')
+    toastError(e.response?.data?.error || 'Failed to load control details')
   }
 }
 </script>

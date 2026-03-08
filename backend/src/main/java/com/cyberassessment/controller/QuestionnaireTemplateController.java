@@ -35,6 +35,13 @@ public class QuestionnaireTemplateController {
         return questionnaireTemplateService.createDraftFromCurrent(notes);
     }
 
+    @PostMapping("/bootstrap-initial")
+    @PreAuthorize("hasRole('ADMIN')")
+    public QuestionnaireTemplateDto bootstrapInitial(@RequestBody(required = false) Map<String, Object> body) {
+        String notes = body != null && body.containsKey("notes") ? (String) body.get("notes") : null;
+        return questionnaireTemplateService.bootstrapInitialFromCurrent(notes);
+    }
+
     @PostMapping("/{templateId}/publish")
     @PreAuthorize("hasRole('ADMIN')")
     public QuestionnaireTemplateDto publish(@PathVariable Long templateId) {

@@ -123,6 +123,48 @@
             <input v-model="editForm.effectiveTo" type="datetime-local" class="form-control" />
           </div>
         </div>
+        <hr />
+        <h3 class="h6">Manage control mappings</h3>
+        <p class="small text-muted">Add or remove mapped controls and update metadata per mapping.</p>
+        <div class="d-flex gap-2 align-items-end mb-3">
+          <div class="flex-grow-1">
+            <label class="form-label">Add mapping to control</label>
+            <select v-model="newMappingControlId" class="form-select">
+              <option :value="null">Select control</option>
+              <option v-for="c in availableMappingControls" :key="`map-${c.id}`" :value="c.id">
+                {{ c.controlId }} - {{ c.name }}
+              </option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-outline-primary" @click="addMapping">Add mapping</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Control</th>
+                <th>Rationale</th>
+                <th>Weight</th>
+                <th>Effective from</th>
+                <th>Effective to</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in editForm.controls" :key="`mapping-row-${m.id}`">
+                <td>{{ m.controlId }}</td>
+                <td><input v-model="m.mappingRationale" class="form-control form-control-sm" /></td>
+                <td><input v-model.number="m.mappingWeight" type="number" min="0" max="100" step="0.01" class="form-control form-control-sm" /></td>
+                <td><input v-model="m.effectiveFrom" type="datetime-local" class="form-control form-control-sm" /></td>
+                <td><input v-model="m.effectiveTo" type="datetime-local" class="form-control form-control-sm" /></td>
+                <td class="text-nowrap">
+                  <button type="button" class="btn btn-outline-success btn-sm me-2" @click="saveMapping(m)">Save</button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" @click="removeMapping(m)">Remove</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </form>
       <template #footer>
         <button type="button" class="btn btn-secondary" @click="isEditOpen = false">Cancel</button>
@@ -142,6 +184,7 @@ const loading = ref(false)
 const search = ref('')
 const askOwnerFilter = ref('ALL')
 const questions = ref([])
+const allControls = ref([])
 
 const editModal = ref(null)
 const editForm = ref({
@@ -158,6 +201,7 @@ const editForm = ref({
 })
 const toast = ref({ show: false, message: '', at: '' })
 let toastTimer = null
+const newMappingControlId = ref(null)
 
 const isEditOpen = computed({
   get: () => !!editModal.value,
@@ -181,6 +225,11 @@ const filteredQuestions = computed(() => {
   })
 })
 
+const availableMappingControls = computed(() => {
+  const mapped = new Set((editForm.value.controls || []).map((c) => c.id))
+  return allControls.value.filter((c) => !mapped.has(c.id))
+})
+
 load()
 
 async function load() {
@@ -188,6 +237,7 @@ async function load() {
   try {
     const res = await api.get('/api/controls?includeQuestions=true')
     const controls = res.data || []
+    allControls.value = controls.map((c) => ({ id: c.id, controlId: c.controlId, name: c.name }))
 
     const byQuestion = new Map()
     controls.forEach((control) => {
@@ -209,7 +259,11 @@ async function load() {
         byQuestion.get(q.id).controls.push({
           id: control.id,
           controlId: control.controlId,
-          name: control.name
+          name: control.name,
+          mappingRationale: q.mappingRationale || '',
+          mappingWeight: q.mappingWeight ?? null,
+          effectiveFrom: toDateTimeLocal(q.effectiveFrom),
+          effectiveTo: toDateTimeLocal(q.effectiveTo)
         })
       })
     })
@@ -248,6 +302,7 @@ function openEdit(question) {
     effectiveTo: toDateTimeLocal(question.effectiveTo),
     controls: [...question.controls]
   }
+  newMappingControlId.value = null
 }
 
 async function saveEdit() {
@@ -269,6 +324,57 @@ async function saveEdit() {
     toastSuccess('Question updated.')
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to save question changes.')
+  }
+}
+
+async function addMapping() {
+  if (!editForm.value.id || !newMappingControlId.value) return
+  try {
+    await api.post(`/api/controls/${newMappingControlId.value}/questions`, {
+      questionText: editForm.value.questionText,
+      helpText: editForm.value.helpText,
+      askOwner: editForm.value.askOwner
+    })
+    await load()
+    const refreshed = questions.value.find((q) => q.id === editForm.value.id)
+    if (refreshed) openEdit(refreshed)
+    toastSuccess('Mapping added.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to add mapping.')
+  }
+}
+
+async function saveMapping(mapping) {
+  try {
+    await api.put(`/api/controls/${mapping.id}/questions/${editForm.value.id}/mapping`, {
+      mappingRationale: mapping.mappingRationale || null,
+      mappingWeight: mapping.mappingWeight != null ? mapping.mappingWeight : null,
+      effectiveFrom: mapping.effectiveFrom ? new Date(mapping.effectiveFrom).toISOString() : null,
+      effectiveTo: mapping.effectiveTo ? new Date(mapping.effectiveTo).toISOString() : null
+    })
+    await load()
+    const refreshed = questions.value.find((q) => q.id === editForm.value.id)
+    if (refreshed) openEdit(refreshed)
+    toastSuccess('Mapping saved.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to save mapping.')
+  }
+}
+
+async function removeMapping(mapping) {
+  if (!confirm(`Remove mapping to ${mapping.controlId}?`)) return
+  try {
+    await api.delete(`/api/controls/${mapping.id}/questions/${editForm.value.id}`)
+    await load()
+    const refreshed = questions.value.find((q) => q.id === editForm.value.id)
+    if (refreshed) {
+      openEdit(refreshed)
+    } else {
+      isEditOpen.value = false
+    }
+    toastSuccess('Mapping removed.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to remove mapping.')
   }
 }
 

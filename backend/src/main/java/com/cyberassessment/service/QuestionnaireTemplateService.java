@@ -83,23 +83,28 @@ public class QuestionnaireTemplateService {
                 .createdBy(currentUserService.getCurrentUser().orElse(null))
                 .build();
         template = questionnaireTemplateRepository.save(template);
-        List<QuestionControlMapping> mappings = questionControlMappingRepository.findAll();
-        for (QuestionControlMapping m : mappings) {
-            QuestionnaireTemplateItem item = QuestionnaireTemplateItem.builder()
-                    .template(template)
-                    .question(m.getQuestion())
-                    .control(m.getControl())
-                    .questionText(m.getQuestion().getQuestionText())
-                    .helpText(m.getQuestion().getHelpText())
-                    .displayOrder(m.getQuestion().getDisplayOrder())
-                    .askOwner(Boolean.TRUE.equals(m.getQuestion().getAskOwner()))
-                    .mappingRationale(m.getMappingRationale())
-                    .mappingWeight(m.getMappingWeight())
-                    .effectiveFrom(m.getEffectiveFrom())
-                    .effectiveTo(m.getEffectiveTo())
-                    .build();
-            questionnaireTemplateItemRepository.save(item);
+        copyCurrentMappingsIntoTemplate(template);
+        return toDto(template);
+    }
+
+    @Transactional
+    public QuestionnaireTemplateDto bootstrapInitialFromCurrent(String notes) {
+        if (!currentUserService.isAdmin()) {
+            throw new IllegalArgumentException("Only admins can initialize questionnaire templates");
         }
+        if (questionnaireTemplateRepository.count() > 0) {
+            throw new IllegalArgumentException("Templates already exist");
+        }
+        QuestionnaireTemplate template = QuestionnaireTemplate.builder()
+                .versionNo(1)
+                .status(QuestionnaireTemplateStatus.PUBLISHED)
+                .notes((notes == null || notes.isBlank()) ? "Initial baseline snapshot from live mappings." : notes)
+                .createdBy(currentUserService.getCurrentUser().orElse(null))
+                .publishedBy(currentUserService.getCurrentUser().orElse(null))
+                .publishedAt(Instant.now())
+                .build();
+        template = questionnaireTemplateRepository.save(template);
+        copyCurrentMappingsIntoTemplate(template);
         return toDto(template);
     }
 
@@ -125,5 +130,25 @@ public class QuestionnaireTemplateService {
     @Transactional(readOnly = true)
     public QuestionnaireTemplate findLatestPublishedEntity() {
         return questionnaireTemplateRepository.findTopByStatusOrderByVersionNoDesc(QuestionnaireTemplateStatus.PUBLISHED).orElse(null);
+    }
+
+    private void copyCurrentMappingsIntoTemplate(QuestionnaireTemplate template) {
+        List<QuestionControlMapping> mappings = questionControlMappingRepository.findAll();
+        for (QuestionControlMapping m : mappings) {
+            QuestionnaireTemplateItem item = QuestionnaireTemplateItem.builder()
+                    .template(template)
+                    .question(m.getQuestion())
+                    .control(m.getControl())
+                    .questionText(m.getQuestion().getQuestionText())
+                    .helpText(m.getQuestion().getHelpText())
+                    .displayOrder(m.getQuestion().getDisplayOrder())
+                    .askOwner(Boolean.TRUE.equals(m.getQuestion().getAskOwner()))
+                    .mappingRationale(m.getMappingRationale())
+                    .mappingWeight(m.getMappingWeight())
+                    .effectiveFrom(m.getEffectiveFrom())
+                    .effectiveTo(m.getEffectiveTo())
+                    .build();
+            questionnaireTemplateItemRepository.save(item);
+        }
     }
 }

@@ -7,6 +7,7 @@ import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.entity.Question;
 import com.cyberassessment.repository.ControlRepository;
 import com.cyberassessment.repository.QuestionControlMappingRepository;
+import com.cyberassessment.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ public class ControlService {
 
     private final ControlRepository controlRepository;
     private final QuestionControlMappingRepository questionControlMappingRepository;
+    private final QuestionRepository questionRepository;
 
     public static ControlDto toDto(Control c) {
         if (c == null) return null;
@@ -107,5 +109,39 @@ public class ControlService {
     @Transactional
     public ControlDto patch(Long id, String name, String description, Boolean enabled) {
         return update(id, name, description, enabled);
+    }
+
+    @Transactional
+    public ControlDto create(String controlId, String name, String description, ControlFramework framework, Boolean enabled, String category) {
+        if (controlId == null || controlId.isBlank()) throw new IllegalArgumentException("controlId is required");
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
+        if (framework == null) throw new IllegalArgumentException("framework is required");
+        String normalizedControlId = controlId.trim();
+        if (controlRepository.existsByControlIdAndFramework(normalizedControlId, framework)) {
+            throw new IllegalArgumentException("Control already exists for framework");
+        }
+        Control control = Control.builder()
+                .controlId(normalizedControlId)
+                .name(name.trim())
+                .description(description)
+                .framework(framework)
+                .enabled(enabled != null ? enabled : true)
+                .category(category)
+                .build();
+        return toDto(controlRepository.save(control));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Control control = controlRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Control not found: " + id));
+        var mappings = questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(id);
+        questionControlMappingRepository.deleteAll(mappings);
+        for (var mapping : mappings) {
+            Long questionId = mapping.getQuestion().getId();
+            if (questionControlMappingRepository.countByQuestion_Id(questionId) == 0) {
+                questionRepository.deleteById(questionId);
+            }
+        }
+        controlRepository.delete(control);
     }
 }

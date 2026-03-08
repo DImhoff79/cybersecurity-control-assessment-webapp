@@ -59,4 +59,33 @@ public class ControlController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ControlDto> create(@RequestBody Map<String, Object> body) {
+        String controlId = body.containsKey("controlId") ? (String) body.get("controlId") : null;
+        String name = body.containsKey("name") ? (String) body.get("name") : null;
+        String description = body.containsKey("description") ? (String) body.get("description") : null;
+        String frameworkValue = body.containsKey("framework") ? (String) body.get("framework") : null;
+        Boolean enabled = body.containsKey("enabled") ? (Boolean) body.get("enabled") : null;
+        String category = body.containsKey("category") ? (String) body.get("category") : null;
+        try {
+            ControlFramework framework = frameworkValue != null ? ControlFramework.valueOf(frameworkValue) : null;
+            ControlDto created = controlService.create(controlId, name, description, framework, enabled, category);
+            return ResponseEntity.ok(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        try {
+            controlService.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }
