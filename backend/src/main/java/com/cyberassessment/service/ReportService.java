@@ -153,6 +153,7 @@ public class ReportService {
                     .reviewStatus(e.getReviewStatus())
                     .uri(e.getUri())
                     .fileName(e.getFileName())
+                    .notes(e.getNotes())
                     .createdAt(e.getCreatedAt())
                     .build();
         }).toList();

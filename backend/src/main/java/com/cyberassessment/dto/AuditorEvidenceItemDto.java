@@ -27,5 +27,6 @@ public class AuditorEvidenceItemDto {
     private EvidenceReviewStatus reviewStatus;
     private String uri;
     private String fileName;
+    private String notes;
     private Instant createdAt;
 }

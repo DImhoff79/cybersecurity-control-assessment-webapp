@@ -128,20 +128,9 @@
                 <option v-for="f in frameworkOptions" :key="`ef-${f}`" :value="f">{{ f }}</option>
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="form-label small mb-1">Type</label>
-              <select v-model="evidenceFilter.type" class="form-select form-select-sm">
-                <option value="all">All</option>
-                <option value="DOCUMENT">DOCUMENT</option>
-                <option value="SCREENSHOT">SCREENSHOT</option>
-                <option value="URL">URL</option>
-                <option value="TICKET">TICKET</option>
-                <option value="OTHER">OTHER</option>
-              </select>
-            </div>
-            <div class="col-md-6">
+            <div class="col-md-9">
               <label class="form-label small mb-1">Search</label>
-              <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, title..." />
+              <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, file, description..." />
             </div>
           </div>
           <h2 class="h5 mb-3">Evidence Review Queue</h2>
@@ -155,10 +144,10 @@
                   <th>Application</th>
                   <th>Control</th>
                   <th>Framework</th>
-                  <th>Title</th>
-                  <th>Type</th>
+                  <th>File</th>
+                  <th>Description</th>
                   <th>Created</th>
-                  <th>Document</th>
+                  <th>Download</th>
                   <th></th>
                 </tr>
               </thead>
@@ -167,11 +156,11 @@
                   <td>{{ e.applicationName }} ({{ e.year }})</td>
                   <td>{{ e.controlControlId }}</td>
                   <td>{{ e.framework || '-' }}</td>
-                  <td>{{ e.title }}</td>
-                  <td>{{ e.evidenceType }}</td>
+                  <td>{{ e.fileName || '-' }}</td>
+                  <td>{{ e.notes || '-' }}</td>
                   <td>{{ formatDateTime(e.createdAt) }}</td>
                   <td>
-                    <a v-if="e.uri" :href="e.uri" target="_blank" rel="noopener noreferrer">Open</a>
+                    <a v-if="e.uri" :href="e.uri" target="_blank" rel="noopener noreferrer">Download</a>
                     <span v-else>-</span>
                   </td>
                   <td class="text-nowrap">
@@ -207,7 +196,6 @@ const auditFilter = reactive({
 })
 const evidenceFilter = reactive({
   framework: 'all',
-  type: 'all',
   search: ''
 })
 
@@ -330,10 +318,9 @@ const filteredAudits = computed(() => {
 const filteredEvidence = computed(() => {
   return (dashboard.value.evidenceQueue || []).filter((e) => {
     if (evidenceFilter.framework !== 'all' && e.framework !== evidenceFilter.framework) return false
-    if (evidenceFilter.type !== 'all' && e.evidenceType !== evidenceFilter.type) return false
     const term = evidenceFilter.search.trim().toLowerCase()
     if (!term) return true
-    const haystack = `${e.applicationName} ${e.controlControlId} ${e.controlName} ${e.title}`.toLowerCase()
+    const haystack = `${e.applicationName} ${e.controlControlId} ${e.controlName} ${e.fileName || ''} ${e.title || ''} ${e.notes || ''}`.toLowerCase()
     return haystack.includes(term)
   })
 })
