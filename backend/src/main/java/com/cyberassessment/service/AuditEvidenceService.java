@@ -76,28 +76,7 @@ public class AuditEvidenceService {
     @Transactional
     public AuditEvidenceDto create(Long auditControlId, EvidenceType evidenceType, String title, String uri, String source, String owner,
                                    String notes, Instant collectedAt, Instant expiresAt) {
-        if (title == null || title.isBlank()) {
-            throw new IllegalArgumentException("title is required");
-        }
-        AuditControl ac = auditControlRepository.findById(auditControlId)
-                .orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
-        ensureCanAccess(ac);
-        AuditEvidence evidence = AuditEvidence.builder()
-                .auditControl(ac)
-                .evidenceType(evidenceType != null ? evidenceType : EvidenceType.OTHER)
-                .title(title)
-                .uri(uri)
-                .source(source)
-                .owner(owner)
-                .notes(notes)
-                .collectedAt(collectedAt)
-                .expiresAt(expiresAt)
-                .reviewStatus(EvidenceReviewStatus.PENDING)
-                .createdBy(currentUserService.getCurrentUser().orElse(null))
-                .build();
-        evidence = auditEvidenceRepository.save(evidence);
-        auditActivityLogService.log(ac.getAudit(), AuditActivityType.EVIDENCE_ADDED, "Added evidence: " + title);
-        return toDto(evidence);
+        throw new IllegalArgumentException("Only file upload evidence is supported");
     }
 
     @Transactional
@@ -128,9 +107,12 @@ public class AuditEvidenceService {
     }
 
     @Transactional
-    public AuditEvidenceDto upload(Long auditControlId, EvidenceType evidenceType, String title, String notes, MultipartFile file) {
+    public AuditEvidenceDto upload(Long auditControlId, String description, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("file is required");
+        }
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("description is required");
         }
         AuditControl ac = auditControlRepository.findById(auditControlId)
                 .orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
@@ -145,9 +127,9 @@ public class AuditEvidenceService {
 
             AuditEvidence evidence = AuditEvidence.builder()
                     .auditControl(ac)
-                    .evidenceType(evidenceType != null ? evidenceType : EvidenceType.DOCUMENT)
-                    .title(title != null && !title.isBlank() ? title : safeName)
-                    .notes(notes)
+                    .evidenceType(EvidenceType.DOCUMENT)
+                    .title(safeName)
+                    .notes(description.trim())
                     .fileName(safeName)
                     .filePath(storedPath.toString())
                     .mimeType(file.getContentType())

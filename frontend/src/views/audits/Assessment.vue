@@ -56,134 +56,116 @@
     </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
-    <div v-else class="card shadow-sm">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0 assessment-table">
-            <thead>
-              <tr>
-                <th>Control</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Evidence / Notes</th>
-                <th>Owner answers</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="ac in auditControls" :key="ac.id">
-                <td>{{ ac.controlControlId }}</td>
-                <td>
-                  <button class="btn btn-link p-0 text-decoration-none" type="button" @click="openControlDetails(ac.controlId)">
-                    {{ ac.controlName }}
-                  </button>
-                </td>
-                <td>
-                  <select :value="ac.status" @change="updateStatus(ac, $event.target.value)" class="form-select form-select-sm">
-                    <option value="NOT_STARTED">Not started</option>
-                    <option value="IN_PROGRESS">In progress</option>
-                    <option value="PASS">Pass</option>
-                    <option value="FAIL">Fail</option>
-                    <option value="NA">N/A</option>
-                  </select>
-                  <div class="mt-2 border rounded p-2">
-                    <div class="small fw-semibold mb-1">Task Delegation</div>
-                    <div v-if="!(ac.assignments || []).length" class="text-muted small mb-1">No task assignees.</div>
-                    <div v-for="ta in ac.assignments || []" :key="ta.id" class="small d-flex justify-content-between align-items-center border-top pt-1 mt-1">
-                      <span>{{ ta.userDisplayName || ta.userEmail }} ({{ ta.assignmentRole }})</span>
-                      <button class="btn btn-outline-danger btn-sm" @click="removeControlAssignment(ac, ta.id)">Remove</button>
+    <div v-else>
+      <div v-if="!auditControls.length" class="card shadow-sm">
+        <div class="card-body text-muted">No controls are linked to this audit yet.</div>
+      </div>
+      <div v-else class="controls-stack">
+        <div v-for="ac in auditControls" :key="ac.id" class="card shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <div>
+              <span class="badge text-bg-light border me-2">{{ ac.controlControlId }}</span>
+              <button class="btn btn-link p-0 text-decoration-none fw-semibold" type="button" @click="openControlDetails(ac.controlId)">
+                {{ ac.controlName }}
+              </button>
+            </div>
+            <div class="control-status-select">
+              <select :value="ac.status" @change="updateStatus(ac, $event.target.value)" class="form-select form-select-sm">
+                <option value="NOT_STARTED">Not started</option>
+                <option value="IN_PROGRESS">In progress</option>
+                <option value="PASS">Pass</option>
+                <option value="FAIL">Fail</option>
+                <option value="NA">N/A</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-xl-4">
+                <h3 class="h6 mb-2">Task Delegation</h3>
+                <div class="border rounded p-2">
+                  <div v-if="!(ac.assignments || []).length" class="text-muted small mb-1">No task assignees.</div>
+                  <div v-for="ta in ac.assignments || []" :key="ta.id" class="small d-flex justify-content-between align-items-center border-top pt-1 mt-1 gap-2">
+                    <span>{{ ta.userDisplayName || ta.userEmail }} ({{ ta.assignmentRole }})</span>
+                    <button class="btn btn-outline-danger btn-sm" @click="removeControlAssignment(ac, ta.id)">Remove</button>
+                  </div>
+                  <div class="row g-1 mt-1">
+                    <div class="col-12">
+                      <select v-model="controlAssignmentDraft(ac.id).userId" class="form-select form-select-sm">
+                        <option :value="null">Select user</option>
+                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+                      </select>
                     </div>
-                    <div class="row g-1 mt-1">
-                      <div class="col-12 col-lg-5">
-                        <select v-model="controlAssignmentDraft(ac.id).userId" class="form-select form-select-sm">
-                          <option :value="null">Select user</option>
-                          <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
-                        </select>
-                      </div>
-                      <div class="col-8 col-lg-4">
-                        <select v-model="controlAssignmentDraft(ac.id).role" class="form-select form-select-sm">
-                          <option value="CONTRIBUTOR">CONTRIBUTOR</option>
-                          <option value="REVIEWER">REVIEWER</option>
-                        </select>
-                      </div>
-                      <div class="col-4 col-lg-3">
-                        <button class="btn btn-primary btn-sm w-100" @click="addControlAssignment(ac)">Add</button>
-                      </div>
+                    <div class="col-8">
+                      <select v-model="controlAssignmentDraft(ac.id).role" class="form-select form-select-sm">
+                        <option value="CONTRIBUTOR">CONTRIBUTOR</option>
+                        <option value="REVIEWER">REVIEWER</option>
+                      </select>
+                    </div>
+                    <div class="col-4">
+                      <button class="btn btn-primary btn-sm w-100" @click="addControlAssignment(ac)">Add</button>
                     </div>
                   </div>
-                </td>
-                <td>
-                  <textarea
-                    :value="ac.notes"
-                    @blur="updateNotes(ac, $event.target.value)"
-                    rows="2"
-                    placeholder="Notes / evidence"
-                    class="form-control form-control-sm"
-                  />
-                  <div class="mt-2 border rounded p-2">
-                    <div class="small fw-semibold mb-1">Structured Evidence</div>
-                    <div v-if="!ac.evidences?.length" class="text-muted small mb-2">No evidence attached.</div>
-                    <div v-for="ev in ac.evidences || []" :key="ev.id" class="small border-top pt-2 mt-2">
-                      <div><strong>{{ ev.title }}</strong> ({{ ev.evidenceType }})</div>
-                      <div v-if="ev.uri"><a :href="ev.uri" target="_blank" rel="noopener noreferrer">{{ ev.uri }}</a></div>
-                      <div class="text-muted">Review: {{ ev.reviewStatus }}</div>
-                      <div class="mt-1">
-                        <button
-                          class="btn btn-outline-success btn-sm me-1"
-                          @click="reviewEvidence(ac, ev, 'ACCEPTED')"
-                          :disabled="ev.reviewStatus === 'ACCEPTED'"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          class="btn btn-outline-danger btn-sm"
-                          @click="reviewEvidence(ac, ev, 'REJECTED')"
-                          :disabled="ev.reviewStatus === 'REJECTED'"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="row g-2 mt-2">
-                      <div class="col-12 col-xl-3">
-                        <select v-model="evidenceDraft(ac.id).evidenceType" class="form-select form-select-sm">
-                          <option value="DOCUMENT">DOCUMENT</option>
-                          <option value="SCREENSHOT">SCREENSHOT</option>
-                          <option value="URL">URL</option>
-                          <option value="TICKET">TICKET</option>
-                          <option value="OTHER">OTHER</option>
-                        </select>
-                      </div>
-                      <div class="col-12 col-xl-4">
-                        <input v-model="evidenceDraft(ac.id).title" class="form-control form-control-sm" placeholder="Evidence title" />
-                      </div>
-                      <div class="col-12 col-xl-4">
-                        <input v-model="evidenceDraft(ac.id).uri" class="form-control form-control-sm" placeholder="https://..." />
-                      </div>
-                      <div class="col-12 col-xl-1">
-                        <button class="btn btn-primary btn-sm w-100" @click="addEvidence(ac)">Add</button>
-                      </div>
-                    </div>
-                    <div class="row g-2 mt-2">
-                      <div class="col-12 col-xl-10">
-                        <input type="file" class="form-control form-control-sm" @change="setEvidenceFile(ac.id, $event)" />
-                      </div>
-                      <div class="col-12 col-xl-2">
-                        <button class="btn btn-outline-primary btn-sm w-100" @click="uploadEvidence(ac)">Upload File</button>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>
+                </div>
+              </div>
+              <div class="col-12 col-xl-5">
+                <h3 class="h6 mb-2">Assessment Notes</h3>
+                <textarea
+                  :value="ac.notes"
+                  @blur="updateNotes(ac, $event.target.value)"
+                  rows="2"
+                  placeholder="Notes / evidence"
+                  class="form-control form-control-sm mb-2"
+                />
+                <h3 class="h6 mb-2 mt-3">Owner Answers</h3>
+                <div class="border rounded p-2 answer-panel">
                   <div v-for="a in ac.answers" :key="a.id" class="small mb-2">
                     <strong>Q:</strong> {{ a.questionText }}<br />
                     <strong>A:</strong> {{ a.answerText || '-' }}
                   </div>
-                  <span v-if="!ac.answers?.length">-</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <span v-if="!ac.answers?.length" class="text-muted">-</span>
+                </div>
+              </div>
+              <div class="col-12 col-xl-3">
+                <h3 class="h6 mb-2">File Evidence Upload</h3>
+                <div class="border rounded p-2">
+                  <div v-if="!ac.evidences?.length" class="text-muted small mb-2">No evidence attached.</div>
+                  <div v-for="ev in ac.evidences || []" :key="ev.id" class="small border-top pt-2 mt-2">
+                    <div><strong>{{ ev.fileName || ev.title }}</strong></div>
+                    <div class="text-muted">{{ ev.notes || '-' }}</div>
+                    <div class="text-muted">Review: {{ ev.reviewStatus }}</div>
+                    <div class="mt-1">
+                      <a v-if="ev.uri" :href="ev.uri" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm me-1">
+                        Download
+                      </a>
+                      <button class="btn btn-outline-success btn-sm me-1" @click="reviewEvidence(ac, ev, 'ACCEPTED')" :disabled="ev.reviewStatus === 'ACCEPTED'">
+                        Accept
+                      </button>
+                      <button class="btn btn-outline-danger btn-sm" @click="reviewEvidence(ac, ev, 'REJECTED')" :disabled="ev.reviewStatus === 'REJECTED'">
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                  <div class="row g-2 mt-2">
+                    <div class="col-12">
+                      <textarea
+                        v-model="evidenceDraft(ac.id).description"
+                        class="form-control form-control-sm"
+                        rows="2"
+                        placeholder="Evidence description"
+                      />
+                    </div>
+                    <div class="col-12">
+                      <input type="file" class="form-control form-control-sm" @change="setEvidenceFile(ac.id, $event)" />
+                    </div>
+                    <div class="col-12">
+                      <button class="btn btn-outline-primary btn-sm w-100" @click="uploadEvidence(ac)">Upload File</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -343,28 +325,6 @@ async function removeControlAssignment(ac, assignmentId) {
   }
 }
 
-async function addEvidence(ac) {
-  const draft = evidenceDraft(ac.id)
-  if (!draft.title?.trim()) {
-    toastWarning('Evidence title is required.')
-    return
-  }
-  try {
-    await api.post(`/api/audit-controls/${ac.id}/evidences`, {
-      evidenceType: draft.evidenceType,
-      title: draft.title,
-      uri: draft.uri || null
-    })
-    draft.title = ''
-    draft.uri = ''
-    await reloadAuditControl(ac.id)
-    await loadActivityLogs()
-    toastSuccess('Evidence added.')
-  } catch (e) {
-    toastError(e.response?.data?.error || 'Failed to add evidence')
-  }
-}
-
 async function reviewEvidence(ac, evidence, reviewStatus) {
   try {
     await api.put(`/api/evidences/${evidence.id}/review`, { reviewStatus })
@@ -383,20 +343,24 @@ function setEvidenceFile(auditControlId, event) {
 
 async function uploadEvidence(ac) {
   const file = evidenceFiles.value[ac.id]
+  const description = evidenceDraft(ac.id).description?.trim()
   if (!file) {
     toastWarning('Select a file to upload.')
     return
   }
+  if (!description) {
+    toastWarning('Enter an evidence description.')
+    return
+  }
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('evidenceType', evidenceDraft(ac.id).evidenceType || 'DOCUMENT')
-  formData.append('title', evidenceDraft(ac.id).title || file.name)
+  formData.append('description', description)
   try {
     await api.post(`/api/audit-controls/${ac.id}/evidences/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     evidenceFiles.value[ac.id] = null
-    evidenceDraft(ac.id).title = ''
+    evidenceDraft(ac.id).description = ''
     await reloadAuditControl(ac.id)
     await loadActivityLogs()
     toastSuccess('Evidence file uploaded.')
@@ -407,7 +371,7 @@ async function uploadEvidence(ac) {
 
 function evidenceDraft(auditControlId) {
   if (!evidenceDrafts.value[auditControlId]) {
-    evidenceDrafts.value[auditControlId] = { evidenceType: 'DOCUMENT', title: '', uri: '' }
+    evidenceDrafts.value[auditControlId] = { description: '' }
   }
   return evidenceDrafts.value[auditControlId]
 }
@@ -516,32 +480,17 @@ function formatDateTime(value) {
   gap: 0.5rem;
 }
 
-.assessment-table td {
-  vertical-align: top;
+.controls-stack {
+  display: grid;
+  gap: 0.9rem;
 }
 
-.assessment-table th:nth-child(1),
-.assessment-table td:nth-child(1) {
-  min-width: 90px;
+.control-status-select {
+  min-width: 170px;
 }
 
-.assessment-table th:nth-child(2),
-.assessment-table td:nth-child(2) {
-  min-width: 200px;
-}
-
-.assessment-table th:nth-child(3),
-.assessment-table td:nth-child(3) {
-  min-width: 320px;
-}
-
-.assessment-table th:nth-child(4),
-.assessment-table td:nth-child(4) {
-  min-width: 430px;
-}
-
-.assessment-table th:nth-child(5),
-.assessment-table td:nth-child(5) {
-  min-width: 280px;
+.answer-panel {
+  max-height: 360px;
+  overflow: auto;
 }
 </style>

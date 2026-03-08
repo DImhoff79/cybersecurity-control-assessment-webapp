@@ -81,8 +81,6 @@ class AuditEvidenceServiceIntegrationTest {
         );
         AuditEvidenceDto dto = auditEvidenceService.upload(
                 auditControlId,
-                EvidenceType.DOCUMENT,
-                "Policy attachment",
                 "Uploaded by owner",
                 file
         );
