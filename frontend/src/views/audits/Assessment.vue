@@ -129,6 +129,9 @@
               <div class="col-12 col-xl-3">
                 <h3 class="h6 mb-2">File Evidence Upload</h3>
                 <div class="border rounded p-2">
+                  <p class="small text-muted mb-2">
+                    Upload only. Include a clear description (min 8 chars). Max file size 10MB.
+                  </p>
                   <div v-if="!ac.evidences?.length" class="text-muted small mb-2">No evidence attached.</div>
                   <div v-for="ev in ac.evidences || []" :key="ev.id" class="small border-top pt-2 mt-2">
                     <div><strong>{{ ev.fileName || ev.title }}</strong></div>
@@ -156,7 +159,7 @@
                       />
                     </div>
                     <div class="col-12">
-                      <input type="file" class="form-control form-control-sm" @change="setEvidenceFile(ac.id, $event)" />
+                      <input type="file" accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx" class="form-control form-control-sm" @change="setEvidenceFile(ac.id, $event)" />
                     </div>
                     <div class="col-12">
                       <button class="btn btn-outline-primary btn-sm w-100" @click="uploadEvidence(ac)">Upload File</button>

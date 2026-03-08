@@ -19,7 +19,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +39,18 @@ public class AuditEvidenceService {
 
     @Value("${app.evidence-storage-path:./data/evidence}")
     private String evidenceStoragePath;
+
+    @Value("${app.evidence-policy.min-description-length:8}")
+    private int minDescriptionLength;
+
+    @Value("${app.evidence-policy.max-file-size-bytes:10485760}")
+    private long maxFileSizeBytes;
+
+    @Value("${app.evidence-policy.allowed-content-types:application/pdf,text/plain,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv}")
+    private String allowedContentTypes;
+
+    @Value("${app.evidence-policy.retention-days:365}")
+    private long retentionDays;
 
     public static AuditEvidenceDto toDto(AuditEvidence e) {
         User reviewedBy = e.getReviewedBy();
@@ -114,6 +131,17 @@ public class AuditEvidenceService {
         if (description == null || description.isBlank()) {
             throw new IllegalArgumentException("description is required");
         }
+        if (description.trim().length() < minDescriptionLength) {
+            throw new IllegalArgumentException("description must be at least " + minDescriptionLength + " characters");
+        }
+        if (file.getSize() > maxFileSizeBytes) {
+            throw new IllegalArgumentException("file exceeds max size policy");
+        }
+        String contentType = file.getContentType();
+        Set<String> allowed = parseAllowedContentTypes();
+        if (contentType == null || !allowed.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("file type is not allowed by policy");
+        }
         AuditControl ac = auditControlRepository.findById(auditControlId)
                 .orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
         ensureCanAccess(ac);
@@ -134,6 +162,8 @@ public class AuditEvidenceService {
                     .filePath(storedPath.toString())
                     .mimeType(file.getContentType())
                     .sizeBytes(file.getSize())
+                    .collectedAt(Instant.now())
+                    .expiresAt(Instant.now().plus(retentionDays, ChronoUnit.DAYS))
                     .reviewStatus(EvidenceReviewStatus.PENDING)
                     .createdBy(currentUserService.getCurrentUser().orElse(null))
                     .build();
@@ -170,5 +200,13 @@ public class AuditEvidenceService {
         if (!isPrimary && !isAuditCollaborator && !isTaskAssignee) {
             throw new IllegalArgumentException("You do not have access to this audit");
         }
+    }
+
+    private Set<String> parseAllowedContentTypes() {
+        return Arrays.stream(allowedContentTypes.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.toCollection(HashSet::new));
     }
 }

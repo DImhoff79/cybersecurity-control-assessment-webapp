@@ -19,8 +19,14 @@ describe('Reports', () => {
       if (url === '/api/reports/by-year') {
         return Promise.resolve({ data: [{ year: 2026, total: 5, draft: 1, inProgress: 2, submitted: 1, attested: 0, complete: 1 }] })
       }
+      if (url === '/api/reports/trends') {
+        return Promise.resolve({ data: [{ year: 2026, total: 5, open: 3, overdue: 1, complete: 1 }] })
+      }
       if (url === '/api/reports/audits.csv') {
         return Promise.resolve({ data: 'audit_id,application\n1,App' })
+      }
+      if (url === '/api/reports/board-pack.pdf') {
+        return Promise.resolve({ data: 'pdf-bytes' })
       }
       return Promise.resolve({ data: {} })
     })
@@ -39,7 +45,7 @@ describe('Reports', () => {
     })
   })
 
-  it('loads summary and downloads csv export', async () => {
+  it('loads summary and downloads csv/pdf exports', async () => {
     const wrapper = mount(Reports)
     await flushPromises()
 
@@ -51,5 +57,10 @@ describe('Reports', () => {
     await flushPromises()
 
     expect(api.get).toHaveBeenCalledWith('/api/reports/audits.csv', { responseType: 'blob' })
+
+    const pdfBtn = wrapper.findAll('button').find((b) => b.text().includes('Board Pack PDF'))
+    await pdfBtn.trigger('click')
+    await flushPromises()
+    expect(api.get).toHaveBeenCalledWith('/api/reports/board-pack.pdf', { responseType: 'blob' })
   })
 })

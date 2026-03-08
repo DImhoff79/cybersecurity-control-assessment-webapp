@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:evidence_service_test;DB_CLOSE_DELAY=-1",
@@ -91,6 +92,45 @@ class AuditEvidenceServiceIntegrationTest {
 
         Resource resource = auditEvidenceService.loadEvidenceFile(dto.getId());
         assertThat(resource.exists()).isTrue();
+    }
+
+    @Test
+    void uploadRejectsShortDescriptionByPolicy() {
+        User admin = userRepository.save(User.builder()
+                .email("evidence-admin2@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("evidence-owner2@test.com")
+                .passwordHash("x")
+                .displayName("Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Evidence Policy App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2037);
+        auditService.assign(audit.getId(), owner.getId());
+        auditService.sendToOwner(audit.getId());
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+
+        authenticate(owner.getEmail());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "evidence.txt",
+                "text/plain",
+                "sample evidence body".getBytes()
+        );
+
+        assertThrows(IllegalArgumentException.class, () ->
+                auditEvidenceService.upload(auditControlId, "short", file)
+        );
     }
 
     private void authenticate(String email) {

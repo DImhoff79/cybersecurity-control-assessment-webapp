@@ -1,6 +1,7 @@
 package com.cyberassessment.controller;
 
 import com.cyberassessment.dto.AuditYearSummaryDto;
+import com.cyberassessment.dto.AuditTrendPointDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.dto.AuditorSavedFilterDto;
 import com.cyberassessment.dto.ReportSummaryDto;
@@ -42,6 +43,12 @@ public class ReportController {
         return reportService.byYear();
     }
 
+    @GetMapping("/trends")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<AuditTrendPointDto> trends() {
+        return reportService.trends();
+    }
+
     @GetMapping("/audits.csv")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> exportAuditsCsv() {
@@ -50,6 +57,16 @@ public class ReportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audits-report.csv\"")
                 .contentType(new MediaType("text", "csv"))
                 .body(csv);
+    }
+
+    @GetMapping("/board-pack.pdf")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<byte[]> exportBoardPackPdf() {
+        byte[] pdf = reportService.boardPackPdf();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audit-board-pack.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     @GetMapping("/auditor-dashboard")

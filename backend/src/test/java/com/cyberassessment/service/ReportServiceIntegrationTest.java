@@ -1,6 +1,7 @@
 package com.cyberassessment.service;
 
 import com.cyberassessment.dto.AuditYearSummaryDto;
+import com.cyberassessment.dto.AuditTrendPointDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.ApplicationRepository;
@@ -15,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -104,5 +106,13 @@ class ReportServiceIntegrationTest {
         assertThat(dashboard.getEvidenceQueue()).isNotEmpty();
         assertThat(dashboard.getAuditsNeedingAttention().get(0).getFrameworks()).isNotBlank();
         assertThat(dashboard.getEvidenceQueue().get(0).getFramework()).isNotBlank();
+
+        List<AuditTrendPointDto> trends = reportService.trends();
+        assertThat(trends).isNotEmpty();
+        assertThat(trends.stream().anyMatch(t -> t.getYear() == 2030)).isTrue();
+
+        byte[] pdf = reportService.boardPackPdf();
+        assertThat(pdf).isNotEmpty();
+        assertThat(new String(pdf, 0, 4, StandardCharsets.ISO_8859_1)).isEqualTo("%PDF");
     }
 }

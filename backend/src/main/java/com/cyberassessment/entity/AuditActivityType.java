@@ -11,5 +11,6 @@ public enum AuditActivityType {
     CONTROL_UPDATED,
     EVIDENCE_ADDED,
     EVIDENCE_REVIEWED,
+    EVIDENCE_EXPIRING,
     AUDIT_DELETED
 }
