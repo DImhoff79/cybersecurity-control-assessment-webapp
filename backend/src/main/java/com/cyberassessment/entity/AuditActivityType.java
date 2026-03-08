@@ -1,0 +1,15 @@
+package com.cyberassessment.entity;
+
+public enum AuditActivityType {
+    AUDIT_CREATED,
+    AUDIT_ASSIGNED,
+    AUDIT_SENT,
+    AUDIT_SUBMITTED,
+    AUDIT_COMPLETED,
+    AUDIT_ATTESTED,
+    ANSWER_SUBMITTED,
+    CONTROL_UPDATED,
+    EVIDENCE_ADDED,
+    EVIDENCE_REVIEWED,
+    AUDIT_DELETED
+}

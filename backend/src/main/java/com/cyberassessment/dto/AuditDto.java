@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -25,4 +27,13 @@ public class AuditDto {
     private String assignedToDisplayName;
     private Instant assignedAt;
     private Instant sentAt;
+    private Instant dueAt;
+    private Instant reminderSentAt;
+    private Instant escalatedAt;
+    private Instant attestedAt;
+    private Long attestedByUserId;
+    private String attestedByEmail;
+    private String attestationStatement;
+    @Builder.Default
+    private List<AuditAssignmentDto> assignments = new ArrayList<>();
 }

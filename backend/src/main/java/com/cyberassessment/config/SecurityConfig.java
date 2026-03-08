@@ -4,7 +4,6 @@ import com.cyberassessment.security.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,17 +32,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/users", "POST").hasRole("ADMIN")
-                        .requestMatchers("/api/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/applications/**").authenticated()
-                        .requestMatchers("/api/controls/**").authenticated()
-                        .requestMatchers("/api/audits/**").authenticated()
-                        .requestMatchers("/api/audit-controls/**").authenticated()
-                        .requestMatchers("/api/my-audits").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/audits/*/questions").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/audits/*/answers").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/audits/*/answers").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/audit-controls/*/answers").authenticated()
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(basic -> {});

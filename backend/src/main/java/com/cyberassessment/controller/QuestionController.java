@@ -5,8 +5,11 @@ import com.cyberassessment.service.QuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +26,7 @@ public class QuestionController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<QuestionDto> create(@PathVariable Long controlId, @RequestBody Map<String, Object> body) {
         String questionText = (String) body.get("questionText");
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
@@ -40,6 +44,7 @@ public class QuestionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<QuestionDto> update(@PathVariable Long controlId, @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String questionText = body.containsKey("questionText") ? (String) body.get("questionText") : null;
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
@@ -53,7 +58,26 @@ public class QuestionController {
         }
     }
 
+    @PutMapping("/{id}/mapping")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<QuestionDto> updateMapping(@PathVariable Long controlId, @PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String mappingRationale = body.containsKey("mappingRationale") ? (String) body.get("mappingRationale") : null;
+        BigDecimal mappingWeight = body.containsKey("mappingWeight") && body.get("mappingWeight") != null
+                ? new BigDecimal(body.get("mappingWeight").toString()) : null;
+        Instant effectiveFrom = body.containsKey("effectiveFrom") && body.get("effectiveFrom") != null
+                ? Instant.parse(body.get("effectiveFrom").toString()) : null;
+        Instant effectiveTo = body.containsKey("effectiveTo") && body.get("effectiveTo") != null
+                ? Instant.parse(body.get("effectiveTo").toString()) : null;
+        try {
+            QuestionDto updated = questionService.updateMapping(controlId, id, mappingRationale, mappingWeight, effectiveFrom, effectiveTo);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long controlId, @PathVariable Long id) {
         try {
             questionService.delete(controlId, id);

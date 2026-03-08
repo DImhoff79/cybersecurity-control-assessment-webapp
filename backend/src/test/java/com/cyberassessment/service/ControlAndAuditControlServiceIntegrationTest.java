@@ -1,6 +1,7 @@
 package com.cyberassessment.service;
 
 import com.cyberassessment.dto.AuditControlDto;
+import com.cyberassessment.dto.MyTaskDto;
 import com.cyberassessment.dto.AuditDto;
 import com.cyberassessment.dto.ControlDto;
 import com.cyberassessment.entity.*;
@@ -113,6 +114,16 @@ class ControlAndAuditControlServiceIntegrationTest {
         assertThatThrownBy(() -> auditControlService.findByAuditId(auditId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("do not have access");
+
+        authenticate(admin.getEmail());
+        auditControlService.addAssignment(ownerControls.get(0).getId(), other.getId(), AuditControlAssignmentRole.CONTRIBUTOR);
+
+        authenticate(other.getEmail());
+        List<AuditControlDto> delegatedControls = auditControlService.findByAuditId(auditId);
+        assertThat(delegatedControls).hasSize(1);
+        List<MyTaskDto> myTasks = auditControlService.myTasks();
+        assertThat(myTasks).hasSize(1);
+        assertThat(myTasks.get(0).getAuditControlId()).isEqualTo(ownerControls.get(0).getId());
 
         authenticate(admin.getEmail());
         List<AuditControlDto> adminControls = auditControlService.findByAuditId(auditId);

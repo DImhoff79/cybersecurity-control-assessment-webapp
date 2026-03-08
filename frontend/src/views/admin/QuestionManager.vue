@@ -102,6 +102,27 @@
           <input id="askOwnerSwitch" class="form-check-input" type="checkbox" v-model="editForm.askOwner" />
           <label for="askOwnerSwitch" class="form-check-label">Ask this question to application owners</label>
         </div>
+        <hr />
+        <h3 class="h6">Primary Mapping Metadata</h3>
+        <p class="small text-muted">Edits apply to the primary mapped control for this question.</p>
+        <div class="mb-3">
+          <label class="form-label">Mapping rationale</label>
+          <textarea v-model="editForm.mappingRationale" class="form-control" rows="2" />
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Weight</label>
+            <input v-model.number="editForm.mappingWeight" type="number" step="0.01" min="0" max="100" class="form-control" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Effective from</label>
+            <input v-model="editForm.effectiveFrom" type="datetime-local" class="form-control" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Effective to</label>
+            <input v-model="editForm.effectiveTo" type="datetime-local" class="form-control" />
+          </div>
+        </div>
       </form>
       <template #footer>
         <button type="button" class="btn btn-secondary" @click="isEditOpen = false">Cancel</button>
@@ -115,6 +136,7 @@
 import { computed, ref } from 'vue'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
+import { toastError, toastSuccess } from '../../services/toast'
 
 const loading = ref(false)
 const search = ref('')
@@ -122,7 +144,18 @@ const askOwnerFilter = ref('ALL')
 const questions = ref([])
 
 const editModal = ref(null)
-const editForm = ref({ id: null, controlId: null, questionText: '', helpText: '', askOwner: true, controls: [] })
+const editForm = ref({
+  id: null,
+  controlId: null,
+  questionText: '',
+  helpText: '',
+  askOwner: true,
+  mappingRationale: '',
+  mappingWeight: null,
+  effectiveFrom: '',
+  effectiveTo: '',
+  controls: []
+})
 const toast = ref({ show: false, message: '', at: '' })
 let toastTimer = null
 
@@ -166,6 +199,10 @@ async function load() {
             questionText: q.questionText,
             helpText: q.helpText || '',
             askOwner: q.askOwner !== false,
+            mappingRationale: q.mappingRationale || '',
+            mappingWeight: q.mappingWeight ?? null,
+            effectiveFrom: q.effectiveFrom || '',
+            effectiveTo: q.effectiveTo || '',
             controls: []
           })
         }
@@ -193,7 +230,7 @@ async function toggleAskOwner(question, enabled) {
     showUpdatedToast(`Question visibility changed to ${enabled ? 'shown' : 'hidden'} for owners.`)
   } catch (e) {
     question.askOwner = previous
-    alert(e.response?.data?.error || 'Failed to update question visibility.')
+    toastError(e.response?.data?.error || 'Failed to update question visibility.')
   }
 }
 
@@ -205,6 +242,10 @@ function openEdit(question) {
     questionText: question.questionText,
     helpText: question.helpText,
     askOwner: question.askOwner,
+    mappingRationale: question.mappingRationale || '',
+    mappingWeight: question.mappingWeight ?? null,
+    effectiveFrom: toDateTimeLocal(question.effectiveFrom),
+    effectiveTo: toDateTimeLocal(question.effectiveTo),
     controls: [...question.controls]
   }
 }
@@ -216,11 +257,18 @@ async function saveEdit() {
       helpText: editForm.value.helpText,
       askOwner: editForm.value.askOwner
     })
+    await api.put(`/api/controls/${editForm.value.controlId}/questions/${editForm.value.id}/mapping`, {
+      mappingRationale: editForm.value.mappingRationale || null,
+      mappingWeight: editForm.value.mappingWeight != null ? editForm.value.mappingWeight : null,
+      effectiveFrom: editForm.value.effectiveFrom ? new Date(editForm.value.effectiveFrom).toISOString() : null,
+      effectiveTo: editForm.value.effectiveTo ? new Date(editForm.value.effectiveTo).toISOString() : null
+    })
     isEditOpen.value = false
     await load()
-    showUpdatedToast('Question details saved.')
+    showUpdatedToast('Question details and mapping metadata saved.')
+    toastSuccess('Question updated.')
   } catch (e) {
-    alert(e.response?.data?.error || 'Failed to save question changes.')
+    toastError(e.response?.data?.error || 'Failed to save question changes.')
   }
 }
 
@@ -235,5 +283,12 @@ function showUpdatedToast(message) {
   toastTimer = setTimeout(() => {
     toast.value.show = false
   }, 3500)
+}
+
+function toDateTimeLocal(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  const pad = (n) => `${n}`.padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 </script>

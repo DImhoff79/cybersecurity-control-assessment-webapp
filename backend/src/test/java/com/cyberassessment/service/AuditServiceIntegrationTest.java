@@ -40,6 +40,8 @@ class AuditServiceIntegrationTest {
     @Autowired
     private AuditControlRepository auditControlRepository;
     @Autowired
+    private AuditControlService auditControlService;
+    @Autowired
     private AuditControlAnswerRepository auditControlAnswerRepository;
 
     @AfterEach
@@ -163,6 +165,77 @@ class AuditServiceIntegrationTest {
         AuditDto submitted = auditService.submitAudit(created.getId());
         assertThat(submitted.getStatus()).isEqualTo(AuditStatus.SUBMITTED);
         assertThat(submitted.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void bulkAssignAssignsMultipleAudits() {
+        User admin = userRepository.save(User.builder()
+                .email("bulk-admin@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("bulk-owner@test.com")
+                .passwordHash("x")
+                .displayName("Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Bulk App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto a1 = auditService.create(app.getId(), 2040);
+        AuditDto a2 = auditService.create(app.getId(), 2041);
+
+        List<AuditDto> updated = auditService.bulkAssign(List.of(a1.getId(), a2.getId()), owner.getId(), true);
+        assertThat(updated).hasSize(2);
+        assertThat(updated).allMatch(a -> a.getAssignedToUserId().equals(owner.getId()));
+        assertThat(updated).allMatch(a -> a.getSentAt() != null);
+        assertThat(updated).allMatch(a -> a.getStatus() == AuditStatus.IN_PROGRESS || a.getStatus() == AuditStatus.DRAFT);
+    }
+
+    @Test
+    void delegateAssignmentGrantsAuditAccess() {
+        User admin = userRepository.save(User.builder()
+                .email("delegate-admin@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("delegate-owner@test.com")
+                .passwordHash("x")
+                .displayName("Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .build());
+        User delegate = userRepository.save(User.builder()
+                .email("delegate-user@test.com")
+                .passwordHash("x")
+                .displayName("Delegate")
+                .role(UserRole.APPLICATION_OWNER)
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Delegate App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto created = auditService.create(app.getId(), 2042);
+        auditService.assign(created.getId(), owner.getId());
+        auditService.addAssignment(created.getId(), delegate.getId(), AuditAssignmentRole.DELEGATE);
+        Long auditControlId = auditControlRepository.findByAuditId(created.getId()).get(0).getId();
+        auditControlService.addAssignment(auditControlId, delegate.getId(), AuditControlAssignmentRole.CONTRIBUTOR);
+
+        authenticate(delegate.getEmail());
+        List<AuditQuestionItemDto> questions = auditService.getQuestionsForAudit(created.getId());
+        assertThat(questions).isNotEmpty();
+        List<AuditDto> myAudits = auditService.findMyAudits();
+        assertThat(myAudits.stream().map(AuditDto::getId)).contains(created.getId());
     }
 
     private void authenticate(String email) {

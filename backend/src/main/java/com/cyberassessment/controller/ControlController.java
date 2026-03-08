@@ -5,6 +5,7 @@ import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.service.ControlService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class ControlController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ControlDto> patch(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
@@ -45,6 +47,7 @@ public class ControlController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ControlDto> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;

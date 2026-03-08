@@ -1,6 +1,7 @@
 package com.cyberassessment.repository;
 
 import com.cyberassessment.entity.Audit;
+import com.cyberassessment.entity.AuditStatus;
 import com.cyberassessment.entity.Application;
 import com.cyberassessment.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +18,6 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
     List<Audit> findByAssignedTo(User user);
 
     List<Audit> findByAssignedToId(Long userId);
+
+    List<Audit> findByStatusIn(List<AuditStatus> statuses);
 }
