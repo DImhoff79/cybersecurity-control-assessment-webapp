@@ -29,6 +29,7 @@ public class AuditService {
     private final AuditQuestionnaireSnapshotRepository auditQuestionnaireSnapshotRepository;
     private final AuditQuestionnaireItemRepository auditQuestionnaireItemRepository;
     private final AuditAssignmentRepository auditAssignmentRepository;
+    private final AuditProjectRepository auditProjectRepository;
     private final QuestionnaireTemplateService questionnaireTemplateService;
     private final QuestionnaireTemplateItemRepository questionnaireTemplateItemRepository;
     private final CurrentUserService currentUserService;
@@ -45,6 +46,7 @@ public class AuditService {
                         AuditQuestionnaireSnapshotRepository auditQuestionnaireSnapshotRepository,
                         AuditQuestionnaireItemRepository auditQuestionnaireItemRepository,
                         AuditAssignmentRepository auditAssignmentRepository,
+                        AuditProjectRepository auditProjectRepository,
                         QuestionnaireTemplateService questionnaireTemplateService,
                         QuestionnaireTemplateItemRepository questionnaireTemplateItemRepository,
                         CurrentUserService currentUserService, UserRepository userRepository,
@@ -61,6 +63,7 @@ public class AuditService {
         this.auditQuestionnaireSnapshotRepository = auditQuestionnaireSnapshotRepository;
         this.auditQuestionnaireItemRepository = auditQuestionnaireItemRepository;
         this.auditAssignmentRepository = auditAssignmentRepository;
+        this.auditProjectRepository = auditProjectRepository;
         this.questionnaireTemplateService = questionnaireTemplateService;
         this.questionnaireTemplateItemRepository = questionnaireTemplateItemRepository;
         this.currentUserService = currentUserService;
@@ -94,6 +97,8 @@ public class AuditService {
                 .id(a.getId())
                 .applicationId(a.getApplication().getId())
                 .applicationName(a.getApplication().getName())
+                .projectId(a.getAuditProject() != null ? a.getAuditProject().getId() : null)
+                .projectName(a.getAuditProject() != null ? a.getAuditProject().getName() : null)
                 .year(a.getYear())
                 .status(a.getStatus())
                 .startedAt(a.getStartedAt())
@@ -127,15 +132,33 @@ public class AuditService {
 
     @Transactional
     public AuditDto create(Long applicationId, Integer year, Instant dueAt) {
+        return create(applicationId, year, dueAt, null);
+    }
+
+    @Transactional
+    public AuditDto create(Long applicationId, Integer year, Instant dueAt, Long auditProjectId) {
         if (!currentUserService.isAdmin()) {
             throw new IllegalArgumentException("Only admins can create audits");
         }
         Application app = applicationRepository.findById(applicationId).orElseThrow(() -> new IllegalArgumentException("Application not found: " + applicationId));
+        AuditProject project = null;
+        if (auditProjectId != null) {
+            project = auditProjectRepository.findById(auditProjectId)
+                    .orElseThrow(() -> new IllegalArgumentException("Audit project not found: " + auditProjectId));
+            boolean appInScope = project.getApplications().stream().anyMatch(a -> Objects.equals(a.getId(), applicationId));
+            if (!appInScope) {
+                throw new IllegalArgumentException("Application is not in scope for this audit project");
+            }
+            if (project.getYear() != null && !Objects.equals(project.getYear(), year)) {
+                throw new IllegalArgumentException("Audit year must match audit project year");
+            }
+        }
         if (auditRepository.findByApplicationIdAndYear(applicationId, year).isPresent()) {
             throw new IllegalArgumentException("Audit already exists for this application and year");
         }
         Audit audit = Audit.builder()
                 .application(app)
+                .auditProject(project)
                 .year(year)
                 .status(AuditStatus.DRAFT)
                 .dueAt(dueAt)

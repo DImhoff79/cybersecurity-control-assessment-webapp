@@ -1,7 +1,7 @@
 package com.cyberassessment.service;
 
-import com.cyberassessment.dto.QuestionnaireTemplateDto;
-import com.cyberassessment.entity.QuestionnaireTemplateStatus;
+import com.cyberassessment.dto.AccessRequestDto;
+import com.cyberassessment.entity.IdentityProvider;
 import com.cyberassessment.entity.User;
 import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.UserRepository;
@@ -19,16 +19,15 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:template_service_test;DB_CLOSE_DELAY=-1",
+        "spring.datasource.url=jdbc:h2:mem:access_request_service_test;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=validate"
 })
 @Transactional
-class QuestionnaireTemplateServiceIntegrationTest {
-
+class AccessRequestServiceIntegrationTest {
     @Autowired
-    private QuestionnaireTemplateService questionnaireTemplateService;
+    private AccessRequestService accessRequestService;
     @Autowired
     private UserRepository userRepository;
 
@@ -38,27 +37,29 @@ class QuestionnaireTemplateServiceIntegrationTest {
     }
 
     @Test
-    void createDraftAndPublishTemplateFlowWorks() {
+    void socialRequestCanBeSubmittedAndApproved() {
         User admin = userRepository.save(User.builder()
-                .email("template-admin@test.com")
+                .email("access-admin@test.com")
                 .passwordHash("x")
-                .displayName("Template Admin")
+                .displayName("Access Admin")
                 .role(UserRole.ADMIN)
                 .build());
+
+        AccessRequestService.SocialAuthResult result = accessRequestService.processSocialSignIn(
+                IdentityProvider.GOOGLE,
+                "google-sub-123",
+                "new-user@test.com",
+                "New User"
+        );
+        assertThat(result.approved()).isFalse();
+        assertThat(result.newlyRequested()).isTrue();
+
         authenticate(admin.getEmail());
-
-        QuestionnaireTemplateDto draft = questionnaireTemplateService.createDraftFromCurrent("Quarterly update");
-        assertThat(draft.getVersionNo()).isPositive();
-        assertThat(draft.getStatus()).isEqualTo(QuestionnaireTemplateStatus.DRAFT);
-        assertThat(draft.getItemCount()).isGreaterThanOrEqualTo(0);
-
-        QuestionnaireTemplateDto published = questionnaireTemplateService.publish(draft.getId());
-        assertThat(published.getStatus()).isEqualTo(QuestionnaireTemplateStatus.PUBLISHED);
-        assertThat(published.getPublishedAt()).isNotNull();
-
-        List<QuestionnaireTemplateDto> templates = questionnaireTemplateService.listTemplates();
-        assertThat(templates).isNotEmpty();
-        assertThat(templates.get(0).getVersionNo()).isEqualTo(published.getVersionNo());
+        List<AccessRequestDto> pending = accessRequestService.listPending();
+        assertThat(pending).hasSize(1);
+        AccessRequestDto approved = accessRequestService.approve(pending.get(0).getId(), UserRole.APPLICATION_OWNER, "approved");
+        assertThat(approved.getStatus().name()).isEqualTo("APPROVED");
+        assertThat(userRepository.findByEmail("new-user@test.com")).isPresent();
     }
 
     private void authenticate(String email) {

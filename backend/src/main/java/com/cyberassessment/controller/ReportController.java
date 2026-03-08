@@ -2,6 +2,7 @@ package com.cyberassessment.controller;
 
 import com.cyberassessment.dto.AuditYearSummaryDto;
 import com.cyberassessment.dto.AuditTrendPointDto;
+import com.cyberassessment.dto.AuditProjectSummaryDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.dto.AuditorSavedFilterDto;
 import com.cyberassessment.dto.ReportSummaryDto;
@@ -47,6 +48,12 @@ public class ReportController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<AuditTrendPointDto> trends() {
         return reportService.trends();
+    }
+
+    @GetMapping("/by-project")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<AuditProjectSummaryDto> byProject() {
+        return reportService.byProject();
     }
 
     @GetMapping("/audits.csv")

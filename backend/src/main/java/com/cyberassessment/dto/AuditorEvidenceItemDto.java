@@ -16,6 +16,8 @@ import java.time.Instant;
 public class AuditorEvidenceItemDto {
     private Long evidenceId;
     private Long auditId;
+    private Long projectId;
+    private String projectName;
     private Long auditControlId;
     private String applicationName;
     private Integer year;

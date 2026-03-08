@@ -3,6 +3,7 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: import.meta.env.DEV ? '' : '',
   timeout: 15000,
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -19,6 +20,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('auth_credentials')
+      localStorage.removeItem('auth_mode')
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname)
       }

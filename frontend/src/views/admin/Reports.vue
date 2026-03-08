@@ -75,6 +75,41 @@
           </div>
         </div>
       </div>
+      <div class="card shadow-sm mt-3">
+        <div class="card-body">
+          <h2 class="h5 mb-3">By Audit Project</h2>
+          <div class="table-responsive">
+            <table class="table table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Framework</th>
+                  <th>Year</th>
+                  <th>Apps</th>
+                  <th>Total Audits</th>
+                  <th>Open</th>
+                  <th>Submitted</th>
+                  <th>Attested</th>
+                  <th>Complete</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in byProject" :key="row.projectId">
+                  <td>{{ row.projectName }}</td>
+                  <td>{{ row.frameworkTag || '-' }}</td>
+                  <td>{{ row.year }}</td>
+                  <td>{{ row.scopedApplications }}</td>
+                  <td>{{ row.totalAudits }}</td>
+                  <td>{{ row.openAudits }}</td>
+                  <td>{{ row.submittedAudits }}</td>
+                  <td>{{ row.attestedAudits }}</td>
+                  <td>{{ row.completeAudits }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -88,11 +123,14 @@ const loading = ref(true)
 const summary = ref(null)
 const byYear = ref([])
 const trends = ref([])
+const byProject = ref([])
 
 const cards = computed(() => {
   const s = summary.value || {}
   return [
     { label: 'Applications', value: s.totalApplications ?? 0 },
+    { label: 'Audit Projects', value: s.totalAuditProjects ?? 0 },
+    { label: 'Active Projects', value: s.activeAuditProjects ?? 0 },
     { label: 'Total Audits', value: s.totalAudits ?? 0 },
     { label: 'Open Audits', value: s.openAudits ?? 0 },
     { label: 'Overdue Audits', value: s.overdueAudits ?? 0 },
@@ -104,14 +142,16 @@ const cards = computed(() => {
 
 onMounted(async () => {
   try {
-    const [res, byYearRes, trendsRes] = await Promise.all([
+    const [res, byYearRes, trendsRes, byProjectRes] = await Promise.all([
       api.get('/api/reports/summary'),
       api.get('/api/reports/by-year'),
-      api.get('/api/reports/trends')
+      api.get('/api/reports/trends'),
+      api.get('/api/reports/by-project')
     ])
     summary.value = res.data || {}
     byYear.value = byYearRes.data || []
     trends.value = trendsRes.data || []
+    byProject.value = byProjectRes.data || []
   } finally {
     loading.value = false
   }

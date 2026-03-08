@@ -27,6 +27,10 @@ public class Audit {
     @JoinColumn(name = "application_id", nullable = false)
     private Application application;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "audit_project_id")
+    private AuditProject auditProject;
+
     @NotNull
     @Column(name = "audit_year", nullable = false)
     private Integer year;

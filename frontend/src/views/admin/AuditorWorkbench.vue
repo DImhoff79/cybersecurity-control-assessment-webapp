@@ -43,17 +43,25 @@
               </select>
             </div>
             <div class="col-md-2">
+              <label class="form-label small mb-1">Project</label>
+              <select v-model="auditFilter.projectId" class="form-select form-select-sm" data-testid="audit-project-filter">
+                <option value="all">All</option>
+                <option value="none">No project (legacy)</option>
+                <option v-for="p in projectOptions" :key="`ap-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
               <label class="form-label small mb-1">Framework</label>
               <select v-model="auditFilter.framework" class="form-select form-select-sm">
                 <option value="all">All</option>
                 <option v-for="f in frameworkOptions" :key="`af-${f}`" :value="f">{{ f }}</option>
               </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label small mb-1">Search</label>
               <input v-model="auditFilter.search" class="form-control form-control-sm" placeholder="Application, assignee..." />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
               <label class="form-label small mb-1">Saved Filter</label>
               <div class="d-flex gap-1 align-items-center">
                 <input v-model="filterName" class="form-control form-control-sm" placeholder="Filter name" />
@@ -88,6 +96,7 @@
               <thead>
                 <tr>
                   <th>Application</th>
+                  <th>Project</th>
                   <th>Year</th>
                   <th>Status</th>
                   <th>Assigned</th>
@@ -100,6 +109,7 @@
               <tbody>
                 <tr v-for="a in filteredAudits" :key="a.auditId">
                   <td>{{ a.applicationName }}</td>
+                  <td>{{ a.projectName || '-' }}</td>
                   <td>{{ a.year }}</td>
                   <td><span class="badge status-badge" :class="statusBadge(a.status)">{{ a.status }}</span></td>
                   <td>{{ a.assignedToEmail || '-' }}</td>
@@ -122,13 +132,21 @@
         <div class="card-body">
           <div class="row g-2 mb-3">
             <div class="col-md-3">
+              <label class="form-label small mb-1">Project</label>
+              <select v-model="evidenceFilter.projectId" class="form-select form-select-sm" data-testid="evidence-project-filter">
+                <option value="all">All</option>
+                <option value="none">No project (legacy)</option>
+                <option v-for="p in projectOptions" :key="`ep-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
               <label class="form-label small mb-1">Framework</label>
               <select v-model="evidenceFilter.framework" class="form-select form-select-sm">
                 <option value="all">All</option>
                 <option v-for="f in frameworkOptions" :key="`ef-${f}`" :value="f">{{ f }}</option>
               </select>
             </div>
-            <div class="col-md-9">
+            <div class="col-md-6">
               <label class="form-label small mb-1">Search</label>
               <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, file, description..." />
             </div>
@@ -142,6 +160,7 @@
               <thead>
                 <tr>
                   <th>Application</th>
+                  <th>Project</th>
                   <th>Control</th>
                   <th>Framework</th>
                   <th>File</th>
@@ -154,6 +173,7 @@
               <tbody>
                 <tr v-for="e in filteredEvidence" :key="e.evidenceId">
                   <td>{{ e.applicationName }} ({{ e.year }})</td>
+                  <td>{{ e.projectName || '-' }}</td>
                   <td>{{ e.controlControlId }}</td>
                   <td>{{ e.framework || '-' }}</td>
                   <td>{{ e.fileName || '-' }}</td>
@@ -191,10 +211,12 @@ const savedFilters = ref([])
 const auditFilter = reactive({
   queue: 'all',
   status: 'all',
+  projectId: 'all',
   framework: 'all',
   search: ''
 })
 const evidenceFilter = reactive({
+  projectId: 'all',
   framework: 'all',
   search: ''
 })
@@ -296,6 +318,19 @@ const frameworkOptions = computed(() => {
   return Array.from(options).sort()
 })
 
+const projectOptions = computed(() => {
+  const byId = new Map()
+  ;(dashboard.value.auditsNeedingAttention || []).forEach((a) => {
+    if (a.projectId && !byId.has(a.projectId)) byId.set(a.projectId, a.projectName || `Project ${a.projectId}`)
+  })
+  ;(dashboard.value.evidenceQueue || []).forEach((e) => {
+    if (e.projectId && !byId.has(e.projectId)) byId.set(e.projectId, e.projectName || `Project ${e.projectId}`)
+  })
+  return Array.from(byId.entries())
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
 const filteredAudits = computed(() => {
   const now = Date.now()
   return (dashboard.value.auditsNeedingAttention || []).filter((a) => {
@@ -307,8 +342,10 @@ const filteredAudits = computed(() => {
       if (new Date(a.dueAt).getTime() >= now) return false
     }
     if (auditFilter.status !== 'all' && a.status !== auditFilter.status) return false
+    if (auditFilter.projectId === 'none' && a.projectId) return false
+    if (auditFilter.projectId !== 'all' && auditFilter.projectId !== 'none' && String(a.projectId) !== auditFilter.projectId) return false
     if (auditFilter.framework !== 'all' && !(a.frameworks || '').includes(auditFilter.framework)) return false
-    const haystack = `${a.applicationName} ${a.assignedToEmail || ''} ${a.status} ${a.frameworks || ''}`.toLowerCase()
+    const haystack = `${a.applicationName} ${a.projectName || ''} ${a.assignedToEmail || ''} ${a.status} ${a.frameworks || ''}`.toLowerCase()
     const term = auditFilter.search.trim().toLowerCase()
     if (term && !haystack.includes(term)) return false
     return true
@@ -317,10 +354,12 @@ const filteredAudits = computed(() => {
 
 const filteredEvidence = computed(() => {
   return (dashboard.value.evidenceQueue || []).filter((e) => {
+    if (evidenceFilter.projectId === 'none' && e.projectId) return false
+    if (evidenceFilter.projectId !== 'all' && evidenceFilter.projectId !== 'none' && String(e.projectId) !== evidenceFilter.projectId) return false
     if (evidenceFilter.framework !== 'all' && e.framework !== evidenceFilter.framework) return false
     const term = evidenceFilter.search.trim().toLowerCase()
     if (!term) return true
-    const haystack = `${e.applicationName} ${e.controlControlId} ${e.controlName} ${e.fileName || ''} ${e.title || ''} ${e.notes || ''}`.toLowerCase()
+    const haystack = `${e.applicationName} ${e.projectName || ''} ${e.controlControlId} ${e.controlName} ${e.fileName || ''} ${e.title || ''} ${e.notes || ''}`.toLowerCase()
     return haystack.includes(term)
   })
 })

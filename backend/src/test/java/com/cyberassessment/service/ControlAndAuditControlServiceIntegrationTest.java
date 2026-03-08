@@ -93,6 +93,7 @@ class ControlAndAuditControlServiceIntegrationTest {
                 .owner(owner)
                 .build());
 
+        authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2033);
         auditService.assign(created.getId(), owner.getId());
         Long auditId = created.getId();

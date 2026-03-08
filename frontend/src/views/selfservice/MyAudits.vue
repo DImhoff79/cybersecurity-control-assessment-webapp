@@ -10,6 +10,7 @@
               <tr>
                 <th>Application</th>
                 <th>Year</th>
+                <th>Project</th>
                 <th>Status</th>
                 <th>Completion</th>
                 <th></th>
@@ -19,6 +20,7 @@
               <tr v-for="a in items" :key="a.id">
                 <td>{{ a.applicationName }}</td>
                 <td>{{ a.year }}</td>
+                <td>{{ a.projectName || '-' }}</td>
                 <td>
                   <span class="badge status-badge" :class="statusBadgeClass(a.status)">
                     {{ statusLabel(a.status) }}
@@ -160,8 +162,8 @@ function statusBadgeClass(status) {
   min-width: 220px;
 }
 
-.my-audits-table th:nth-child(4),
-.my-audits-table td:nth-child(4) {
+.my-audits-table th:nth-child(5),
+.my-audits-table td:nth-child(5) {
   min-width: 220px;
 }
 

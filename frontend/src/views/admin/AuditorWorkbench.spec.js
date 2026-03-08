@@ -28,6 +28,8 @@ describe('AuditorWorkbench', () => {
           auditsNeedingAttention: [
             {
               auditId: 1,
+              projectId: 10,
+              projectName: 'PCI 2026',
               applicationName: 'App A',
               year: 2026,
               status: 'SUBMITTED',
@@ -38,6 +40,8 @@ describe('AuditorWorkbench', () => {
             },
             {
               auditId: 2,
+              projectId: null,
+              projectName: null,
               applicationName: 'App B',
               year: 2026,
               status: 'IN_PROGRESS',
@@ -50,6 +54,8 @@ describe('AuditorWorkbench', () => {
           evidenceQueue: [
             {
               evidenceId: 9,
+              projectId: 10,
+              projectName: 'PCI 2026',
               applicationName: 'App A',
               year: 2026,
               controlControlId: 'AC-1',
@@ -89,6 +95,11 @@ describe('AuditorWorkbench', () => {
     await queueSelect.setValue('unassigned')
     await flushPromises()
     expect(wrapper.text()).toContain('App B')
+
+    const projectFilter = wrapper.get('[data-testid="audit-project-filter"]')
+    await projectFilter.setValue('10')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Showing 0 of')
 
     const nameInput = wrapper.find('input[placeholder="Filter name"]')
     await nameInput.setValue('Unassigned queue')

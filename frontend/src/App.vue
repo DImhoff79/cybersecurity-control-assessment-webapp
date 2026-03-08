@@ -15,9 +15,11 @@
             <div class="dropdown-menu show border-0 shadow-sm">
               <router-link to="/admin/applications" class="dropdown-item">Applications</router-link>
               <router-link to="/admin/audits" class="dropdown-item">Audits</router-link>
+              <router-link to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
               <router-link to="/admin/review-queue" class="dropdown-item">Review Queue</router-link>
               <router-link to="/admin/reports" class="dropdown-item">Reports</router-link>
               <router-link to="/admin/auditor-workbench" class="dropdown-item">Auditor Workbench</router-link>
+              <router-link to="/admin/users" class="dropdown-item">Users</router-link>
               <router-link to="/admin/questionnaire-templates" class="dropdown-item">Questionnaire Templates</router-link>
               <router-link to="/admin/controls" class="dropdown-item">Controls</router-link>
               <router-link to="/admin/questions" class="dropdown-item">Questions</router-link>
@@ -42,6 +44,7 @@
 </template>
 
 <script setup>
+import api from './services/api'
 import { onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import AppToasts from './components/AppToasts.vue'
@@ -52,7 +55,12 @@ onMounted(() => {
   authStore.fetchUser()
 })
 
-function logout() {
+async function logout() {
+  try {
+    await api.post('/api/auth/logout')
+  } catch {
+    // local cleanup still happens
+  }
   authStore.clearCredentials()
   window.location.href = '/login'
 }

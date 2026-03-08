@@ -92,16 +92,21 @@ public class ApplicationController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createAudit(@PathVariable Long appId, @RequestBody Map<String, Object> body) {
         Object yearObj = body.get("year");
+        Object projectIdObj = body.get("projectId");
         Instant dueAt = body.containsKey("dueAt") && body.get("dueAt") != null ? Instant.parse(body.get("dueAt").toString()) : null;
         if (yearObj == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "year is required"));
         }
+        if (projectIdObj == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "projectId is required; create audits through an Audit Project"));
+        }
         int year = yearObj instanceof Number ? ((Number) yearObj).intValue() : Integer.parseInt(yearObj.toString());
+        long projectId = projectIdObj instanceof Number ? ((Number) projectIdObj).longValue() : Long.parseLong(projectIdObj.toString());
         if (year < 2000 || year > 2100) {
             return ResponseEntity.badRequest().body(Map.of("error", "year must be between 2000 and 2100"));
         }
         try {
-            AuditDto created = auditService.create(appId, year, dueAt);
+            AuditDto created = auditService.create(appId, year, dueAt, projectId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

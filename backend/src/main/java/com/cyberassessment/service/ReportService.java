@@ -3,16 +3,19 @@ package com.cyberassessment.service;
 import com.cyberassessment.dto.ReportSummaryDto;
 import com.cyberassessment.dto.AuditYearSummaryDto;
 import com.cyberassessment.dto.AuditTrendPointDto;
+import com.cyberassessment.dto.AuditProjectSummaryDto;
 import com.cyberassessment.dto.AuditorAuditItemDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.dto.AuditorEvidenceItemDto;
 import com.cyberassessment.entity.Audit;
 import com.cyberassessment.entity.AuditControl;
 import com.cyberassessment.entity.AuditEvidence;
+import com.cyberassessment.entity.AuditProjectStatus;
 import com.cyberassessment.entity.AuditStatus;
 import com.cyberassessment.entity.EvidenceReviewStatus;
 import com.cyberassessment.repository.ApplicationRepository;
 import com.cyberassessment.repository.AuditEvidenceRepository;
+import com.cyberassessment.repository.AuditProjectRepository;
 import com.cyberassessment.repository.AuditRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -42,6 +45,7 @@ public class ReportService {
 
     private final ApplicationRepository applicationRepository;
     private final AuditRepository auditRepository;
+    private final AuditProjectRepository auditProjectRepository;
     private final AuditEvidenceRepository auditEvidenceRepository;
 
     @Transactional(readOnly = true)
@@ -59,8 +63,14 @@ public class ReportService {
         long submittedAudits = audits.stream().filter(a -> a.getStatus() == AuditStatus.SUBMITTED).count();
         long attestedAudits = audits.stream().filter(a -> a.getStatus() == AuditStatus.ATTESTED).count();
         long completedAudits = audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count();
+        long totalProjects = auditProjectRepository.count();
+        long activeProjects = auditProjectRepository.findAll().stream()
+                .filter(p -> p.getStatus() == AuditProjectStatus.ACTIVE)
+                .count();
         return ReportSummaryDto.builder()
                 .totalApplications(applicationRepository.count())
+                .totalAuditProjects(totalProjects)
+                .activeAuditProjects(activeProjects)
                 .totalAudits(totalAudits)
                 .openAudits(openAudits)
                 .overdueAudits(overdueAudits)
@@ -129,12 +139,43 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
+    public List<AuditProjectSummaryDto> byProject() {
+        return auditProjectRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(p -> {
+                    List<Audit> audits = p.getAudits();
+                    long total = audits.size();
+                    long complete = audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count();
+                    long submitted = audits.stream().filter(a -> a.getStatus() == AuditStatus.SUBMITTED).count();
+                    long attested = audits.stream().filter(a -> a.getStatus() == AuditStatus.ATTESTED).count();
+                    long open = audits.stream()
+                            .filter(a -> a.getStatus() == AuditStatus.DRAFT || a.getStatus() == AuditStatus.IN_PROGRESS)
+                            .count();
+                    return AuditProjectSummaryDto.builder()
+                            .projectId(p.getId())
+                            .projectName(p.getName())
+                            .frameworkTag(p.getFrameworkTag())
+                            .year(p.getYear())
+                            .status(p.getStatus())
+                            .scopedApplications(p.getApplications().size())
+                            .totalAudits(total)
+                            .openAudits(open)
+                            .submittedAudits(submitted)
+                            .attestedAudits(attested)
+                            .completeAudits(complete)
+                            .createdAt(p.getCreatedAt())
+                            .build();
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public String auditsCsv() {
         DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
         StringBuilder sb = new StringBuilder();
-        sb.append("audit_id,application,year,status,assigned_to,due_date,submitted_at,attested_at,completed_at\n");
+        sb.append("audit_id,project,application,year,status,assigned_to,due_date,submitted_at,attested_at,completed_at\n");
         for (Audit a : auditRepository.findAll()) {
             sb.append(a.getId()).append(",")
+                    .append(csv(a.getAuditProject() != null ? a.getAuditProject().getName() : "")).append(",")
                     .append(csv(a.getApplication().getName())).append(",")
                     .append(a.getYear()).append(",")
                     .append(a.getStatus()).append(",")
@@ -165,6 +206,8 @@ public class ReportService {
 
         List<AuditorAuditItemDto> auditsNeedingAttention = prioritized.stream().map(a -> AuditorAuditItemDto.builder()
                 .auditId(a.getId())
+                .projectId(a.getAuditProject() != null ? a.getAuditProject().getId() : null)
+                .projectName(a.getAuditProject() != null ? a.getAuditProject().getName() : null)
                 .applicationName(a.getApplication().getName())
                 .year(a.getYear())
                 .status(a.getStatus())
@@ -189,6 +232,8 @@ public class ReportService {
             return AuditorEvidenceItemDto.builder()
                     .evidenceId(e.getId())
                     .auditId(a.getId())
+                    .projectId(a.getAuditProject() != null ? a.getAuditProject().getId() : null)
+                    .projectName(a.getAuditProject() != null ? a.getAuditProject().getName() : null)
                     .auditControlId(ac.getId())
                     .applicationName(a.getApplication().getName())
                     .year(a.getYear())

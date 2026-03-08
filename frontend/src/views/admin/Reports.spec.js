@@ -22,6 +22,9 @@ describe('Reports', () => {
       if (url === '/api/reports/trends') {
         return Promise.resolve({ data: [{ year: 2026, total: 5, open: 3, overdue: 1, complete: 1 }] })
       }
+      if (url === '/api/reports/by-project') {
+        return Promise.resolve({ data: [{ projectId: 10, projectName: 'PCI 2026', year: 2026, totalAudits: 5, scopedApplications: 3, openAudits: 2, submittedAudits: 1, attestedAudits: 1, completeAudits: 1 }] })
+      }
       if (url === '/api/reports/audits.csv') {
         return Promise.resolve({ data: 'audit_id,application\n1,App' })
       }

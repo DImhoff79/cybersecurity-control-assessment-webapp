@@ -6,8 +6,10 @@ import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -21,7 +23,20 @@ public class CurrentUserService {
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             return Optional.empty();
         }
-        String email = auth.getName();
+        String email = null;
+        if (auth.getPrincipal() instanceof OAuth2AuthenticatedPrincipal principal) {
+            Object raw = principal.getAttributes().get("email");
+            if (raw instanceof String s) {
+                email = s;
+            }
+        }
+        if (email == null || email.isBlank()) {
+            email = auth.getName();
+        }
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        email = email.toLowerCase(Locale.ROOT);
         return userRepository.findByEmail(email);
     }
 

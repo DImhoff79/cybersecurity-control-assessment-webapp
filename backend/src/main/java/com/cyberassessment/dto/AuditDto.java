@@ -18,6 +18,8 @@ public class AuditDto {
     private Long id;
     private Long applicationId;
     private String applicationName;
+    private Long projectId;
+    private String projectName;
     private Integer year;
     private AuditStatus status;
     private Instant startedAt;

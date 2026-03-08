@@ -4,34 +4,30 @@
 
     <section class="card shadow-sm mb-3">
       <div class="card-body">
-        <h2 class="h5 mb-3">Kick off new audit</h2>
-        <form @submit.prevent="createAudit" class="row g-3 align-items-end">
-          <div class="col-md-5">
-            <label class="form-label">Application</label>
-            <select v-model="createForm.applicationId" required class="form-select">
-              <option :value="null">- Select -</option>
-              <option v-for="a in applications" :key="a.id" :value="a.id">{{ a.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Year</label>
-            <input v-model.number="createForm.year" type="number" min="2020" max="2030" required class="form-control" />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Due Date</label>
-            <input v-model="createForm.dueAt" type="date" class="form-control" />
-          </div>
-          <div class="col-12 col-md-3 col-lg-1">
-            <button type="submit" class="btn btn-primary w-100 w-lg-auto">Create audit</button>
-          </div>
-        </form>
+        <h2 class="h5 mb-2">Kick off new audit</h2>
+        <p class="text-muted mb-3">
+          New audits are created from an Audit Project so scope, year, and reporting stay aligned.
+        </p>
+        <router-link to="/admin/audit-projects" class="btn btn-primary btn-sm">
+          Create Audit Project
+        </router-link>
       </div>
     </section>
 
     <section class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Audit history by application</h2>
-        <div v-for="app in applications" :key="app.id" class="mb-4">
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Filter by project</label>
+            <select v-model="projectFilter" class="form-select form-select-sm">
+              <option value="all">All projects</option>
+              <option value="none">No project (legacy)</option>
+              <option v-for="p in projects" :key="p.id" :value="String(p.id)">{{ p.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div v-for="app in filteredApplications" :key="app.id" class="mb-4">
           <h3 class="h6 mb-2">{{ app.name }}</h3>
           <div class="table-responsive">
             <table class="table table-striped table-hover align-middle mb-0">
@@ -41,6 +37,7 @@
                     <input type="checkbox" :checked="allSelected(app.id)" @change="toggleSelectAll(app.id, $event.target.checked)" />
                   </th>
                   <th>Year</th>
+                  <th>Project</th>
                   <th>Status</th>
                   <th>Assigned to</th>
                   <th>Due</th>
@@ -48,9 +45,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="a in auditsByApp[app.id] || []" :key="a.id">
+                <tr v-for="a in visibleAuditsForApp(app.id)" :key="a.id">
                   <td><input type="checkbox" :checked="isSelected(a.id)" @change="toggleSelected(a.id, $event.target.checked)" /></td>
                   <td>{{ a.year }}</td>
+                  <td>{{ a.projectName || '-' }}</td>
                   <td>
                     <span class="badge status-badge" :class="statusBadgeClass(a.status)">
                       {{ formatAuditStatus(a.status) }}
@@ -120,13 +118,14 @@ import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 
 const applications = ref([])
+const projects = ref([])
 const users = ref([])
-const createForm = reactive({ applicationId: null, year: new Date().getFullYear(), dueAt: '' })
 const assignModal = ref(null)
 const assignForm = reactive({ userId: null })
 const auditsByApp = ref({})
 const selectedAuditIds = ref([])
 const bulkUserId = ref(null)
+const projectFilter = ref('all')
 
 const isAssignModalOpen = computed({
   get: () => !!assignModal.value,
@@ -138,29 +137,17 @@ const isAssignModalOpen = computed({
 onMounted(load)
 
 async function load() {
-  const [appsRes, usersRes] = await Promise.all([
+  const [appsRes, usersRes, projectsRes] = await Promise.all([
     api.get('/api/applications'),
-    api.get('/api/users')
+    api.get('/api/users'),
+    api.get('/api/audit-projects')
   ])
   applications.value = appsRes.data || []
   users.value = usersRes.data || []
+  projects.value = projectsRes.data || []
   for (const app of applications.value) {
     const res = await api.get(`/api/applications/${app.id}/audits`)
     auditsByApp.value[app.id] = res.data || []
-  }
-}
-
-async function createAudit() {
-  try {
-    const payload = { year: createForm.year }
-    if (createForm.dueAt) {
-      payload.dueAt = `${createForm.dueAt}T23:59:59Z`
-    }
-    await api.post(`/api/applications/${createForm.applicationId}/audits`, payload)
-    toastSuccess('Audit created.')
-    load()
-  } catch (e) {
-    toastError(e.response?.data?.error || 'Failed to create audit')
   }
 }
 
@@ -239,12 +226,12 @@ function isSelected(auditId) {
 }
 
 function allSelected(appId) {
-  const ids = (auditsByApp.value[appId] || []).map((a) => a.id)
+  const ids = visibleAuditsForApp(appId).map((a) => a.id)
   return ids.length > 0 && ids.every((id) => selectedAuditIds.value.includes(id))
 }
 
 function toggleSelectAll(appId, checked) {
-  const ids = (auditsByApp.value[appId] || []).map((a) => a.id)
+  const ids = visibleAuditsForApp(appId).map((a) => a.id)
   if (checked) {
     selectedAuditIds.value = Array.from(new Set([...selectedAuditIds.value, ...ids]))
   } else {
@@ -305,6 +292,17 @@ function statusBadgeClass(status) {
       return 'text-bg-secondary'
   }
 }
+
+function visibleAuditsForApp(appId) {
+  const rows = auditsByApp.value[appId] || []
+  if (projectFilter.value === 'all') return rows
+  if (projectFilter.value === 'none') return rows.filter((a) => !a.projectId)
+  return rows.filter((a) => String(a.projectId) === projectFilter.value)
+}
+
+const filteredApplications = computed(() => {
+  return applications.value.filter((app) => visibleAuditsForApp(app.id).length > 0)
+})
 </script>
 
 <style scoped>

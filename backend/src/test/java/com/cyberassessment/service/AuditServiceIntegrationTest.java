@@ -51,6 +51,12 @@ class AuditServiceIntegrationTest {
 
     @Test
     void createAssignSendAndAnswerFlowWorks() {
+        User admin = userRepository.save(User.builder()
+                .email("admin-audit-service@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-audit-service@test.com")
                 .passwordHash("x")
@@ -64,6 +70,7 @@ class AuditServiceIntegrationTest {
                 .owner(owner)
                 .build());
 
+        authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2031);
         assertThat(created.getStatus()).isEqualTo(AuditStatus.DRAFT);
         assertThat(auditControlRepository.findByAuditId(created.getId())).isNotEmpty();
@@ -108,6 +115,12 @@ class AuditServiceIntegrationTest {
 
     @Test
     void ownerAccessControlIsEnforced() {
+        User admin = userRepository.save(User.builder()
+                .email("admin-access@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-access@test.com")
                 .passwordHash("x")
@@ -126,6 +139,7 @@ class AuditServiceIntegrationTest {
                 .owner(owner)
                 .build());
 
+        authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2032);
         auditService.assign(created.getId(), owner.getId());
 
@@ -137,6 +151,12 @@ class AuditServiceIntegrationTest {
 
     @Test
     void submitAuditMarksSubmittedWhenComplete() {
+        User admin = userRepository.save(User.builder()
+                .email("admin-submit@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-submit@test.com")
                 .passwordHash("x")
@@ -149,6 +169,7 @@ class AuditServiceIntegrationTest {
                 .owner(owner)
                 .build());
 
+        authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2034);
         auditService.assign(created.getId(), owner.getId());
         auditService.sendToOwner(created.getId());

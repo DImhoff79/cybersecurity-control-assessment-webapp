@@ -12,17 +12,25 @@ export const useAuthStore = defineStore('auth', {
     },
     hasCredentials() {
       const cred = localStorage.getItem('auth_credentials')
-      return !!cred
+      const mode = localStorage.getItem('auth_mode')
+      return !!cred || mode === 'oauth'
     }
   },
   actions: {
     setCredentials(email, password) {
       const encoded = btoa(`${email}:${password}`)
       localStorage.setItem('auth_credentials', encoded)
+      localStorage.setItem('auth_mode', 'basic')
+      return this.fetchUser()
+    },
+    setOAuthSession() {
+      localStorage.removeItem('auth_credentials')
+      localStorage.setItem('auth_mode', 'oauth')
       return this.fetchUser()
     },
     clearCredentials() {
       localStorage.removeItem('auth_credentials')
+      localStorage.removeItem('auth_mode')
       this.user = null
     },
     async fetchUser() {

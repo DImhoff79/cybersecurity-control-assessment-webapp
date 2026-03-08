@@ -14,6 +14,8 @@ import java.time.Instant;
 @Builder
 public class AuditorAuditItemDto {
     private Long auditId;
+    private Long projectId;
+    private String projectName;
     private String applicationName;
     private Integer year;
     private AuditStatus status;

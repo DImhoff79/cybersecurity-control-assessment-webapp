@@ -4,13 +4,19 @@ import com.cyberassessment.dto.ControlDto;
 import com.cyberassessment.dto.UserDto;
 import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.repository.ControlRepository;
+import com.cyberassessment.repository.UserRepository;
+import com.cyberassessment.entity.User;
+import com.cyberassessment.entity.UserRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -34,10 +40,15 @@ class ControllerIntegrationTest {
     @Autowired
     private ApplicationController applicationController;
     @Autowired
+    private AuditProjectController auditProjectController;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
     private ControlRepository controlRepository;
 
     @Test
     void controlAndUserAndQuestionFlowsWork() {
+        authenticateAsAdmin("controller-admin@test.com");
         List<ControlDto> controls = controlController.list(ControlFramework.NIST_800_53_LOW, true, false);
         assertThat(controls).isNotEmpty();
 
@@ -74,6 +85,7 @@ class ControllerIntegrationTest {
 
     @Test
     void applicationAuditValidationBranchesWork() {
+        authenticateAsAdmin("controller-admin2@test.com");
         ResponseEntity<?> missingYear = applicationController.createAudit(1L, Map.of());
         assertThat(missingYear.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
@@ -84,7 +96,41 @@ class ControllerIntegrationTest {
                 "name", "Controller Integration App",
                 "description", "test"
         )).getBody().getId();
-        ResponseEntity<?> validAudit = applicationController.createAudit(appId, Map.of("year", 2030));
-        assertThat(validAudit.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        ResponseEntity<?> missingProject = applicationController.createAudit(appId, Map.of("year", 2030));
+        assertThat(missingProject.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+        ResponseEntity<?> projectCreated = auditProjectController.create(Map.of(
+                "name", "PCI 2030",
+                "year", 2030,
+                "applicationIds", List.of(appId)
+        ));
+        assertThat(projectCreated.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        Long projectId = ((com.cyberassessment.dto.AuditProjectDto) projectCreated.getBody()).getId();
+        ResponseEntity<?> duplicateAudit = applicationController.createAudit(appId, Map.of(
+                "year", 2030,
+                "projectId", projectId
+        ));
+        assertThat(duplicateAudit.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+        ResponseEntity<?> projectMissingApps = auditProjectController.create(Map.of(
+                "name", "PCI 2030",
+                "year", 2030
+        ));
+        assertThat(projectMissingApps.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    private void authenticateAsAdmin(String email) {
+        if (!userRepository.existsByEmail(email)) {
+            userRepository.save(User.builder()
+                    .email(email)
+                    .passwordHash("x")
+                    .displayName("Controller Admin")
+                    .role(UserRole.ADMIN)
+                    .build());
+        }
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(email, "pw", Collections.emptyList())
+        );
     }
 }

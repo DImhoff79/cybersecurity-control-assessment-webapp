@@ -67,7 +67,7 @@ class ReportServiceIntegrationTest {
                 .build());
         auditRepository.save(Audit.builder()
                 .application(app)
-                .year(2030)
+                .year(2031)
                 .status(AuditStatus.COMPLETE)
                 .dueAt(Instant.now().plusSeconds(7200))
                 .build());
@@ -79,7 +79,7 @@ class ReportServiceIntegrationTest {
         assertThat(row2030.getComplete()).isGreaterThanOrEqualTo(1);
 
         String csv = reportService.auditsCsv();
-        assertThat(csv).contains("audit_id,application,year,status");
+        assertThat(csv).contains("audit_id,project,application,year,status");
         assertThat(csv).contains("Report App");
         assertThat(csv).contains("2030");
 

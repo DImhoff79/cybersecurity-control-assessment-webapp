@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ReportSummaryDto {
     private long totalApplications;
+    private long totalAuditProjects;
+    private long activeAuditProjects;
     private long totalAudits;
     private long openAudits;
     private long overdueAudits;
