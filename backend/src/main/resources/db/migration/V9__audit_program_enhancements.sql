@@ -1,18 +1,16 @@
-ALTER TABLE applications
-    ADD COLUMN IF NOT EXISTS criticality VARCHAR(50),
-    ADD COLUMN IF NOT EXISTS data_classification VARCHAR(50),
-    ADD COLUMN IF NOT EXISTS regulatory_scope VARCHAR(500),
-    ADD COLUMN IF NOT EXISTS business_owner_name VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS technical_owner_name VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(50);
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS criticality VARCHAR(50);
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS data_classification VARCHAR(50);
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS regulatory_scope VARCHAR(500);
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS business_owner_name VARCHAR(255);
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS technical_owner_name VARCHAR(255);
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR(50);
 
-ALTER TABLE audits
-    ADD COLUMN IF NOT EXISTS due_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS attested_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS attested_by_user_id BIGINT,
-    ADD COLUMN IF NOT EXISTS attestation_statement VARCHAR(2000);
+ALTER TABLE audits ADD COLUMN IF NOT EXISTS due_at TIMESTAMP;
+ALTER TABLE audits ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP;
+ALTER TABLE audits ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMP;
+ALTER TABLE audits ADD COLUMN IF NOT EXISTS attested_at TIMESTAMP;
+ALTER TABLE audits ADD COLUMN IF NOT EXISTS attested_by_user_id BIGINT;
+ALTER TABLE audits ADD COLUMN IF NOT EXISTS attestation_statement VARCHAR(2000);
 
 ALTER TABLE audits
     ADD CONSTRAINT IF NOT EXISTS fk_audits_attested_by

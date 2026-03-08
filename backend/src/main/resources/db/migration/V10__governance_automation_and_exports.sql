@@ -1,14 +1,12 @@
-ALTER TABLE question_control_mappings
-    ADD COLUMN IF NOT EXISTS mapping_rationale VARCHAR(2000),
-    ADD COLUMN IF NOT EXISTS mapping_weight DECIMAL(5,2),
-    ADD COLUMN IF NOT EXISTS effective_from TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS effective_to TIMESTAMP;
+ALTER TABLE question_control_mappings ADD COLUMN IF NOT EXISTS mapping_rationale VARCHAR(2000);
+ALTER TABLE question_control_mappings ADD COLUMN IF NOT EXISTS mapping_weight DECIMAL(5,2);
+ALTER TABLE question_control_mappings ADD COLUMN IF NOT EXISTS effective_from TIMESTAMP;
+ALTER TABLE question_control_mappings ADD COLUMN IF NOT EXISTS effective_to TIMESTAMP;
 
-ALTER TABLE audit_evidences
-    ADD COLUMN IF NOT EXISTS file_name VARCHAR(500),
-    ADD COLUMN IF NOT EXISTS file_path VARCHAR(2000),
-    ADD COLUMN IF NOT EXISTS mime_type VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
+ALTER TABLE audit_evidences ADD COLUMN IF NOT EXISTS file_name VARCHAR(500);
+ALTER TABLE audit_evidences ADD COLUMN IF NOT EXISTS file_path VARCHAR(2000);
+ALTER TABLE audit_evidences ADD COLUMN IF NOT EXISTS mime_type VARCHAR(255);
+ALTER TABLE audit_evidences ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
 
 CREATE TABLE IF NOT EXISTS questionnaire_templates (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
