@@ -52,8 +52,12 @@
             </div>
             <div class="col-md-3">
               <label class="form-label small mb-1">Saved Filter</label>
-              <div class="d-flex gap-1">
+              <div class="d-flex gap-1 align-items-center">
                 <input v-model="filterName" class="form-control form-control-sm" placeholder="Filter name" />
+                <div class="form-check form-check-inline m-0">
+                  <input id="shareFilter" v-model="shareFilter" class="form-check-input" type="checkbox" />
+                  <label for="shareFilter" class="form-check-label small">Share</label>
+                </div>
                 <button class="btn btn-outline-primary btn-sm" @click="saveCurrentFilter">Save</button>
               </div>
             </div>
@@ -65,7 +69,7 @@
                   class="btn btn-outline-secondary btn-sm"
                   @click="loadSavedFilter(f.id)"
                 >
-                  {{ f.name }}
+                  {{ f.name }} <span v-if="f.shared">[shared]</span>
                 </button>
                 <button class="btn btn-outline-danger btn-sm" @click="clearSavedFilters">Clear Saved</button>
               </div>
@@ -190,8 +194,8 @@ const loading = ref(true)
 const dashboard = ref({ summary: {}, auditsNeedingAttention: [], evidenceQueue: [] })
 const currentUserEmail = ref('')
 const filterName = ref('')
+const shareFilter = ref(true)
 const savedFilters = ref([])
-const STORAGE_KEY = 'auditor_workbench_saved_filters'
 const auditFilter = reactive({
   queue: 'all',
   status: 'all',
@@ -225,7 +229,7 @@ async function load() {
     ])
     dashboard.value = res.data || { summary: {}, auditsNeedingAttention: [], evidenceQueue: [] }
     currentUserEmail.value = meRes.data?.email || ''
-    loadSavedFilters()
+    await loadSavedFilters()
   } finally {
     loading.value = false
   }
@@ -331,49 +335,55 @@ const filteredEvidence = computed(() => {
   })
 })
 
-function loadSavedFilters() {
+async function loadSavedFilters() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    savedFilters.value = raw ? JSON.parse(raw) : []
+    const res = await api.get('/api/reports/saved-filters')
+    savedFilters.value = res.data || []
   } catch {
     savedFilters.value = []
   }
 }
 
-function persistSavedFilters() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(savedFilters.value))
-}
-
-function saveCurrentFilter() {
+async function saveCurrentFilter() {
   const name = filterName.value.trim()
   if (!name) {
     toastError('Enter a filter name first.')
     return
   }
-  const record = {
-    id: `${Date.now()}`,
-    name,
-    auditFilter: { ...auditFilter },
-    evidenceFilter: { ...evidenceFilter }
+  try {
+    await api.post('/api/reports/saved-filters', {
+      name,
+      shared: shareFilter.value,
+      filterState: {
+        auditFilter: { ...auditFilter },
+        evidenceFilter: { ...evidenceFilter }
+      }
+    })
+    filterName.value = ''
+    await loadSavedFilters()
+    toastSuccess('Filter saved.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to save filter')
   }
-  savedFilters.value.push(record)
-  persistSavedFilters()
-  filterName.value = ''
-  toastSuccess('Filter saved.')
 }
 
 function loadSavedFilter(id) {
   const found = savedFilters.value.find((f) => f.id === id)
   if (!found) return
-  Object.assign(auditFilter, found.auditFilter || {})
-  Object.assign(evidenceFilter, found.evidenceFilter || {})
+  const state = found.filterState || {}
+  Object.assign(auditFilter, state.auditFilter || {})
+  Object.assign(evidenceFilter, state.evidenceFilter || {})
   toastSuccess(`Loaded filter "${found.name}".`)
 }
 
-function clearSavedFilters() {
-  savedFilters.value = []
-  persistSavedFilters()
-  toastSuccess('Saved filters cleared.')
+async function clearSavedFilters() {
+  try {
+    await Promise.all((savedFilters.value || []).map((f) => api.delete(`/api/reports/saved-filters/${f.id}`)))
+    await loadSavedFilters()
+    toastSuccess('Saved filters cleared.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to clear saved filters')
+  }
 }
 
 watch([auditFilter, evidenceFilter], () => {

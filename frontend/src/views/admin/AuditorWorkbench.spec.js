@@ -7,7 +7,8 @@ vi.mock('../../services/api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
-    put: vi.fn()
+    put: vi.fn(),
+    delete: vi.fn()
   }
 }))
 
@@ -17,6 +18,9 @@ describe('AuditorWorkbench', () => {
     api.get.mockImplementation((url) => {
       if (url === '/api/auth/me') {
         return Promise.resolve({ data: { email: 'auditor@test.com' } })
+      }
+      if (url === '/api/reports/saved-filters') {
+        return Promise.resolve({ data: [{ id: 100, name: 'Shared Queue', shared: true, filterState: { auditFilter: { queue: 'unassigned' }, evidenceFilter: {} } }] })
       }
       return Promise.resolve({
         data: {
@@ -62,7 +66,7 @@ describe('AuditorWorkbench', () => {
     })
     api.post.mockResolvedValue({ data: {} })
     api.put.mockResolvedValue({ data: {} })
-    localStorage.clear()
+    api.delete.mockResolvedValue({ data: {} })
   })
 
   it('loads dashboard and can review evidence', async () => {
@@ -91,6 +95,6 @@ describe('AuditorWorkbench', () => {
     const saveBtn = wrapper.findAll('button').find((b) => b.text() === 'Save')
     await saveBtn.trigger('click')
     await flushPromises()
-    expect(localStorage.getItem('auditor_workbench_saved_filters')).toContain('Unassigned queue')
+    expect(api.post).toHaveBeenCalledWith('/api/reports/saved-filters', expect.any(Object))
   })
 })
