@@ -71,6 +71,10 @@ async function logout() {
 </script>
 
 <style scoped>
+.brand-header {
+  overflow-x: clip;
+}
+
 .dropdown-hover {
   position: relative;
 }
@@ -78,10 +82,12 @@ async function logout() {
 .dropdown-hover > .dropdown-menu {
   display: none;
   margin-top: 0;
-  position: absolute;
-  top: 100%;
+  position: absolute !important;
+  top: calc(100% + 0.125rem);
   left: 0;
   min-width: 12rem;
+  max-width: min(22rem, calc(100vw - 1rem));
+  z-index: 1050;
 }
 
 .dropdown-hover:hover > .dropdown-menu {
@@ -89,7 +95,7 @@ async function logout() {
 }
 
 .dropdown-menu-end {
-  right: 0;
-  left: auto;
+  right: 0 !important;
+  left: auto !important;
 }
 </style>
