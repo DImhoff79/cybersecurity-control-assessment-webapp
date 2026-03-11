@@ -11,6 +11,20 @@ export const useAuthStore = defineStore('auth', {
     isAdmin(state) {
       return state.user?.role === 'ADMIN'
     },
+    userPermissions(state) {
+      return new Set(state.user?.permissions || [])
+    },
+    canAccessAdmin(state) {
+      const perms = new Set(state.user?.permissions || [])
+      return perms.has('USER_MANAGEMENT') ||
+        perms.has('APPLICATION_MANAGEMENT') ||
+        perms.has('AUDIT_MANAGEMENT') ||
+        perms.has('REPORT_VIEW')
+    },
+    hasPermission(state) {
+      const perms = new Set(state.user?.permissions || [])
+      return (permission) => perms.has(permission)
+    },
     hasCredentials() {
       const cred = localStorage.getItem('auth_credentials')
       const mode = localStorage.getItem('auth_mode')

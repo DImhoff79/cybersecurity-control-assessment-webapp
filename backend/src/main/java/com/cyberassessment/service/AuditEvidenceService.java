@@ -97,8 +97,8 @@ public class AuditEvidenceService {
     @Transactional
     @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditEvidenceDto review(Long evidenceId, EvidenceReviewStatus status, String notes) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can review evidence");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         AuditEvidence evidence = auditEvidenceRepository.findById(evidenceId)
                 .orElseThrow(() -> new IllegalArgumentException("Evidence not found: " + evidenceId));
@@ -188,7 +188,7 @@ public class AuditEvidenceService {
     }
 
     private void ensureCanAccess(AuditControl auditControl) {
-        if (currentUserService.isAdmin()) {
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             return;
         }
         User current = currentUserService.getCurrentUserOrThrow();

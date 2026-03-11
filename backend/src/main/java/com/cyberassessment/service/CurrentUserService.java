@@ -1,6 +1,7 @@
 package com.cyberassessment.service;
 
 import com.cyberassessment.entity.User;
+import com.cyberassessment.entity.UserPermission;
 import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,21 @@ public class CurrentUserService {
     public boolean isAdmin() {
         return getCurrentUser()
                 .map(u -> u.getRole() == UserRole.ADMIN)
+                .orElse(false);
+    }
+
+    public boolean isAuditManager() {
+        return getCurrentUser()
+                .map(u -> u.getRole() == UserRole.AUDIT_MANAGER)
+                .orElse(false);
+    }
+
+    public boolean hasPermission(UserPermission permission) {
+        if (permission == null) {
+            return false;
+        }
+        return getCurrentUser()
+                .map(u -> u.getPermissions() != null && u.getPermissions().contains(permission))
                 .orElse(false);
     }
 }

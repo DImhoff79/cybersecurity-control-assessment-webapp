@@ -3,10 +3,10 @@ package com.cyberassessment.service;
 import com.cyberassessment.dto.*;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.*;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +35,7 @@ public class AuditService {
     private final CurrentUserService currentUserService;
     private final UserRepository userRepository;
     private final AuditActivityLogService auditActivityLogService;
-    private final AsyncMailService asyncMailService;
+    private final JavaMailSender mailSender;
 
     public AuditService(AuditRepository auditRepository, ApplicationRepository applicationRepository,
                         ControlRepository controlRepository, AuditControlRepository auditControlRepository,
@@ -51,7 +51,7 @@ public class AuditService {
                         QuestionnaireTemplateItemRepository questionnaireTemplateItemRepository,
                         CurrentUserService currentUserService, UserRepository userRepository,
                         AuditActivityLogService auditActivityLogService,
-                        @Autowired(required = false) AsyncMailService asyncMailService) {
+                        @Autowired(required = false) JavaMailSender mailSender) {
         this.auditRepository = auditRepository;
         this.applicationRepository = applicationRepository;
         this.controlRepository = controlRepository;
@@ -69,7 +69,7 @@ public class AuditService {
         this.currentUserService = currentUserService;
         this.userRepository = userRepository;
         this.auditActivityLogService = auditActivityLogService;
-        this.asyncMailService = asyncMailService;
+        this.mailSender = mailSender;
     }
 
     @Value("${app.frontend-base-url:http://localhost:5173}")
@@ -126,22 +126,19 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto create(Long applicationId, Integer year) {
         return create(applicationId, year, null);
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto create(Long applicationId, Integer year, Instant dueAt) {
         return create(applicationId, year, dueAt, null);
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto create(Long applicationId, Integer year, Instant dueAt, Long auditProjectId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can create audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Application app = applicationRepository.findById(applicationId).orElseThrow(() -> new IllegalArgumentException("Application not found: " + applicationId));
         AuditProject project = null;
@@ -192,16 +189,14 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto update(Long auditId, AuditStatus status) {
         return update(auditId, status, null);
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto update(Long auditId, AuditStatus status, Instant dueAt) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can update audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         if (status != null) audit.setStatus(status);
@@ -216,10 +211,9 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public void delete(Long auditId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can delete audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         auditActivityLogService.log(audit, AuditActivityType.AUDIT_DELETED, "Audit deleted");
@@ -227,10 +221,9 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto assign(Long auditId, Long userId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can assign audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         User user = userId != null ? userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId)) : null;
@@ -249,10 +242,9 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto sendToOwner(Long auditId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can send audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         audit.setSentAt(Instant.now());
@@ -263,13 +255,13 @@ public class AuditService {
         audit = auditRepository.save(audit);
         auditActivityLogService.log(audit, AuditActivityType.AUDIT_SENT, "Audit sent to owner");
         User assigned = audit.getAssignedTo();
-        if (assigned != null && asyncMailService != null) {
+        if (assigned != null && mailSender != null) {
             try {
                 SimpleMailMessage msg = new SimpleMailMessage();
                 msg.setTo(assigned.getEmail());
                 msg.setSubject("Cybersecurity Assessment: " + audit.getApplication().getName() + " (" + audit.getYear() + ")");
                 msg.setText("You have been assigned to complete the cybersecurity control assessment for " + audit.getApplication().getName() + " for year " + audit.getYear() + ".\n\nPlease log in and complete the assessment at: " + frontendBaseUrl + "/my-audits");
-                asyncMailService.send(msg);
+                mailSender.send(msg);
             } catch (Exception ignored) {}
         }
         return toDto(audit);
@@ -277,18 +269,9 @@ public class AuditService {
 
     @Transactional(readOnly = true)
     public List<AuditDto> findMyAudits() {
-        return toDtosWithCompletion(buildAccessibleAudits());
-    }
-
-    @Transactional(readOnly = true)
-    public List<AuditDto> findMyAuditsOverview() {
-        return toDtosWithCompletion(buildAccessibleAudits());
-    }
-
-    private List<Audit> buildAccessibleAudits() {
         User current = currentUserService.getCurrentUserOrThrow();
-        if (currentUserService.isAdmin()) {
-            return auditRepository.findAll();
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            return auditRepository.findAll().stream().map(AuditService::toDto).collect(Collectors.toList());
         }
         List<Audit> direct = auditRepository.findByAssignedTo(current);
         List<Audit> collaboratorAudits = auditAssignmentRepository.findByUserIdAndActiveTrue(current.getId())
@@ -297,7 +280,9 @@ public class AuditService {
                 .toList();
         return java.util.stream.Stream.concat(direct.stream(), collaboratorAudits.stream())
                 .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
-                .values().stream().toList();
+                .values().stream()
+                .map(AuditService::toDto)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -360,7 +345,6 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public void submitAnswers(Long auditId, SubmitAnswersRequest request) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         ensureCanAccessAudit(audit);
@@ -403,11 +387,10 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto submitAudit(Long auditId) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         ensureCanAccessAudit(audit);
-        if (!currentUserService.isAdmin()) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             User current = currentUserService.getCurrentUserOrThrow();
             if (audit.getAssignedTo() == null || !audit.getAssignedTo().getId().equals(current.getId())) {
                 throw new IllegalArgumentException("Only the primary assignee can submit the full audit");
@@ -426,11 +409,10 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto attest(Long auditId, String statement) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can attest audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         if (audit.getStatus() != AuditStatus.SUBMITTED && audit.getStatus() != AuditStatus.ATTESTED) {
             throw new IllegalArgumentException("Only submitted audits can be attested");
@@ -448,10 +430,9 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditDto sendReminder(Long auditId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can send reminders");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         audit.setReminderSentAt(Instant.now());
@@ -464,10 +445,9 @@ public class AuditService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public List<AuditDto> bulkAssign(List<Long> auditIds, Long userId, boolean sendNow) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can bulk assign audits");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         User user = userId != null ? userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId)) : null;
         List<AuditDto> updated = new ArrayList<>();
@@ -520,7 +500,7 @@ public class AuditService {
 
     private void ensureCanAccessAudit(Audit audit) {
         User current = currentUserService.getCurrentUserOrThrow();
-        if (currentUserService.isAdmin()) return;
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) return;
         boolean direct = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
         boolean collaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
         if (!direct && !collaborator) {
@@ -529,7 +509,7 @@ public class AuditService {
     }
 
     private Set<Long> allowedControlIdsForCurrentUser(Audit audit) {
-        if (currentUserService.isAdmin()) {
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             return auditControlRepository.findByAudit(audit).stream().map(ac -> ac.getControl().getId()).collect(Collectors.toSet());
         }
         User current = currentUserService.getCurrentUserOrThrow();
@@ -557,8 +537,8 @@ public class AuditService {
 
     @Transactional
     public List<AuditAssignmentDto> addAssignment(Long auditId, Long userId, AuditAssignmentRole role) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can manage assignments");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
@@ -582,8 +562,8 @@ public class AuditService {
 
     @Transactional
     public List<AuditAssignmentDto> removeAssignment(Long auditId, Long assignmentId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can manage assignments");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         AuditAssignment assignment = auditAssignmentRepository.findById(assignmentId)
@@ -695,60 +675,5 @@ public class AuditService {
             a.setActive(false);
         }
         auditAssignmentRepository.saveAll(primaries);
-    }
-
-    private List<AuditDto> toDtosWithCompletion(List<Audit> audits) {
-        if (audits.isEmpty()) {
-            return List.of();
-        }
-        List<Long> auditIds = audits.stream().map(Audit::getId).toList();
-        Map<Long, Long> totalQuestionsByAudit = toLongMap(
-                auditQuestionnaireItemRepository.countDistinctOwnerQuestionsByAuditIds(auditIds)
-        );
-        Map<Long, Long> answeredQuestionsByAudit = toLongMap(
-                auditControlAnswerRepository.countDistinctAnsweredQuestionsByAuditIds(auditIds)
-        );
-        Map<Long, Long> totalAdditionalByAudit = toLongMap(
-                auditControlRepository.countAdditionalControlsByAuditIds(auditIds)
-        );
-        Map<Long, Long> completedAdditionalByAudit = toLongMap(
-                auditControlRepository.countCompletedAdditionalControlsByAuditIds(
-                        auditIds,
-                        List.of(ControlAssessmentStatus.PASS, ControlAssessmentStatus.FAIL, ControlAssessmentStatus.NA)
-                )
-        );
-        return audits.stream()
-                .map(AuditService::toDto)
-                .peek(dto -> enrichCompletion(
-                        dto,
-                        totalQuestionsByAudit.getOrDefault(dto.getId(), 0L),
-                        answeredQuestionsByAudit.getOrDefault(dto.getId(), 0L),
-                        totalAdditionalByAudit.getOrDefault(dto.getId(), 0L),
-                        completedAdditionalByAudit.getOrDefault(dto.getId(), 0L)
-                ))
-                .toList();
-    }
-
-    private void enrichCompletion(AuditDto dto, long totalQuestions, long answeredQuestions, long totalAdditional, long completedAdditional) {
-        int total = (int) (totalQuestions + totalAdditional);
-        int complete = (int) (answeredQuestions + completedAdditional);
-        int completionPct = total <= 0 ? 0 : (int) Math.round((complete * 100.0) / total);
-        dto.setTotalQuestions((int) totalQuestions);
-        dto.setCompletedQuestions((int) answeredQuestions);
-        dto.setTotalAdditionalControls((int) totalAdditional);
-        dto.setCompletedAdditionalControls((int) completedAdditional);
-        dto.setCompletionPct(completionPct);
-    }
-
-    private Map<Long, Long> toLongMap(List<Object[]> rows) {
-        Map<Long, Long> map = new HashMap<>();
-        for (Object[] row : rows) {
-            Number key = (Number) row[0];
-            Number value = (Number) row[1];
-            if (key != null && value != null) {
-                map.put(key.longValue(), value.longValue());
-            }
-        }
-        return map;
     }
 }

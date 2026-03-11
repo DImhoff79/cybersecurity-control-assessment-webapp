@@ -80,7 +80,7 @@ public class AuditControlService {
     @Transactional(readOnly = true)
     public List<AuditControlDto> findByAuditId(Long auditId) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
-        if (!currentUserService.isAdmin()) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
             boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
@@ -105,7 +105,7 @@ public class AuditControlService {
     @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditControlDto update(Long id, ControlAssessmentStatus status, String evidence, String notes) {
         AuditControl ac = auditControlRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + id));
-        if (!currentUserService.isAdmin()) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = ac.getAudit().getAssignedTo() != null && ac.getAudit().getAssignedTo().getId().equals(current.getId());
             boolean isTaskAssignee = auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId());
@@ -166,7 +166,7 @@ public class AuditControlService {
     @Transactional(readOnly = true)
     public List<AuditControlAssignmentDto> listAssignments(Long auditControlId) {
         AuditControl ac = auditControlRepository.findById(auditControlId).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
-        if (!currentUserService.isAdmin()) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = ac.getAudit().getAssignedTo() != null && ac.getAudit().getAssignedTo().getId().equals(current.getId());
             boolean isAssignee = auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(auditControlId, current.getId());
@@ -181,8 +181,8 @@ public class AuditControlService {
 
     @Transactional
     public List<AuditControlAssignmentDto> addAssignment(Long auditControlId, Long userId, AuditControlAssignmentRole role) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can manage task assignments");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         AuditControl ac = auditControlRepository.findById(auditControlId).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
@@ -201,8 +201,8 @@ public class AuditControlService {
 
     @Transactional
     public List<AuditControlAssignmentDto> removeAssignment(Long auditControlId, Long assignmentId) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can manage task assignments");
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         AuditControlAssignment assignment = auditControlAssignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Task assignment not found"));
@@ -232,7 +232,7 @@ public class AuditControlService {
     @Transactional(readOnly = true)
     public List<MyTaskDto> myTasks() {
         User current = currentUserService.getCurrentUserOrThrow();
-        if (currentUserService.isAdmin()) {
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             return List.of();
         }
         return auditControlAssignmentRepository.findByUserIdAndActiveTrue(current.getId()).stream()

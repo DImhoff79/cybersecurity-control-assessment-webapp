@@ -37,7 +37,7 @@ public class ApplicationController {
     }
 
     @PostMapping
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_APPLICATION_MANAGEMENT')")
     public ResponseEntity<ApplicationDto> create(@RequestBody Map<String, Object> body) {
         String name = (String) body.get("name");
         String description = body.containsKey("description") ? (String) body.get("description") : null;
@@ -55,7 +55,7 @@ public class ApplicationController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_APPLICATION_MANAGEMENT')")
     public ResponseEntity<ApplicationDto> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
@@ -73,7 +73,7 @@ public class ApplicationController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_APPLICATION_MANAGEMENT')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         try {
             applicationService.deleteById(id);
@@ -89,7 +89,7 @@ public class ApplicationController {
     }
 
     @PostMapping("/{appId}/audits")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<?> createAudit(@PathVariable Long appId, @RequestBody Map<String, Object> body) {
         Object yearObj = body.get("year");
         Object projectIdObj = body.get("projectId");

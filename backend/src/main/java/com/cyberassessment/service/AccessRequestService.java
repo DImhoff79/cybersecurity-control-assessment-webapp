@@ -85,8 +85,8 @@ public class AccessRequestService {
 
     @Transactional(readOnly = true)
     public List<AccessRequestDto> listPending() {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can view access requests");
+        if (!currentUserService.hasPermission(UserPermission.USER_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: USER_MANAGEMENT");
         }
         return accessRequestRepository.findByStatusOrderByRequestedAtDesc(AccessRequestStatus.PENDING)
                 .stream().map(AccessRequestService::toDto).toList();
@@ -94,8 +94,14 @@ public class AccessRequestService {
 
     @Transactional
     public AccessRequestDto approve(Long requestId, UserRole role, String notes) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can approve access requests");
+        if (!currentUserService.hasPermission(UserPermission.USER_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: USER_MANAGEMENT");
+        }
+        if (role == UserRole.AUDIT_MANAGER && !currentUserService.isAdmin()) {
+            throw new IllegalArgumentException("Only ADMIN can assign AUDIT_MANAGER role");
+        }
+        if (role == UserRole.AUDITOR && !(currentUserService.isAdmin() || currentUserService.isAuditManager())) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can assign AUDITOR role");
         }
         AccessRequest request = accessRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Access request not found"));
@@ -105,11 +111,13 @@ public class AccessRequestService {
 
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
         if (user == null) {
+            UserRole effectiveRole = role != null ? role : UserRole.APPLICATION_OWNER;
             user = userRepository.save(User.builder()
                     .email(request.getEmail())
                     .passwordHash(passwordEncoderProvider.getObject().encode(UUID.randomUUID().toString()))
                     .displayName(request.getDisplayName())
-                    .role(role != null ? role : UserRole.APPLICATION_OWNER)
+                    .role(effectiveRole)
+                    .permissions(effectiveRole.defaultPermissions())
                     .build());
         }
 
@@ -123,8 +131,8 @@ public class AccessRequestService {
 
     @Transactional
     public AccessRequestDto reject(Long requestId, String notes) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can reject access requests");
+        if (!currentUserService.hasPermission(UserPermission.USER_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: USER_MANAGEMENT");
         }
         AccessRequest request = accessRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Access request not found"));

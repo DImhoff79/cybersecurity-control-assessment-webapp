@@ -29,6 +29,7 @@ public class DataLoader implements ApplicationRunner {
                 .passwordHash(passwordEncoder.encode("admin123"))
                 .displayName("System Administrator")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build();
         userRepository.save(admin);
         log.info("Created default admin user: admin@example.com / admin123");
@@ -38,8 +39,29 @@ public class DataLoader implements ApplicationRunner {
                 .passwordHash(passwordEncoder.encode("owner123"))
                 .displayName("Sample Application Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build();
         userRepository.save(appOwner);
         log.info("Created sample application owner: owner@example.com / owner123");
+
+        User auditor = User.builder()
+                .email("auditor@example.com")
+                .passwordHash(passwordEncoder.encode("auditor123"))
+                .displayName("Sample Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build();
+        userRepository.save(auditor);
+        log.info("Created sample auditor: auditor@example.com / auditor123");
+
+        User auditManager = User.builder()
+                .email("audit.manager@example.com")
+                .passwordHash(passwordEncoder.encode("manager123"))
+                .displayName("Sample Audit Manager")
+                .role(UserRole.AUDIT_MANAGER)
+                .permissions(UserRole.AUDIT_MANAGER.defaultPermissions())
+                .build();
+        userRepository.save(auditManager);
+        log.info("Created sample audit manager: audit.manager@example.com / manager123");
     }
 }

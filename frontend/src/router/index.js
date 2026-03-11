@@ -9,38 +9,54 @@ const router = createRouter({
     { path: '/my-audits', name: 'MyAudits', component: () => import('../views/selfservice/MyAudits.vue') },
     { path: '/my-tasks', name: 'MyTasks', component: () => import('../views/selfservice/MyTasks.vue') },
     { path: '/audits/:auditId/respond', name: 'AuditRespond', component: () => import('../views/selfservice/AuditRespond.vue') },
-    { path: '/admin', redirect: '/admin/applications' },
-    { path: '/admin/applications', name: 'AdminApplications', component: () => import('../views/admin/Applications.vue') },
-    { path: '/admin/audits', name: 'AdminAudits', component: () => import('../views/admin/KickoffAudit.vue') },
-    { path: '/admin/audit-projects', name: 'AdminAuditProjects', component: () => import('../views/admin/AuditProjects.vue') },
-    { path: '/admin/review-queue', name: 'AdminReviewQueue', component: () => import('../views/admin/ReviewQueue.vue') },
-    { path: '/admin/reports', name: 'AdminReports', component: () => import('../views/admin/Reports.vue') },
-    { path: '/admin/auditor-workbench', name: 'AdminAuditorWorkbench', component: () => import('../views/admin/AuditorWorkbench.vue') },
-    { path: '/admin/users', name: 'AdminUsers', component: () => import('../views/admin/UserManagement.vue') },
-    { path: '/admin/questionnaire-templates', name: 'AdminQuestionnaireTemplates', component: () => import('../views/admin/QuestionnaireTemplates.vue') },
-    { path: '/admin/controls', name: 'AdminControls', component: () => import('../views/admin/ControlCatalog.vue') },
-    { path: '/admin/questions', name: 'AdminQuestions', component: () => import('../views/admin/QuestionManager.vue') },
-    { path: '/admin/audits/:auditId', name: 'AuditDetail', component: () => import('../views/audits/Assessment.vue') },
+    { path: '/admin', redirect: '/admin/reports' },
+    { path: '/admin/applications', name: 'AdminApplications', component: () => import('../views/admin/Applications.vue'), meta: { permission: 'APPLICATION_MANAGEMENT' } },
+    { path: '/admin/audits', name: 'AdminAudits', component: () => import('../views/admin/KickoffAudit.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/admin/audit-projects', name: 'AdminAuditProjects', component: () => import('../views/admin/AuditProjects.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/admin/review-queue', name: 'AdminReviewQueue', component: () => import('../views/admin/ReviewQueue.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/admin/reports', name: 'AdminReports', component: () => import('../views/admin/Reports.vue'), meta: { permission: 'REPORT_VIEW' } },
+    { path: '/admin/auditor-workbench', name: 'AdminAuditorWorkbench', component: () => import('../views/admin/AuditorWorkbench.vue'), meta: { permission: 'REPORT_VIEW' } },
+    { path: '/admin/users', name: 'AdminUsers', component: () => import('../views/admin/UserManagement.vue'), meta: { permission: 'USER_MANAGEMENT' } },
+    { path: '/admin/questionnaire-templates', name: 'AdminQuestionnaireTemplates', component: () => import('../views/admin/QuestionnaireTemplates.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/admin/controls', name: 'AdminControls', component: () => import('../views/admin/ControlCatalog.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/admin/questions', name: 'AdminQuestions', component: () => import('../views/admin/QuestionManager.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/admin/audits/:auditId', name: 'AuditDetail', component: () => import('../views/audits/Assessment.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    { path: '/access-denied', name: 'AccessDenied', component: () => import('../views/AccessDenied.vue') },
     { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue') },
   ]
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   if (to.meta.public) return next()
   if (!authStore.hasCredentials) return next({ name: 'Login', query: { redirect: to.fullPath } })
-  try {
-    const user = await authStore.fetchUser()
-    if (!user) {
-      return next({ name: 'Login', query: { redirect: to.fullPath } })
-    }
-    if (to.path.startsWith('/admin') && !authStore.isAdmin) {
+  authStore.fetchUser().then(() => {
+    if (to.path === '/admin') {
+      if (authStore.hasPermission('APPLICATION_MANAGEMENT')) return next('/admin/applications')
+      if (authStore.hasPermission('AUDIT_MANAGEMENT')) return next('/admin/audits')
+      if (authStore.hasPermission('REPORT_VIEW')) return next('/admin/reports')
+      if (authStore.hasPermission('USER_MANAGEMENT')) return next('/admin/users')
       return next('/my-audits')
     }
-    return next()
-  } catch {
-    return next({ name: 'Login', query: { redirect: to.fullPath } })
-  }
+    if (to.path.startsWith('/admin') && !authStore.canAccessAdmin) {
+      next({
+        name: 'AccessDenied',
+        query: {
+          from: to.fullPath
+        }
+      })
+    } else if (to.meta.permission && !authStore.hasPermission(to.meta.permission)) {
+      next({
+        name: 'AccessDenied',
+        query: {
+          from: to.fullPath,
+          required: to.meta.permission
+        }
+      })
+    } else {
+      next()
+    }
+  }).catch(() => next({ name: 'Login' }))
 })
 
 export default router

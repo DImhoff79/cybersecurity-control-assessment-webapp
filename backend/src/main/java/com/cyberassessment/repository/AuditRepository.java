@@ -30,12 +30,12 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
 
     long countByDueAtBeforeAndStatusIn(java.time.Instant dueAt, List<AuditStatus> statuses);
 
-    long countByDueAtBeforeAndStatusNot(java.time.Instant dueAt, AuditStatus status);
-
-    List<Audit> findTop12ByDueAtBeforeAndStatusNotOrderByDueAtAsc(java.time.Instant dueAt, AuditStatus status);
+    @Query("select a from Audit a")
+    Page<Audit> findAllPaged(Pageable pageable);
 
     Page<Audit> findByStatusInOrderByDueAtAsc(List<AuditStatus> statuses, Pageable pageable);
 
-    @Query("select a from Audit a order by a.id desc")
-    Page<Audit> findAllPaged(Pageable pageable);
+    List<Audit> findTop12ByDueAtBeforeAndStatusNotOrderByDueAtAsc(java.time.Instant dueAt, AuditStatus status);
+
+    List<Audit> findByAuditProjectId(Long auditProjectId);
 }

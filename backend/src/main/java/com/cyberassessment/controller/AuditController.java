@@ -6,7 +6,6 @@ import com.cyberassessment.dto.AuditActivityLogDto;
 import com.cyberassessment.dto.AuditAssignmentDto;
 import com.cyberassessment.dto.AuditDto;
 import com.cyberassessment.dto.AuditQuestionItemDto;
-import com.cyberassessment.dto.BulkAuditControlUpdateItemDto;
 import com.cyberassessment.dto.SubmitAnswersRequest;
 import com.cyberassessment.entity.AuditAssignmentRole;
 import com.cyberassessment.entity.AuditStatus;
@@ -33,12 +32,7 @@ public class AuditController {
 
     @GetMapping("/my-audits")
     public List<AuditDto> myAudits() {
-        return auditService.findMyAuditsOverview();
-    }
-
-    @GetMapping("/my-audits/overview")
-    public List<AuditDto> myAuditsOverview() {
-        return auditService.findMyAuditsOverview();
+        return auditService.findMyAudits();
     }
 
     @GetMapping("/audits/{auditId}/controls")
@@ -53,7 +47,7 @@ public class AuditController {
     }
 
     @PutMapping("/audits/{auditId}")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<AuditDto> updateAudit(@PathVariable Long auditId, @RequestBody Map<String, Object> body) {
         String statusStr = (String) body.get("status");
         AuditStatus status = statusStr != null ? AuditStatus.valueOf(statusStr) : null;
@@ -67,7 +61,7 @@ public class AuditController {
     }
 
     @DeleteMapping("/audits/{auditId}")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<Void> deleteAudit(@PathVariable Long auditId) {
         try {
             auditService.delete(auditId);
@@ -78,7 +72,7 @@ public class AuditController {
     }
 
     @PutMapping("/audits/{auditId}/assign")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<AuditDto> assign(@PathVariable Long auditId, @RequestBody Map<String, Object> body) {
         Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;
         try {
@@ -90,7 +84,7 @@ public class AuditController {
     }
 
     @PostMapping("/audits/{auditId}/send")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<AuditDto> sendToOwner(@PathVariable Long auditId) {
         try {
             AuditDto updated = auditService.sendToOwner(auditId);
@@ -130,18 +124,8 @@ public class AuditController {
         }
     }
 
-    @PutMapping("/audits/{auditId}/controls/bulk")
-    public ResponseEntity<Void> bulkUpdateControls(@PathVariable Long auditId, @RequestBody List<BulkAuditControlUpdateItemDto> updates) {
-        try {
-            auditControlService.bulkUpdate(auditId, updates);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @PostMapping("/audits/{auditId}/attest")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<AuditDto> attestAudit(@PathVariable Long auditId, @RequestBody(required = false) Map<String, Object> body) {
         String statement = body != null && body.containsKey("statement") ? (String) body.get("statement") : null;
         try {
@@ -153,7 +137,7 @@ public class AuditController {
     }
 
     @PostMapping("/audits/{auditId}/remind")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<AuditDto> remindAudit(@PathVariable Long auditId) {
         try {
             AuditDto updated = auditService.sendReminder(auditId);
@@ -164,7 +148,7 @@ public class AuditController {
     }
 
     @PostMapping("/audits/bulk-assign")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<List<AuditDto>> bulkAssign(@RequestBody Map<String, Object> body) {
         List<Number> rawIds = (List<Number>) body.getOrDefault("auditIds", List.of());
         List<Long> auditIds = rawIds.stream().map(Number::longValue).toList();
@@ -185,7 +169,7 @@ public class AuditController {
     }
 
     @PostMapping("/audits/{auditId}/assignments")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<List<AuditAssignmentDto>> addAssignment(@PathVariable Long auditId, @RequestBody Map<String, Object> body) {
         Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;
         AuditAssignmentRole role = body.get("role") != null ? AuditAssignmentRole.valueOf(body.get("role").toString()) : AuditAssignmentRole.DELEGATE;
@@ -196,7 +180,7 @@ public class AuditController {
     }
 
     @DeleteMapping("/audits/{auditId}/assignments/{assignmentId}")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<List<AuditAssignmentDto>> removeAssignment(@PathVariable Long auditId, @PathVariable Long assignmentId) {
         return ResponseEntity.ok(auditService.removeAssignment(auditId, assignmentId));
     }

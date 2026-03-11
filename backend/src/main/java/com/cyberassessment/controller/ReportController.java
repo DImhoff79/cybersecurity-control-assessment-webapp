@@ -33,31 +33,31 @@ public class ReportController {
     private final AuditorSavedFilterService auditorSavedFilterService;
 
     @GetMapping("/summary")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public ReportSummaryDto summary() {
         return reportService.getSummary();
     }
 
     @GetMapping("/by-year")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public List<AuditYearSummaryDto> byYear() {
         return reportService.byYear();
     }
 
     @GetMapping("/trends")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public List<AuditTrendPointDto> trends() {
         return reportService.trends();
     }
 
     @GetMapping("/by-project")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public List<AuditProjectSummaryDto> byProject() {
         return reportService.byProject();
     }
 
     @GetMapping("/audits.csv")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public ResponseEntity<String> exportAuditsCsv() {
         String csv = reportService.auditsCsv();
         return ResponseEntity.ok()
@@ -67,7 +67,7 @@ public class ReportController {
     }
 
     @GetMapping("/board-pack.pdf")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public ResponseEntity<byte[]> exportBoardPackPdf() {
         byte[] pdf = reportService.boardPackPdf();
         return ResponseEntity.ok()
@@ -77,19 +77,19 @@ public class ReportController {
     }
 
     @GetMapping("/auditor-dashboard")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public AuditorDashboardDto auditorDashboard() {
         return reportService.auditorDashboard();
     }
 
     @GetMapping("/saved-filters")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public List<AuditorSavedFilterDto> savedFilters() {
         return auditorSavedFilterService.listForCurrentUser();
     }
 
     @PostMapping("/saved-filters")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public AuditorSavedFilterDto saveFilter(@RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         boolean shared = body.get("shared") != null && Boolean.TRUE.equals(body.get("shared"));
@@ -100,7 +100,7 @@ public class ReportController {
     }
 
     @DeleteMapping("/saved-filters/{id}")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public void deleteFilter(@PathVariable Long id) {
         auditorSavedFilterService.delete(id);
     }

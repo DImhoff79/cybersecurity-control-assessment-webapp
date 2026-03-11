@@ -6,7 +6,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -35,6 +37,13 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "permission", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Set<UserPermission> permissions = new HashSet<>();
 
     @OneToMany(mappedBy = "owner", cascade = {})
     @Builder.Default

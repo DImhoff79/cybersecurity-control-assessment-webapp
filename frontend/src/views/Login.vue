@@ -68,16 +68,9 @@ const providers = ref({
 })
 const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN || 'http://localhost:8080'
 
-onMounted(async () => {
+onMounted(() => {
   loadProviders()
   handleOauthCallbackState()
-  try {
-    if (!authStore.user && authStore.hasCredentials) {
-      await authStore.fetchUser()
-    }
-  } catch {
-    // Ignore boot-time connectivity issues; user can retry.
-  }
   if (authStore.user) router.replace(route.query.redirect || '/my-audits')
 })
 
@@ -87,18 +80,12 @@ async function submit() {
   try {
     await authStore.setCredentials(email.value, password.value)
     if (authStore.user) {
-      const target = route.query.redirect || (authStore.isAdmin ? '/admin/applications' : '/my-audits')
-      window.location.href = typeof target === 'string' ? target : '/my-audits'
+      router.replace(route.query.redirect || defaultLandingRoute())
     } else {
-      authStore.clearCredentials()
       error.value = 'Invalid email or password.'
     }
   } catch (e) {
-    if (!e?.response) {
-      error.value = 'Backend is still starting. Please wait 5-10 seconds and try again.'
-    } else {
-      error.value = e.response?.data?.error || 'Login failed.'
-    }
+    error.value = e.response?.data?.error || 'Login failed.'
   } finally {
     loading.value = false
   }
@@ -119,7 +106,7 @@ async function handleOauthCallbackState() {
   if (oauthStatus === 'success') {
     await authStore.setOAuthSession()
     if (authStore.user) {
-      router.replace(route.query.redirect || (authStore.isAdmin ? '/admin/applications' : '/my-audits'))
+      router.replace(route.query.redirect || defaultLandingRoute())
       return
     }
     oauthInfo.value = 'Social sign-in succeeded, but no matching approved account was found.'
@@ -134,5 +121,13 @@ function startSocialLogin(providerKey) {
   const provider = providers.value?.[providerKey]
   if (!provider?.enabled) return
   window.location.href = `${backendOrigin}${provider.url}`
+}
+
+function defaultLandingRoute() {
+  if (authStore.hasPermission('APPLICATION_MANAGEMENT')) return '/admin/applications'
+  if (authStore.hasPermission('AUDIT_MANAGEMENT')) return '/admin/audits'
+  if (authStore.hasPermission('REPORT_VIEW')) return '/admin/reports'
+  if (authStore.hasPermission('USER_MANAGEMENT')) return '/admin/users'
+  return '/my-audits'
 }
 </script>

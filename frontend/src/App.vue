@@ -10,19 +10,19 @@
           <router-link to="/my-audits" class="nav-link text-white px-2">My Audits</router-link>
           <router-link to="/my-tasks" class="nav-link text-white px-2">My Tasks</router-link>
 
-          <div v-if="authStore.isAdmin" class="nav-item dropdown-hover">
+          <div v-if="authStore.canAccessAdmin" class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Admin</span>
-            <div class="dropdown-menu dropdown-menu-end show border-0 shadow-sm">
-              <router-link to="/admin/applications" class="dropdown-item">Applications</router-link>
-              <router-link to="/admin/audits" class="dropdown-item">Audits</router-link>
-              <router-link to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
-              <router-link to="/admin/review-queue" class="dropdown-item">Review Queue</router-link>
-              <router-link to="/admin/reports" class="dropdown-item">Reports</router-link>
-              <router-link to="/admin/auditor-workbench" class="dropdown-item">Auditor Workbench</router-link>
-              <router-link to="/admin/users" class="dropdown-item">Users</router-link>
-              <router-link to="/admin/questionnaire-templates" class="dropdown-item">Questionnaire Templates</router-link>
-              <router-link to="/admin/controls" class="dropdown-item">Controls</router-link>
-              <router-link to="/admin/questions" class="dropdown-item">Questions</router-link>
+            <div class="dropdown-menu show border-0 shadow-sm">
+              <router-link v-if="authStore.hasPermission('APPLICATION_MANAGEMENT')" to="/admin/applications" class="dropdown-item">Applications</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audits" class="dropdown-item">Audits</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/review-queue" class="dropdown-item">Review Queue</router-link>
+              <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/reports" class="dropdown-item">Reports</router-link>
+              <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/auditor-workbench" class="dropdown-item">Auditor Workbench</router-link>
+              <router-link v-if="authStore.hasPermission('USER_MANAGEMENT')" to="/admin/users" class="dropdown-item">Users</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/questionnaire-templates" class="dropdown-item">Questionnaire Templates</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/controls" class="dropdown-item">Controls</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/questions" class="dropdown-item">Questions</router-link>
             </div>
           </div>
 
@@ -51,12 +51,8 @@ import AppToasts from './components/AppToasts.vue'
 
 const authStore = useAuthStore()
 
-onMounted(async () => {
-  try {
-    await authStore.fetchUser()
-  } catch {
-    // no-op
-  }
+onMounted(() => {
+  authStore.fetchUser()
 })
 
 async function logout() {
@@ -71,10 +67,6 @@ async function logout() {
 </script>
 
 <style scoped>
-.brand-header {
-  overflow-x: clip;
-}
-
 .dropdown-hover {
   position: relative;
 }
@@ -82,12 +74,10 @@ async function logout() {
 .dropdown-hover > .dropdown-menu {
   display: none;
   margin-top: 0;
-  position: absolute !important;
-  top: calc(100% + 0.125rem);
+  position: absolute;
+  top: 100%;
   left: 0;
   min-width: 12rem;
-  max-width: min(22rem, calc(100vw - 1rem));
-  z-index: 1050;
 }
 
 .dropdown-hover:hover > .dropdown-menu {
@@ -95,7 +85,7 @@ async function logout() {
 }
 
 .dropdown-menu-end {
-  right: 0 !important;
-  left: auto !important;
+  right: 0;
+  left: auto;
 }
 </style>

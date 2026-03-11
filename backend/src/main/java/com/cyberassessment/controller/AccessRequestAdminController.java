@@ -18,17 +18,17 @@ public class AccessRequestAdminController {
     private final AccessRequestService accessRequestService;
 
     @GetMapping
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_USER_MANAGEMENT')")
     public List<AccessRequestDto> listPending() {
         return accessRequestService.listPending();
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_USER_MANAGEMENT')")
     public ResponseEntity<?> approve(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         try {
             String roleStr = body != null && body.containsKey("role") ? String.valueOf(body.get("role")) : null;
-            UserRole role = roleStr != null && !roleStr.isBlank() ? UserRole.valueOf(roleStr) : UserRole.APPLICATION_OWNER;
+            UserRole role = parseRole(roleStr);
             String notes = body != null && body.containsKey("notes") ? (String) body.get("notes") : null;
             return ResponseEntity.ok(accessRequestService.approve(id, role, notes));
         } catch (IllegalArgumentException e) {
@@ -37,7 +37,7 @@ public class AccessRequestAdminController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@currentUserService.isAdmin()")
+    @PreAuthorize("hasAuthority('PERM_USER_MANAGEMENT')")
     public ResponseEntity<?> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         try {
             String notes = body != null && body.containsKey("notes") ? (String) body.get("notes") : null;
@@ -45,5 +45,18 @@ public class AccessRequestAdminController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private UserRole parseRole(String rawRole) {
+        if (rawRole == null || rawRole.isBlank()) {
+            return UserRole.APPLICATION_OWNER;
+        }
+        String normalized = rawRole.trim().toUpperCase()
+                .replace('-', '_')
+                .replace(' ', '_');
+        if ("APPLICATION_OWNERS".equals(normalized)) {
+            normalized = "APPLICATION_OWNER";
+        }
+        return UserRole.valueOf(normalized);
     }
 }

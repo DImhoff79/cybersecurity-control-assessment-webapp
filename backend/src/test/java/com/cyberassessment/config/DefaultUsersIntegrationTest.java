@@ -29,6 +29,8 @@ class DefaultUsersIntegrationTest {
     void defaultAdminAndOwnerAccountsExistAndPasswordsMatch() {
         User admin = userRepository.findByEmail("admin@example.com").orElse(null);
         User owner = userRepository.findByEmail("owner@example.com").orElse(null);
+        User auditor = userRepository.findByEmail("auditor@example.com").orElse(null);
+        User auditManager = userRepository.findByEmail("audit.manager@example.com").orElse(null);
 
         assertThat(admin).isNotNull();
         assertThat(admin.getRole()).isEqualTo(UserRole.ADMIN);
@@ -37,5 +39,13 @@ class DefaultUsersIntegrationTest {
         assertThat(owner).isNotNull();
         assertThat(owner.getRole()).isEqualTo(UserRole.APPLICATION_OWNER);
         assertThat(passwordEncoder.matches("owner123", owner.getPasswordHash())).isTrue();
+
+        assertThat(auditor).isNotNull();
+        assertThat(auditor.getRole()).isEqualTo(UserRole.AUDITOR);
+        assertThat(passwordEncoder.matches("auditor123", auditor.getPasswordHash())).isTrue();
+
+        assertThat(auditManager).isNotNull();
+        assertThat(auditManager.getRole()).isEqualTo(UserRole.AUDIT_MANAGER);
+        assertThat(passwordEncoder.matches("manager123", auditManager.getPasswordHash())).isTrue();
     }
 }

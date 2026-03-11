@@ -61,8 +61,8 @@ public class AuditProjectService {
 
     @Transactional
     public AuditProjectDto create(String name, String frameworkTag, Integer year, String notes, Instant startsAt, Instant dueAt, List<Long> applicationIds) {
-        if (!currentUserService.isAdmin()) {
-            throw new IllegalArgumentException("Only admins can create audit projects");
+        if (!currentUserService.isAuditManager()) {
+            throw new IllegalArgumentException("Only AUDIT_MANAGER can create audit projects");
         }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name is required");
@@ -118,5 +118,49 @@ public class AuditProjectService {
                 .totalAudits(audits.size())
                 .completeAudits(audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count())
                 .build();
+    }
+
+    @Transactional
+    public AuditProjectDto update(Long projectId, String name, String frameworkTag, Integer year, String notes, Instant startsAt, Instant dueAt, List<Long> applicationIds) {
+        if (!currentUserService.isAuditManager()) {
+            throw new IllegalArgumentException("Only AUDIT_MANAGER can edit audit projects");
+        }
+        AuditProject project = auditProjectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Audit project not found"));
+        if (name != null) {
+            if (name.isBlank()) {
+                throw new IllegalArgumentException("name cannot be blank");
+            }
+            project.setName(name.trim());
+        }
+        if (frameworkTag != null) project.setFrameworkTag(frameworkTag);
+        if (year != null) project.setYear(year);
+        if (notes != null) project.setNotes(notes);
+        if (startsAt != null) project.setStartsAt(startsAt);
+        if (dueAt != null) project.setDueAt(dueAt);
+        if (applicationIds != null) {
+            List<Application> applications = applicationRepository.findAllById(applicationIds);
+            if (applications.size() != applicationIds.size()) {
+                throw new IllegalArgumentException("One or more applications were not found");
+            }
+            project.setApplications(new ArrayList<>(applications));
+        }
+        project = auditProjectRepository.save(project);
+        return toDto(project);
+    }
+
+    @Transactional
+    public void delete(Long projectId) {
+        if (!currentUserService.isAuditManager()) {
+            throw new IllegalArgumentException("Only AUDIT_MANAGER can delete audit projects");
+        }
+        AuditProject project = auditProjectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Audit project not found"));
+        List<Audit> audits = auditRepository.findByAuditProjectId(projectId);
+        for (Audit audit : audits) {
+            audit.setAuditProject(null);
+        }
+        auditRepository.saveAll(audits);
+        auditProjectRepository.delete(project);
     }
 }

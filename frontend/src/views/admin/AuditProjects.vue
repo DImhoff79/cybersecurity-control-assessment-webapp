@@ -5,7 +5,7 @@
       Create a point-in-time audit project (for example, PCI 2026), choose all in-scope applications, and automatically create linked audits for the selected scope.
     </div>
 
-    <section class="card shadow-sm mb-3">
+    <section class="card shadow-sm mb-3" v-if="canManageProjects">
       <div class="card-body">
         <h2 class="h5 mb-3">Create project</h2>
         <form class="row g-3" @submit.prevent="createProject">
@@ -137,6 +137,38 @@
       </div>
     </section>
 
+    <section class="card shadow-sm mb-3" v-if="canManageProjects && editingProjectId">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Edit project</h2>
+        <form class="row g-3" @submit.prevent="saveEdit">
+          <div class="col-md-4">
+            <label class="form-label">Project name</label>
+            <input v-model.trim="editForm.name" class="form-control" required />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Year</label>
+            <input v-model.number="editForm.year" type="number" min="2020" max="2100" class="form-control" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Framework tag</label>
+            <input v-model.trim="editForm.frameworkTag" class="form-control" placeholder="PCI, SOX, SOC2..." />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Due date</label>
+            <input v-model="editForm.dueAt" type="date" class="form-control" />
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notes</label>
+            <textarea v-model.trim="editForm.notes" class="form-control" rows="2" />
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="button" class="btn btn-outline-secondary" @click="cancelEdit">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <section class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Existing projects</h2>
@@ -151,6 +183,7 @@
                 <th>Audits</th>
                 <th>Completed</th>
                 <th>Created</th>
+                <th v-if="canManageProjects"></th>
               </tr>
             </thead>
             <tbody>
@@ -162,6 +195,10 @@
                 <td>{{ p.totalAudits || 0 }}</td>
                 <td>{{ p.completeAudits || 0 }}</td>
                 <td>{{ formatDate(p.createdAt) }}</td>
+                <td v-if="canManageProjects" class="text-nowrap">
+                  <button class="btn btn-outline-primary btn-sm me-2" @click="startEdit(p)">Edit</button>
+                  <button class="btn btn-outline-danger btn-sm" @click="deleteProject(p.id)">Delete</button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -181,6 +218,14 @@ const projects = ref([])
 const appSearch = ref('')
 const availableSelection = ref([])
 const selectedSelection = ref([])
+const editingProjectId = ref(null)
+const editForm = reactive({
+  name: '',
+  frameworkTag: '',
+  year: new Date().getFullYear(),
+  dueAt: '',
+  notes: ''
+})
 const form = reactive({
   name: '',
   frameworkTag: '',
@@ -214,6 +259,7 @@ const selectedApplications = computed(() => {
 })
 
 const selectedPreview = computed(() => selectedApplications.value.slice(0, 5).map((a) => a.name).join(', '))
+const canManageProjects = computed(() => true)
 
 onMounted(load)
 
@@ -261,6 +307,10 @@ watch(selectedApplications, () => {
 })
 
 async function createProject() {
+  if (!canManageProjects.value) {
+    toastError('Only AUDIT_MANAGER can create audit projects')
+    return
+  }
   try {
     const payload = {
       name: form.name,
@@ -279,6 +329,52 @@ async function createProject() {
     await load()
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to create audit project')
+  }
+}
+
+function startEdit(project) {
+  editingProjectId.value = project.id
+  editForm.name = project.name || ''
+  editForm.frameworkTag = project.frameworkTag || ''
+  editForm.year = project.year || new Date().getFullYear()
+  editForm.notes = project.notes || ''
+  editForm.dueAt = project.dueAt ? new Date(project.dueAt).toISOString().slice(0, 10) : ''
+}
+
+function cancelEdit() {
+  editingProjectId.value = null
+}
+
+async function saveEdit() {
+  if (!editingProjectId.value) return
+  try {
+    const payload = {
+      name: editForm.name,
+      frameworkTag: editForm.frameworkTag || null,
+      year: editForm.year,
+      notes: editForm.notes || null
+    }
+    if (editForm.dueAt) payload.dueAt = `${editForm.dueAt}T23:59:59Z`
+    await api.put(`/api/audit-projects/${editingProjectId.value}`, payload)
+    toastSuccess('Audit project updated.')
+    editingProjectId.value = null
+    await load()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to update audit project')
+  }
+}
+
+async function deleteProject(projectId) {
+  if (!window.confirm('Delete this audit project?')) return
+  try {
+    await api.delete(`/api/audit-projects/${projectId}`)
+    toastSuccess('Audit project deleted.')
+    if (editingProjectId.value === projectId) {
+      editingProjectId.value = null
+    }
+    await load()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to delete audit project')
   }
 }
 

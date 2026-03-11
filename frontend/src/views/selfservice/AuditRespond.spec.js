@@ -55,8 +55,8 @@ describe('AuditRespond', () => {
       if (url === '/api/audits/1/controls') {
         return Promise.resolve({
           data: [
-            { id: 11, controlId: 11, controlControlId: 'AC-1', controlName: 'Access Policy', status: 'NOT_STARTED' },
-            { id: 12, controlId: 12, controlControlId: 'PCI-7', controlName: 'Restrict Access', status: 'NOT_STARTED' }
+            { id: 201, controlId: 11, controlControlId: 'AC-1', controlName: 'Access Policy', status: 'NOT_STARTED' },
+            { id: 202, controlId: 12, controlControlId: 'PCI-7', controlName: 'Restrict Access', status: 'NOT_STARTED' }
           ]
         })
       }
