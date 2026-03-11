@@ -12,7 +12,7 @@
 
           <div v-if="authStore.isAdmin" class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Admin</span>
-            <div class="dropdown-menu show border-0 shadow-sm">
+            <div class="dropdown-menu dropdown-menu-end show border-0 shadow-sm">
               <router-link to="/admin/applications" class="dropdown-item">Applications</router-link>
               <router-link to="/admin/audits" class="dropdown-item">Audits</router-link>
               <router-link to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
