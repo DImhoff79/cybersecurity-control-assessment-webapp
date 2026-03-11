@@ -45,7 +45,7 @@ public class AuditEvidenceController {
     }
 
     @PutMapping("/evidences/{evidenceId}/review")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<AuditEvidenceDto> review(@PathVariable Long evidenceId, @RequestBody Map<String, Object> body) {
         EvidenceReviewStatus status = body.containsKey("reviewStatus")
                 ? EvidenceReviewStatus.valueOf((String) body.get("reviewStatus")) : null;

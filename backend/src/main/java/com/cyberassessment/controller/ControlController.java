@@ -33,7 +33,7 @@ public class ControlController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<ControlDto> patch(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
@@ -47,7 +47,7 @@ public class ControlController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<ControlDto> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
@@ -61,7 +61,7 @@ public class ControlController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<ControlDto> create(@RequestBody Map<String, Object> body) {
         String controlId = body.containsKey("controlId") ? (String) body.get("controlId") : null;
         String name = body.containsKey("name") ? (String) body.get("name") : null;
@@ -79,7 +79,7 @@ public class ControlController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         try {
             controlService.delete(id);

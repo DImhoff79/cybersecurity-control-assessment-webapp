@@ -18,13 +18,13 @@ public class AccessRequestAdminController {
     private final AccessRequestService accessRequestService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<AccessRequestDto> listPending() {
         return accessRequestService.listPending();
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<?> approve(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         try {
             String roleStr = body != null && body.containsKey("role") ? String.valueOf(body.get("role")) : null;
@@ -37,7 +37,7 @@ public class AccessRequestAdminController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<?> reject(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         try {
             String notes = body != null && body.containsKey("notes") ? (String) body.get("notes") : null;

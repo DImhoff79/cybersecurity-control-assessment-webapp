@@ -8,16 +8,14 @@ import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditEvidenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -37,9 +35,6 @@ public class AuditEvidenceService {
     private final AuditAssignmentRepository auditAssignmentRepository;
     private final AuditControlAssignmentRepository auditControlAssignmentRepository;
 
-    @Value("${app.evidence-storage-path:./data/evidence}")
-    private String evidenceStoragePath;
-
     @Value("${app.evidence-policy.min-description-length:8}")
     private int minDescriptionLength;
 
@@ -51,6 +46,9 @@ public class AuditEvidenceService {
 
     @Value("${app.evidence-policy.retention-days:365}")
     private long retentionDays;
+
+    @Value("${app.evidence-storage-mode:db}")
+    private String evidenceStorageMode;
 
     public static AuditEvidenceDto toDto(AuditEvidence e) {
         User reviewedBy = e.getReviewedBy();
@@ -97,6 +95,7 @@ public class AuditEvidenceService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditEvidenceDto review(Long evidenceId, EvidenceReviewStatus status, String notes) {
         if (!currentUserService.isAdmin()) {
             throw new IllegalArgumentException("Only admins can review evidence");
@@ -124,6 +123,7 @@ public class AuditEvidenceService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditEvidenceDto upload(Long auditControlId, String description, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("file is required");
@@ -146,12 +146,9 @@ public class AuditEvidenceService {
                 .orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
         ensureCanAccess(ac);
         try {
-            Path basePath = Path.of(evidenceStoragePath).toAbsolutePath().normalize();
-            Files.createDirectories(basePath);
             String safeName = file.getOriginalFilename() != null ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_") : "evidence.bin";
-            String storedName = Instant.now().toEpochMilli() + "_" + safeName;
-            Path storedPath = basePath.resolve(storedName);
-            Files.copy(file.getInputStream(), storedPath, StandardCopyOption.REPLACE_EXISTING);
+            byte[] fileContent = file.getBytes();
+            String storageKey = Instant.now().toEpochMilli() + "_" + safeName;
 
             AuditEvidence evidence = AuditEvidence.builder()
                     .auditControl(ac)
@@ -159,9 +156,11 @@ public class AuditEvidenceService {
                     .title(safeName)
                     .notes(description.trim())
                     .fileName(safeName)
-                    .filePath(storedPath.toString())
+                    .storageKey(storageKey)
+                    .source(evidenceStorageMode)
                     .mimeType(file.getContentType())
                     .sizeBytes(file.getSize())
+                    .fileContent(fileContent)
                     .collectedAt(Instant.now())
                     .expiresAt(Instant.now().plus(retentionDays, ChronoUnit.DAYS))
                     .reviewStatus(EvidenceReviewStatus.PENDING)
@@ -182,10 +181,10 @@ public class AuditEvidenceService {
         AuditEvidence evidence = auditEvidenceRepository.findById(evidenceId)
                 .orElseThrow(() -> new IllegalArgumentException("Evidence not found: " + evidenceId));
         ensureCanAccess(evidence.getAuditControl());
-        if (evidence.getFilePath() == null || evidence.getFilePath().isBlank()) {
+        if (evidence.getFileContent() == null || evidence.getFileContent().length == 0) {
             throw new IllegalArgumentException("Evidence does not contain an uploaded file");
         }
-        return new FileSystemResource(evidence.getFilePath());
+        return new ByteArrayResource(evidence.getFileContent());
     }
 
     private void ensureCanAccess(AuditControl auditControl) {

@@ -38,6 +38,14 @@ public class AuditEvidence {
     @Column(name = "file_path", length = 2000)
     private String filePath;
 
+    @Column(name = "storage_key", length = 500)
+    private String storageKey;
+
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "file_content")
+    private byte[] fileContent;
+
     @Column(name = "mime_type", length = 255)
     private String mimeType;
 

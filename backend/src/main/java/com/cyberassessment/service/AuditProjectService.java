@@ -89,14 +89,34 @@ public class AuditProjectService {
                 .build();
         project.setApplications(new ArrayList<>(applications));
         project = auditProjectRepository.save(project);
+        Long projectId = project.getId();
 
         for (Application app : applications) {
             if (auditRepository.findByApplicationIdAndYear(app.getId(), year).isPresent()) {
                 continue;
             }
-            auditService.create(app.getId(), year, dueAt, project.getId());
+            auditService.create(app.getId(), year, dueAt, projectId);
         }
-        project = auditProjectRepository.findById(project.getId()).orElse(project);
-        return toDto(project);
+        List<AuditDto> audits = auditRepository.findAll().stream()
+                .filter(a -> a.getAuditProject() != null && a.getAuditProject().getId().equals(projectId))
+                .map(AuditService::toDto)
+                .toList();
+        return AuditProjectDto.builder()
+                .id(projectId)
+                .name(project.getName())
+                .frameworkTag(project.getFrameworkTag())
+                .year(project.getYear())
+                .notes(project.getNotes())
+                .startsAt(project.getStartsAt())
+                .dueAt(project.getDueAt())
+                .status(project.getStatus())
+                .createdByUserId(project.getCreatedBy() != null ? project.getCreatedBy().getId() : null)
+                .createdByEmail(project.getCreatedBy() != null ? project.getCreatedBy().getEmail() : null)
+                .createdAt(project.getCreatedAt())
+                .scopedApplications(applications.stream().map(ApplicationService::toDto).toList())
+                .audits(audits)
+                .totalAudits(audits.size())
+                .completeAudits(audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count())
+                .build();
     }
 }

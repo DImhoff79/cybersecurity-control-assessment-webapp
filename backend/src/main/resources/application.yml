@@ -2,10 +2,10 @@ spring:
   application:
     name: cybersecurity-assessment
   datasource:
-    url: jdbc:h2:file:./data/assessment;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: ${DB_URL:jdbc:h2:file:./data/assessment;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
   h2:
     console:
       enabled: true
@@ -16,9 +16,23 @@ spring:
     properties:
       hibernate:
         format_sql: true
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: ${DB_DIALECT:org.hibernate.dialect.H2Dialect}
   flyway:
     locations: classpath:db/migration
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=2000,expireAfterWrite=5m,recordStats
+  task:
+    execution:
+      thread-name-prefix: assessment-async-
+      pool:
+        core-size: 4
+        max-size: 12
+        queue-capacity: 500
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
   mail:
     host: localhost
     port: 3025
@@ -33,11 +47,28 @@ spring:
 server:
   port: 8080
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: cybersecurity-assessment
+  observations:
+    key-values:
+      app: cybersecurity-assessment
+
 # CORS allowed origins (Vue dev server)
 app:
   cors-allowed-origins: http://localhost:5173,http://localhost:3000
   frontend-base-url: http://localhost:5173
   evidence-storage-path: ./data/evidence
+  evidence-storage-mode: ${EVIDENCE_STORAGE_MODE:db}
   evidence-policy:
     min-description-length: 8
     max-file-size-bytes: 10485760
@@ -47,3 +78,9 @@ app:
   automation:
     enabled: true
     reminder-days-before-due: 3
+  scalability:
+    slos:
+      api-p95-ms: 350
+      api-error-rate-pct: 1.0
+      report-generation-p95-ms: 4000
+      evidence-upload-p95-ms: 2500

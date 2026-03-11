@@ -10,12 +10,13 @@ import com.cyberassessment.repository.AuditRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -28,7 +29,8 @@ public class AuditAutomationService {
     private final AuditRepository auditRepository;
     private final AuditEvidenceRepository auditEvidenceRepository;
     private final AuditActivityLogService auditActivityLogService;
-    private final JavaMailSender mailSender;
+    private final AsyncMailService asyncMailService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.automation.enabled:true}")
     private boolean enabled;
@@ -43,6 +45,10 @@ public class AuditAutomationService {
     @Transactional
     public void runDailyAuditAutomation() {
         if (!enabled) {
+            return;
+        }
+        if (!tryAcquireExecutionLock()) {
+            log.info("Skipping automation run; another node holds execution lock");
             return;
         }
         Instant now = Instant.now();
@@ -71,6 +77,35 @@ public class AuditAutomationService {
         runDailyEvidenceRetentionAutomation(now);
     }
 
+    private boolean tryAcquireExecutionLock() {
+        jdbcTemplate.update(
+                "CREATE TABLE IF NOT EXISTS automation_execution_locks (lock_name VARCHAR(64) PRIMARY KEY, lock_until TIMESTAMP NOT NULL, locked_at TIMESTAMP NOT NULL)"
+        );
+        Instant now = Instant.now();
+        Instant lockUntil = now.plus(Duration.ofMinutes(10));
+        int updated = jdbcTemplate.update(
+                "UPDATE automation_execution_locks SET lock_until = ?, locked_at = ? WHERE lock_name = ? AND lock_until <= ?",
+                Timestamp.from(lockUntil),
+                Timestamp.from(now),
+                "daily-audit-automation",
+                Timestamp.from(now)
+        );
+        if (updated == 1) {
+            return true;
+        }
+        try {
+            int inserted = jdbcTemplate.update(
+                    "INSERT INTO automation_execution_locks (lock_name, lock_until, locked_at) VALUES (?, ?, ?)",
+                    "daily-audit-automation",
+                    Timestamp.from(lockUntil),
+                    Timestamp.from(now)
+            );
+            return inserted == 1;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     private void sendReminderEmail(Audit audit, long daysUntilDue) {
         if (audit.getAssignedTo() == null) {
             return;
@@ -81,7 +116,7 @@ public class AuditAutomationService {
             msg.setSubject("Reminder: Assessment due for " + audit.getApplication().getName());
             String dueText = daysUntilDue == 0 ? "today" : ("in " + daysUntilDue + " day(s)");
             msg.setText("Your assessment for " + audit.getApplication().getName() + " (" + audit.getYear() + ") is due " + dueText + ".");
-            mailSender.send(msg);
+            asyncMailService.send(msg);
         } catch (Exception e) {
             log.warn("Failed to send automated reminder for audit {}", audit.getId(), e);
         }
@@ -112,7 +147,7 @@ public class AuditAutomationService {
             msg.setTo(audit.getAssignedTo().getEmail());
             msg.setSubject("Evidence retention reminder: " + audit.getApplication().getName());
             msg.setText(details + "\n\nPlease review and refresh evidence in the assessment workspace.");
-            mailSender.send(msg);
+            asyncMailService.send(msg);
         } catch (Exception e) {
             log.warn("Failed to send evidence expiry reminder for audit {}", audit.getId(), e);
         }

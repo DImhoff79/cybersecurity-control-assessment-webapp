@@ -36,6 +36,11 @@ public class AuditDto {
     private Long attestedByUserId;
     private String attestedByEmail;
     private String attestationStatement;
+    private Integer totalQuestions;
+    private Integer completedQuestions;
+    private Integer totalAdditionalControls;
+    private Integer completedAdditionalControls;
+    private Integer completionPct;
     @Builder.Default
     private List<AuditAssignmentDto> assignments = new ArrayList<>();
 }

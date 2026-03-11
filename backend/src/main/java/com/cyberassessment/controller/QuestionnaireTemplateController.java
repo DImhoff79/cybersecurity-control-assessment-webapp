@@ -17,33 +17,33 @@ public class QuestionnaireTemplateController {
     private final QuestionnaireTemplateService questionnaireTemplateService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<QuestionnaireTemplateDto> list() {
         return questionnaireTemplateService.listTemplates();
     }
 
     @GetMapping("/{templateId}/items")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<QuestionnaireTemplateItemDto> items(@PathVariable Long templateId) {
         return questionnaireTemplateService.listItems(templateId);
     }
 
     @PostMapping("/draft-from-current")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public QuestionnaireTemplateDto createDraft(@RequestBody(required = false) Map<String, Object> body) {
         String notes = body != null && body.containsKey("notes") ? (String) body.get("notes") : null;
         return questionnaireTemplateService.createDraftFromCurrent(notes);
     }
 
     @PostMapping("/bootstrap-initial")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public QuestionnaireTemplateDto bootstrapInitial(@RequestBody(required = false) Map<String, Object> body) {
         String notes = body != null && body.containsKey("notes") ? (String) body.get("notes") : null;
         return questionnaireTemplateService.bootstrapInitialFromCurrent(notes);
     }
 
     @PostMapping("/{templateId}/publish")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public QuestionnaireTemplateDto publish(@PathVariable Long templateId) {
         return questionnaireTemplateService.publish(templateId);
     }

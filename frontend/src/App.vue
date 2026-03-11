@@ -51,8 +51,12 @@ import AppToasts from './components/AppToasts.vue'
 
 const authStore = useAuthStore()
 
-onMounted(() => {
-  authStore.fetchUser()
+onMounted(async () => {
+  try {
+    await authStore.fetchUser()
+  } catch {
+    // no-op
+  }
 })
 
 async function logout() {

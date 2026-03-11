@@ -70,3 +70,4 @@ spring:
 
 - Use PostgreSQL: set `spring.datasource.url`, driver, username, password and add PostgreSQL Flyway migration if needed.
 - Build frontend: `cd frontend && npm run build`; serve the `dist/` folder and set `app.frontend-base-url` for email links.
+- See scalability SLOs and autoscaling guidance in `docs/scalability.md`.

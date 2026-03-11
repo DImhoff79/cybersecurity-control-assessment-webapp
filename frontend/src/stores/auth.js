@@ -4,7 +4,8 @@ import api from '../services/api'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    loading: false
+    loading: false,
+    _fetchUserPromise: null
   }),
   getters: {
     isAdmin(state) {
@@ -17,11 +18,34 @@ export const useAuthStore = defineStore('auth', {
     }
   },
   actions: {
-    setCredentials(email, password) {
-      const encoded = btoa(`${email}:${password}`)
-      localStorage.setItem('auth_credentials', encoded)
-      localStorage.setItem('auth_mode', 'basic')
-      return this.fetchUser()
+    async setCredentials(email, password) {
+      const safeEmail = (email || '').trim()
+      const encoded = btoa(`${safeEmail}:${(password || '').trim()}`)
+      this.loading = true
+      try {
+        const res = await api.get('/api/auth/me', {
+          headers: {
+            Authorization: `Basic ${encoded}`
+          }
+        })
+        const user = res.data?.id != null ? res.data : null
+        this.user = user
+        if (user) {
+          localStorage.setItem('auth_credentials', encoded)
+          localStorage.setItem('auth_mode', 'basic')
+          return user
+        }
+        this.clearCredentials()
+        return null
+      } catch (err) {
+        if (err?.response?.status === 401) {
+          this.clearCredentials()
+          return null
+        }
+        throw err
+      } finally {
+        this.loading = false
+      }
     },
     setOAuthSession() {
       localStorage.removeItem('auth_credentials')
@@ -34,18 +58,28 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
     },
     async fetchUser() {
-      if (!this.hasCredentials) return Promise.resolve()
-      this.loading = true
-      try {
-        const res = await api.get('/api/auth/me')
-        this.user = res.data?.id != null ? res.data : null
-        return this.user
-      } catch {
-        this.user = null
-        return null
-      } finally {
-        this.loading = false
+      if (this._fetchUserPromise) {
+        return this._fetchUserPromise
       }
+      if (!this.hasCredentials) return Promise.resolve()
+      this._fetchUserPromise = (async () => {
+        this.loading = true
+        try {
+          const res = await api.get('/api/auth/me')
+          this.user = res.data?.id != null ? res.data : null
+          return this.user
+        } catch (err) {
+          if (err?.response?.status === 401) {
+            this.user = null
+            return null
+          }
+          throw err
+        } finally {
+          this.loading = false
+          this._fetchUserPromise = null
+        }
+      })()
+      return this._fetchUserPromise
     }
   }
 })

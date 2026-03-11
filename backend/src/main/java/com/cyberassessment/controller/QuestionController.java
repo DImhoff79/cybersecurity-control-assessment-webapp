@@ -26,7 +26,7 @@ public class QuestionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<QuestionDto> create(@PathVariable Long controlId, @RequestBody Map<String, Object> body) {
         String questionText = (String) body.get("questionText");
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
@@ -44,7 +44,7 @@ public class QuestionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<QuestionDto> update(@PathVariable Long controlId, @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String questionText = body.containsKey("questionText") ? (String) body.get("questionText") : null;
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
@@ -59,7 +59,7 @@ public class QuestionController {
     }
 
     @PutMapping("/{id}/mapping")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<QuestionDto> updateMapping(@PathVariable Long controlId, @PathVariable Long id, @RequestBody Map<String, Object> body) {
         String mappingRationale = body.containsKey("mappingRationale") ? (String) body.get("mappingRationale") : null;
         BigDecimal mappingWeight = body.containsKey("mappingWeight") && body.get("mappingWeight") != null
@@ -77,7 +77,7 @@ public class QuestionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<Void> delete(@PathVariable Long controlId, @PathVariable Long id) {
         try {
             questionService.delete(controlId, id);

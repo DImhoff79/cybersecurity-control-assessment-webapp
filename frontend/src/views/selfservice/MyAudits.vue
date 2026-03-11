@@ -68,49 +68,8 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const [res, controlsCatalogRes] = await Promise.all([
-      api.get('/api/my-audits'),
-      api.get('/api/controls?includeQuestions=true')
-    ])
-    const audits = res.data || []
-    const controlsCatalog = controlsCatalogRes.data || []
-    const controlIdsWithAnyQuestion = new Set(
-      controlsCatalog
-        .filter((c) => Array.isArray(c.questions) && c.questions.length > 0)
-        .map((c) => c.id)
-    )
-    const enriched = await Promise.all(
-      audits.map(async (audit) => {
-        try {
-          const [questionsRes, controlsRes] = await Promise.all([
-            api.get(`/api/audits/${audit.id}/questions`),
-            api.get(`/api/audits/${audit.id}/controls`)
-          ])
-          const questions = questionsRes.data || []
-          const controls = controlsRes.data || []
-          const groupedQuestions = new Map()
-          questions.forEach((q) => {
-            if (!groupedQuestions.has(q.questionId)) {
-              groupedQuestions.set(q.questionId, q.existingAnswerText || '')
-            } else if (!groupedQuestions.get(q.questionId) && q.existingAnswerText) {
-              groupedQuestions.set(q.questionId, q.existingAnswerText)
-            }
-          })
-          const additionalControls = controls.filter((c) => !controlIdsWithAnyQuestion.has(c.id))
-          const answeredQuestions = Array.from(groupedQuestions.values())
-            .filter((a) => a && a.trim().length > 0)
-            .length
-          const answeredAdditional = additionalControls.filter((c) => ['PASS', 'FAIL', 'NA'].includes(c.status)).length
-          const total = groupedQuestions.size + additionalControls.length
-          const complete = answeredQuestions + answeredAdditional
-          const completionPct = total > 0 ? Math.round((complete / total) * 100) : 0
-          return { ...audit, completionPct }
-        } catch (e) {
-          return { ...audit, completionPct: 0 }
-        }
-      })
-    )
-    items.value = enriched
+    const res = await api.get('/api/my-audits/overview')
+    items.value = res.data || []
   } finally {
     loading.value = false
   }

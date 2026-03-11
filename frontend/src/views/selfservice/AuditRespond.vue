@@ -235,29 +235,23 @@ onMounted(load)
 
 async function load() {
   try {
-    const [auditRes, questionsRes, controlsRes, controlsCatalogRes] = await Promise.all([
+    const [auditRes, questionsRes, controlsRes] = await Promise.all([
       api.get(`/api/audits/${auditId}`),
       api.get(`/api/audits/${auditId}/questions`),
-      api.get(`/api/audits/${auditId}/controls`),
-      api.get('/api/controls?includeQuestions=true')
+      api.get(`/api/audits/${auditId}/controls`)
     ])
 
     audit.value = auditRes.data
     questionItems.value = questionsRes.data || []
     controls.value = controlsRes.data || []
-    const controlsCatalog = controlsCatalogRes.data || []
 
     guidedQuestions.value.forEach((q) => {
       const key = `q-${q.questionId}`
       answers[key] = normalizeExistingAnswer(q.existingAnswerText)
     })
 
-    const controlIdsWithAnyQuestion = new Set(
-      controlsCatalog
-        .filter((c) => Array.isArray(c.questions) && c.questions.length > 0)
-        .map((c) => c.id)
-    )
-    additionalControls.value = controls.value.filter((c) => !controlIdsWithAnyQuestion.has(c.id))
+    const controlsWithOwnerQuestions = new Set(questionItems.value.map((item) => item.auditControlId))
+    additionalControls.value = controls.value.filter((c) => !controlsWithOwnerQuestions.has(c.id))
 
     additionalControls.value.forEach((c) => {
       additionalResponses[c.id] = {
@@ -397,15 +391,15 @@ async function saveHumanAnswers() {
 async function saveAdditionalControls() {
   if (!additionalControls.value.length) return
 
-  await Promise.all(
-    additionalControls.value.map((control) => {
-      const response = additionalResponses[control.id] || { status: 'NOT_STARTED', notes: '' }
-      return api.put(`/api/audit-controls/${control.id}`, {
-        status: response.status,
-        notes: response.notes
-      })
-    })
-  )
+  const updates = additionalControls.value.map((control) => {
+    const response = additionalResponses[control.id] || { status: 'NOT_STARTED', notes: '' }
+    return {
+      auditControlId: control.id,
+      status: response.status,
+      notes: response.notes
+    }
+  })
+  await api.put(`/api/audits/${auditId}/controls/bulk`, updates)
 }
 
 function normalizeExistingAnswer(value) {

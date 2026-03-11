@@ -24,6 +24,8 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,23 +52,15 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public ReportSummaryDto getSummary() {
-        List<Audit> audits = auditRepository.findAll();
         Instant now = Instant.now();
-        long totalAudits = audits.size();
-        long openAudits = audits.stream()
-                .filter(a -> a.getStatus() == AuditStatus.DRAFT || a.getStatus() == AuditStatus.IN_PROGRESS)
-                .count();
-        long overdueAudits = audits.stream()
-                .filter(a -> a.getDueAt() != null && a.getDueAt().isBefore(now))
-                .filter(a -> a.getStatus() == AuditStatus.DRAFT || a.getStatus() == AuditStatus.IN_PROGRESS || a.getStatus() == AuditStatus.SUBMITTED)
-                .count();
-        long submittedAudits = audits.stream().filter(a -> a.getStatus() == AuditStatus.SUBMITTED).count();
-        long attestedAudits = audits.stream().filter(a -> a.getStatus() == AuditStatus.ATTESTED).count();
-        long completedAudits = audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count();
+        long totalAudits = auditRepository.count();
+        long openAudits = auditRepository.countByStatusIn(List.of(AuditStatus.DRAFT, AuditStatus.IN_PROGRESS));
+        long overdueAudits = auditRepository.countByDueAtBeforeAndStatusIn(now, List.of(AuditStatus.DRAFT, AuditStatus.IN_PROGRESS, AuditStatus.SUBMITTED));
+        long submittedAudits = auditRepository.countByStatus(AuditStatus.SUBMITTED);
+        long attestedAudits = auditRepository.countByStatus(AuditStatus.ATTESTED);
+        long completedAudits = auditRepository.countByStatus(AuditStatus.COMPLETE);
         long totalProjects = auditProjectRepository.count();
-        long activeProjects = auditProjectRepository.findAll().stream()
-                .filter(p -> p.getStatus() == AuditProjectStatus.ACTIVE)
-                .count();
+        long activeProjects = auditProjectRepository.countByStatus(AuditProjectStatus.ACTIVE);
         return ReportSummaryDto.builder()
                 .totalApplications(applicationRepository.count())
                 .totalAuditProjects(totalProjects)
@@ -173,36 +167,35 @@ public class ReportService {
         DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
         StringBuilder sb = new StringBuilder();
         sb.append("audit_id,project,application,year,status,assigned_to,due_date,submitted_at,attested_at,completed_at\n");
-        for (Audit a : auditRepository.findAll()) {
-            sb.append(a.getId()).append(",")
-                    .append(csv(a.getAuditProject() != null ? a.getAuditProject().getName() : "")).append(",")
-                    .append(csv(a.getApplication().getName())).append(",")
-                    .append(a.getYear()).append(",")
-                    .append(a.getStatus()).append(",")
-                    .append(csv(a.getAssignedTo() != null ? a.getAssignedTo().getEmail() : "")).append(",")
-                    .append(csv(a.getDueAt() != null ? formatter.format(a.getDueAt()) : "")).append(",")
-                    .append(csv(a.getCompletedAt() != null ? formatter.format(a.getCompletedAt()) : "")).append(",")
-                    .append(csv(a.getAttestedAt() != null ? formatter.format(a.getAttestedAt()) : "")).append(",")
-                    .append(csv(a.getCompletedAt() != null ? formatter.format(a.getCompletedAt()) : "")).append("\n");
+        int pageNo = 0;
+        while (true) {
+            Page<Audit> page = auditRepository.findAllPaged(PageRequest.of(pageNo, 500));
+            for (Audit a : page.getContent()) {
+                sb.append(a.getId()).append(",")
+                        .append(csv(a.getAuditProject() != null ? a.getAuditProject().getName() : "")).append(",")
+                        .append(csv(a.getApplication().getName())).append(",")
+                        .append(a.getYear()).append(",")
+                        .append(a.getStatus()).append(",")
+                        .append(csv(a.getAssignedTo() != null ? a.getAssignedTo().getEmail() : "")).append(",")
+                        .append(csv(a.getDueAt() != null ? formatter.format(a.getDueAt()) : "")).append(",")
+                        .append(csv(a.getCompletedAt() != null ? formatter.format(a.getCompletedAt()) : "")).append(",")
+                        .append(csv(a.getAttestedAt() != null ? formatter.format(a.getAttestedAt()) : "")).append(",")
+                        .append(csv(a.getCompletedAt() != null ? formatter.format(a.getCompletedAt()) : "")).append("\n");
+            }
+            if (!page.hasNext()) {
+                break;
+            }
+            pageNo += 1;
         }
         return sb.toString();
     }
 
     @Transactional(readOnly = true)
     public AuditorDashboardDto auditorDashboard() {
-        List<Audit> audits = auditRepository.findAll();
-        List<Audit> prioritized = audits.stream()
-                .filter(a -> a.getStatus() == AuditStatus.SUBMITTED || a.getStatus() == AuditStatus.ATTESTED || a.getStatus() == AuditStatus.IN_PROGRESS)
-                .sorted((a, b) -> {
-                    Instant ad = a.getDueAt();
-                    Instant bd = b.getDueAt();
-                    if (ad == null && bd == null) return 0;
-                    if (ad == null) return 1;
-                    if (bd == null) return -1;
-                    return ad.compareTo(bd);
-                })
-                .limit(50)
-                .toList();
+        List<Audit> prioritized = auditRepository.findByStatusInOrderByDueAtAsc(
+                List.of(AuditStatus.SUBMITTED, AuditStatus.ATTESTED, AuditStatus.IN_PROGRESS),
+                PageRequest.of(0, 50)
+        ).getContent();
 
         List<AuditorAuditItemDto> auditsNeedingAttention = prioritized.stream().map(a -> AuditorAuditItemDto.builder()
                 .auditId(a.getId())
@@ -261,11 +254,7 @@ public class ReportService {
     public byte[] boardPackPdf() {
         ReportSummaryDto summary = getSummary();
         List<AuditTrendPointDto> trends = trends();
-        List<Audit> topOverdue = auditRepository.findAll().stream()
-                .filter(a -> a.getDueAt() != null && a.getDueAt().isBefore(Instant.now()) && a.getStatus() != AuditStatus.COMPLETE)
-                .sorted(Comparator.comparing(Audit::getDueAt))
-                .limit(12)
-                .toList();
+        List<Audit> topOverdue = auditRepository.findTop12ByDueAtBeforeAndStatusNotOrderByDueAtAsc(Instant.now(), AuditStatus.COMPLETE);
 
         try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PDPage page = new PDPage(PDRectangle.LETTER);

@@ -25,17 +25,22 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   if (to.meta.public) return next()
   if (!authStore.hasCredentials) return next({ name: 'Login', query: { redirect: to.fullPath } })
-  authStore.fetchUser().then(() => {
-    if (to.path.startsWith('/admin') && !authStore.isAdmin) {
-      next('/my-audits')
-    } else {
-      next()
+  try {
+    const user = await authStore.fetchUser()
+    if (!user) {
+      return next({ name: 'Login', query: { redirect: to.fullPath } })
     }
-  }).catch(() => next({ name: 'Login' }))
+    if (to.path.startsWith('/admin') && !authStore.isAdmin) {
+      return next('/my-audits')
+    }
+    return next()
+  } catch {
+    return next({ name: 'Login', query: { redirect: to.fullPath } })
+  }
 })
 
 export default router

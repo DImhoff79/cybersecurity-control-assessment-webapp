@@ -33,31 +33,31 @@ public class ReportController {
     private final AuditorSavedFilterService auditorSavedFilterService;
 
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ReportSummaryDto summary() {
         return reportService.getSummary();
     }
 
     @GetMapping("/by-year")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<AuditYearSummaryDto> byYear() {
         return reportService.byYear();
     }
 
     @GetMapping("/trends")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<AuditTrendPointDto> trends() {
         return reportService.trends();
     }
 
     @GetMapping("/by-project")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<AuditProjectSummaryDto> byProject() {
         return reportService.byProject();
     }
 
     @GetMapping("/audits.csv")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<String> exportAuditsCsv() {
         String csv = reportService.auditsCsv();
         return ResponseEntity.ok()
@@ -67,7 +67,7 @@ public class ReportController {
     }
 
     @GetMapping("/board-pack.pdf")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<byte[]> exportBoardPackPdf() {
         byte[] pdf = reportService.boardPackPdf();
         return ResponseEntity.ok()
@@ -77,19 +77,19 @@ public class ReportController {
     }
 
     @GetMapping("/auditor-dashboard")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public AuditorDashboardDto auditorDashboard() {
         return reportService.auditorDashboard();
     }
 
     @GetMapping("/saved-filters")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<AuditorSavedFilterDto> savedFilters() {
         return auditorSavedFilterService.listForCurrentUser();
     }
 
     @PostMapping("/saved-filters")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public AuditorSavedFilterDto saveFilter(@RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         boolean shared = body.get("shared") != null && Boolean.TRUE.equals(body.get("shared"));
@@ -100,7 +100,7 @@ public class ReportController {
     }
 
     @DeleteMapping("/saved-filters/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public void deleteFilter(@PathVariable Long id) {
         auditorSavedFilterService.delete(id);
     }

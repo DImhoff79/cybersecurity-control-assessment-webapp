@@ -19,13 +19,13 @@ public class AuditProjectController {
     private final AuditProjectService auditProjectService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public List<AuditProjectDto> list() {
         return auditProjectService.list();
     }
 
     @GetMapping("/{projectId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<?> get(@PathVariable Long projectId) {
         try {
             return ResponseEntity.ok(auditProjectService.get(projectId));
@@ -35,7 +35,7 @@ public class AuditProjectController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         try {
             String name = body.containsKey("name") ? String.valueOf(body.get("name")) : null;

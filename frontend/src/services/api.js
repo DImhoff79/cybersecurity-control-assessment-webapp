@@ -9,7 +9,8 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const cred = localStorage.getItem('auth_credentials')
-  if (cred) {
+  const hasExplicitAuthHeader = Boolean(config.headers?.Authorization)
+  if (cred && !hasExplicitAuthHeader) {
     config.headers.Authorization = `Basic ${cred}`
   }
   return config

@@ -68,9 +68,16 @@ const providers = ref({
 })
 const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN || 'http://localhost:8080'
 
-onMounted(() => {
+onMounted(async () => {
   loadProviders()
   handleOauthCallbackState()
+  try {
+    if (!authStore.user && authStore.hasCredentials) {
+      await authStore.fetchUser()
+    }
+  } catch {
+    // Ignore boot-time connectivity issues; user can retry.
+  }
   if (authStore.user) router.replace(route.query.redirect || '/my-audits')
 })
 
@@ -80,12 +87,18 @@ async function submit() {
   try {
     await authStore.setCredentials(email.value, password.value)
     if (authStore.user) {
-      router.replace(route.query.redirect || (authStore.isAdmin ? '/admin/applications' : '/my-audits'))
+      const target = route.query.redirect || (authStore.isAdmin ? '/admin/applications' : '/my-audits')
+      window.location.href = typeof target === 'string' ? target : '/my-audits'
     } else {
+      authStore.clearCredentials()
       error.value = 'Invalid email or password.'
     }
   } catch (e) {
-    error.value = e.response?.data?.error || 'Login failed.'
+    if (!e?.response) {
+      error.value = 'Backend is still starting. Please wait 5-10 seconds and try again.'
+    } else {
+      error.value = e.response?.data?.error || 'Login failed.'
+    }
   } finally {
     loading.value = false
   }

@@ -4,6 +4,7 @@ import com.cyberassessment.dto.AuditControlAnswerDto;
 import com.cyberassessment.dto.AuditControlAssignmentDto;
 import com.cyberassessment.dto.AuditControlDto;
 import com.cyberassessment.dto.AuditEvidenceDto;
+import com.cyberassessment.dto.BulkAuditControlUpdateItemDto;
 import com.cyberassessment.dto.MyTaskDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.AuditControlAssignmentRepository;
@@ -12,6 +13,7 @@ import com.cyberassessment.repository.AuditRepository;
 import com.cyberassessment.repository.AuditAssignmentRepository;
 import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,13 +84,16 @@ public class AuditControlService {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
             boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-            if (!isPrimary && !isAuditCollaborator) {
+            List<AuditControl> auditControls = auditControlRepository.findByAudit(audit);
+            boolean isTaskAssignee = auditControls.stream()
+                    .anyMatch(ac -> auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId()));
+            if (!isPrimary && !isAuditCollaborator && !isTaskAssignee) {
                 throw new IllegalArgumentException("You do not have access to this audit");
             }
             if (isPrimary) {
-                return auditControlRepository.findByAudit(audit).stream().map(AuditControlService::toDto).collect(Collectors.toList());
+                return auditControls.stream().map(AuditControlService::toDto).collect(Collectors.toList());
             }
-            return auditControlRepository.findByAudit(audit).stream()
+            return auditControls.stream()
                     .filter(ac -> auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId()))
                     .map(AuditControlService::toDto)
                     .collect(Collectors.toList());
@@ -97,6 +102,7 @@ public class AuditControlService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
     public AuditControlDto update(Long id, ControlAssessmentStatus status, String evidence, String notes) {
         AuditControl ac = auditControlRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + id));
         if (!currentUserService.isAdmin()) {
@@ -116,6 +122,45 @@ public class AuditControlService {
         ac = auditControlRepository.save(ac);
         auditActivityLogService.log(ac.getAudit(), AuditActivityType.CONTROL_UPDATED, "Updated control " + ac.getControl().getControlId());
         return toDto(ac);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
+    public void bulkUpdate(Long auditId, List<BulkAuditControlUpdateItemDto> updates) {
+        Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
+        if (!currentUserService.isAdmin()) {
+            User current = currentUserService.getCurrentUserOrThrow();
+            boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
+            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
+            if (!isPrimary && !isAuditCollaborator) {
+                throw new IllegalArgumentException("You do not have access to this audit");
+            }
+        }
+        List<AuditControl> changed = new java.util.ArrayList<>();
+        for (BulkAuditControlUpdateItemDto item : updates) {
+            if (item.getAuditControlId() == null) {
+                continue;
+            }
+            AuditControl ac = auditControlRepository.findById(item.getAuditControlId())
+                    .orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + item.getAuditControlId()));
+            if (!ac.getAudit().getId().equals(auditId)) {
+                throw new IllegalArgumentException("Audit control does not belong to audit");
+            }
+            if (item.getStatus() != null) {
+                ac.setStatus(item.getStatus());
+                if (item.getStatus() == ControlAssessmentStatus.PASS || item.getStatus() == ControlAssessmentStatus.FAIL || item.getStatus() == ControlAssessmentStatus.NA) {
+                    ac.setAssessedAt(java.time.Instant.now());
+                }
+            }
+            if (item.getNotes() != null) {
+                ac.setNotes(item.getNotes());
+            }
+            changed.add(ac);
+        }
+        if (!changed.isEmpty()) {
+            auditControlRepository.saveAll(changed);
+            auditActivityLogService.log(audit, AuditActivityType.CONTROL_UPDATED, "Bulk-updated " + changed.size() + " controls");
+        }
     }
 
     @Transactional(readOnly = true)

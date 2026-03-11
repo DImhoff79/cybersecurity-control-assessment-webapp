@@ -51,7 +51,7 @@ public class AuditControlController {
     }
 
     @PostMapping("/{id}/assignments")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<List<AuditControlAssignmentDto>> addAssignment(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;
         AuditControlAssignmentRole role = body.get("role") != null
@@ -64,7 +64,7 @@ public class AuditControlController {
     }
 
     @DeleteMapping("/{id}/assignments/{assignmentId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@currentUserService.isAdmin()")
     public ResponseEntity<List<AuditControlAssignmentDto>> removeAssignment(@PathVariable Long id, @PathVariable Long assignmentId) {
         return ResponseEntity.ok(auditControlService.removeAssignment(id, assignmentId));
     }
