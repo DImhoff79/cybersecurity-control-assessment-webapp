@@ -6,7 +6,8 @@ import api from '../../services/api'
 vi.mock('../../services/api', () => ({
   default: {
     get: vi.fn(),
-    put: vi.fn()
+    put: vi.fn(),
+    post: vi.fn()
   }
 }))
 
@@ -20,6 +21,7 @@ describe('ReviewQueue', () => {
       ]
     })
     api.put.mockResolvedValue({ data: {} })
+    api.post.mockResolvedValue({ data: {} })
   })
 
   it('shows submitted audits only and marks reviewed', async () => {
@@ -40,5 +42,22 @@ describe('ReviewQueue', () => {
     await flushPromises()
 
     expect(api.put).toHaveBeenCalledWith('/api/audits/1', { status: 'COMPLETE' })
+  })
+
+  it('attests submitted assessment from queue', async () => {
+    const wrapper = mount(ReviewQueue, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+    await flushPromises()
+
+    const attestBtn = wrapper.findAll('button').find((b) => b.text() === 'Attest')
+    await attestBtn.trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/api/audits/1/attest', { statement: 'Attested during review queue processing.' })
   })
 })

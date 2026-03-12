@@ -49,4 +49,22 @@ describe('MyTasks', () => {
 
     expect(api.put).toHaveBeenCalledWith('/api/audit-controls/100', { status: 'PASS' })
   })
+
+  it('updates notes on blur only when changed', async () => {
+    const wrapper = mount(MyTasks, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+    await flushPromises()
+
+    const notes = wrapper.find('tbody textarea')
+    await notes.setValue('Updated notes')
+    await notes.trigger('blur')
+    await flushPromises()
+
+    expect(api.put).toHaveBeenCalledWith('/api/audit-controls/100', { notes: 'Updated notes' })
+  })
 })
