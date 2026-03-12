@@ -49,7 +49,7 @@ describe('ControlExceptions', () => {
     const wrapper = mount(ControlExceptions)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Control Exceptions')
+    expect(wrapper.text()).toContain('Issue Management - Control Exceptions')
     expect(wrapper.text()).toContain('Temporary process')
 
     const approveBtn = wrapper.findAll('button').find((b) => b.text() === 'Approve')

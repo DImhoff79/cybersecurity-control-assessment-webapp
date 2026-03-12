@@ -1,21 +1,31 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Findings & Remediation</h1>
-    <p class="text-muted mb-3">
-      Track control gaps, assign owners, and manage remediation due dates.
-    </p>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">Issue Management - Findings</h1>
+        <p class="text-muted mb-0">
+          Track control gaps, assign owners, and manage remediation due dates.
+        </p>
+      </div>
+      <router-link to="/admin/control-exceptions" class="btn btn-outline-secondary btn-sm">Go to Exceptions</router-link>
+    </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-          <button class="btn btn-primary" @click="openModal()">Add finding</button>
-          <div class="d-flex gap-2 align-items-center flex-wrap">
-            <select v-model="filters.auditId" class="form-select w-auto" @change="load">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Audit</label>
+            <select v-model="filters.auditId" class="form-select" @change="load">
               <option :value="null">All audits</option>
               <option v-for="audit in audits" :key="audit.id" :value="audit.id">
                 {{ audit.applicationName }} ({{ audit.year }})
               </option>
             </select>
+          </div>
+          <div class="col-md-auto">
+            <button class="btn btn-primary" @click="openModal()">Add finding</button>
+          </div>
+          <div class="col-md-auto">
             <button type="button" class="btn btn-outline-secondary btn-sm" @click="resetFilters">Reset</button>
           </div>
         </div>

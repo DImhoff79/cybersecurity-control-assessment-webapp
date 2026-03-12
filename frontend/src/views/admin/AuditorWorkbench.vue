@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Auditor Workbench</h1>
+    <h1 class="h3 mb-3">Triage Hub</h1>
     <div class="alert alert-info py-2">
       Use this page to triage active audits and evidence: filter queues, send reminders, attest submitted audits, and review pending evidence from one place.
     </div>
@@ -123,8 +123,22 @@
                   <td>{{ a.pendingEvidenceCount }}</td>
                   <td class="text-nowrap">
                     <router-link :to="`/admin/audits/${a.auditId}`" class="btn btn-outline-primary btn-sm me-2">Open</router-link>
-                    <button class="btn btn-outline-primary btn-sm me-2" @click="remind(a.auditId)">Remind</button>
-                    <button class="btn btn-outline-success btn-sm" :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'" @click="attest(a.auditId)">Attest</button>
+                    <button
+                      class="btn btn-outline-primary btn-sm me-2"
+                      :disabled="!canManageAudits"
+                      :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
+                      @click="remind(a.auditId)"
+                    >
+                      Remind
+                    </button>
+                    <button
+                      class="btn btn-outline-success btn-sm"
+                      :disabled="!canManageAudits || (a.status !== 'SUBMITTED' && a.status !== 'ATTESTED')"
+                      :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
+                      @click="attest(a.auditId)"
+                    >
+                      Attest
+                    </button>
                   </td>
                 </tr>
                 <tr v-if="!sortedAudits.length">
@@ -211,11 +225,26 @@
                     </button>
                   </td>
                   <td class="text-nowrap">
-                    <button class="btn btn-outline-success btn-sm me-2" @click="reviewEvidence(e.evidenceId, 'ACCEPTED')">Accept</button>
-                    <button class="btn btn-outline-danger btn-sm" @click="reviewEvidence(e.evidenceId, 'REJECTED')">Reject</button>
+                    <button
+                      class="btn btn-outline-success btn-sm me-2"
+                      :disabled="!canManageAudits"
+                      :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
+                      @click="reviewEvidence(e.evidenceId, 'ACCEPTED')"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      class="btn btn-outline-danger btn-sm"
+                      :disabled="!canManageAudits"
+                      :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
+                      @click="reviewEvidence(e.evidenceId, 'REJECTED')"
+                    >
+                      Reject
+                    </button>
                     <button
                       class="btn btn-outline-secondary btn-sm ms-2"
-                      :disabled="e.lifecycleStatus === 'ARCHIVED' || e.lifecycleStatus === 'DISPOSED' || e.legalHold"
+                      :disabled="!canManageAudits || e.lifecycleStatus === 'ARCHIVED' || e.lifecycleStatus === 'DISPOSED' || e.legalHold"
+                      :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
                       @click="archiveEvidence(e.evidenceId)"
                     >
                       Archive
@@ -298,11 +327,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+import { useAuthStore } from '../../stores/auth'
 
 const loading = ref(true)
 const loadError = ref('')
 const dashboard = ref({ summary: {}, auditsNeedingAttention: [], evidenceQueue: [] })
 const currentUserEmail = ref('')
+const authStore = useAuthStore()
+const canManageAudits = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
 const filterName = ref('')
 const shareFilter = ref(true)
 const savedFilters = ref([])

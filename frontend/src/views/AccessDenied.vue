@@ -26,14 +26,20 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const attemptedPath = computed(() => route.query.from || '')
 const requiredPermission = computed(() => route.query.required || '')
 
 function goToHome() {
+  if (authStore.canAccessAdmin) {
+    router.push('/admin')
+    return
+  }
   router.push('/my-audits')
 }
 

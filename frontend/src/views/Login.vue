@@ -129,10 +129,7 @@ function startSocialLogin(providerKey) {
 }
 
 function defaultLandingRoute() {
-  if (authStore.hasPermission('APPLICATION_MANAGEMENT')) return '/admin/applications'
-  if (authStore.hasPermission('AUDIT_MANAGEMENT')) return '/admin/audits'
-  if (authStore.hasPermission('REPORT_VIEW')) return '/admin/reports'
-  if (authStore.hasPermission('USER_MANAGEMENT')) return '/admin/users'
+  if (authStore.canAccessAdmin) return '/admin'
   return '/my-audits'
 }
 </script>

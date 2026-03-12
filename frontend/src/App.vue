@@ -1,11 +1,11 @@
 <template>
   <div class="min-vh-100 d-flex flex-column bg-light">
-    <header v-if="authStore.user && $route.name !== 'Login'" class="brand-header text-white border-bottom border-primary-subtle">
+    <header v-if="showSelfServiceHeader" class="brand-header text-white border-bottom border-primary-subtle">
       <div class="container py-1 d-flex justify-content-end">
         <span class="small opacity-75">{{ authStore.user?.displayName || authStore.user?.email }}</span>
       </div>
       <nav class="navbar navbar-expand-lg navbar-dark pt-0 pb-2 px-3">
-        <router-link to="/" class="navbar-brand fw-semibold">Cybersecurity Assessment</router-link>
+        <router-link to="/my-audits" class="navbar-brand fw-semibold">Cybersecurity Assessment</router-link>
         <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-2">
           <router-link to="/my-audits" class="nav-link text-white px-2">My Audits</router-link>
           <router-link to="/my-tasks" class="nav-link text-white px-2">My Tasks</router-link>
@@ -32,29 +32,7 @@
               </button>
             </div>
           </div>
-
-          <div v-if="authStore.canAccessAdmin" class="nav-item dropdown-hover">
-            <span class="nav-link text-white px-2 dropdown-toggle">Admin</span>
-            <div class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
-              <router-link v-if="authStore.hasPermission('APPLICATION_MANAGEMENT')" to="/admin/applications" class="dropdown-item">Applications</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audits" class="dropdown-item">Audits</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/review-queue" class="dropdown-item">Review Queue</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/findings" class="dropdown-item">Findings</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/control-exceptions" class="dropdown-item">Control Exceptions</router-link>
-              <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/reports" class="dropdown-item">Reports</router-link>
-              <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/auditor-workbench" class="dropdown-item">Auditor Workbench</router-link>
-              <router-link v-if="authStore.hasPermission('USER_MANAGEMENT')" to="/admin/users" class="dropdown-item">Users</router-link>
-              <router-link
-                v-if="authStore.hasPermission('AUDIT_MANAGEMENT') && (authStore.hasRole('ADMIN') || authStore.hasRole('AUDIT_MANAGER'))"
-                to="/admin/questionnaire-templates"
-                class="dropdown-item"
-              >
-                Questionnaire Governance
-              </router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/questionnaire-builder" class="dropdown-item">Questionnaire Builder</router-link>
-            </div>
-          </div>
+          <router-link v-if="authStore.canAccessAdmin" to="/admin" class="nav-link text-white px-2">Admin Workspace</router-link>
 
           <div class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Account</span>
@@ -66,26 +44,29 @@
         </div>
       </nav>
     </header>
-    <main class="container py-4 flex-grow-1">
+    <main v-if="!route.path.startsWith('/admin')" class="container py-4 flex-grow-1">
       <router-view />
     </main>
+    <router-view v-else />
     <AppToasts />
   </div>
 </template>
 
 <script setup>
 import api from './services/api'
-import { onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import AppToasts from './components/AppToasts.vue'
+import { useNotificationsMenu } from './composables/useNotificationsMenu'
 
 const authStore = useAuthStore()
-const notifications = ref([])
-const unreadCount = ref(0)
+const route = useRoute()
+const { notifications, unreadCount, markRead, markAllRead } = useNotificationsMenu(authStore)
 
-onMounted(async () => {
-  await authStore.fetchUser()
-  await loadNotifications()
+const showSelfServiceHeader = computed(() => {
+  if (!authStore.user || route.name === 'Login') return false
+  return !route.path.startsWith('/admin')
 })
 
 async function logout() {
@@ -96,51 +77,6 @@ async function logout() {
   }
   authStore.clearCredentials()
   window.location.href = '/login'
-}
-
-async function loadNotifications() {
-  if (!authStore.hasCredentials) return
-  try {
-    const [itemsRes, unreadRes] = await Promise.all([
-      api.get('/api/notifications'),
-      api.get('/api/notifications/unread-count')
-    ])
-    notifications.value = itemsRes.data || []
-    unreadCount.value = unreadRes.data?.unread || 0
-  } catch {
-    notifications.value = []
-    unreadCount.value = 0
-  }
-}
-
-watch(
-  () => authStore.user?.id,
-  async (userId) => {
-    if (userId) {
-      await loadNotifications()
-    } else {
-      notifications.value = []
-      unreadCount.value = 0
-    }
-  }
-)
-
-async function markRead(notificationId) {
-  try {
-    await api.put(`/api/notifications/${notificationId}/read`)
-    await loadNotifications()
-  } catch {
-    // Keep UI resilient.
-  }
-}
-
-async function markAllRead() {
-  try {
-    await api.put('/api/notifications/read-all')
-    await loadNotifications()
-  } catch {
-    // Keep UI resilient.
-  }
 }
 </script>
 

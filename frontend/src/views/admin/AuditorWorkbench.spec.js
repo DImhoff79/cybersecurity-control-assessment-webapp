@@ -1,7 +1,9 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuditorWorkbench from './AuditorWorkbench.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 vi.mock('../../services/api', () => ({
   default: {
@@ -15,6 +17,9 @@ vi.mock('../../services/api', () => ({
 describe('AuditorWorkbench', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setActivePinia(createPinia())
+    const authStore = useAuthStore()
+    authStore.user = { id: 1, role: 'ADMIN', permissions: ['AUDIT_MANAGEMENT', 'REPORT_VIEW'] }
     global.URL.createObjectURL = vi.fn(() => 'blob:mock')
     global.URL.revokeObjectURL = vi.fn()
     api.get.mockImplementation((url) => {

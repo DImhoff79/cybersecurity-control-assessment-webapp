@@ -1,9 +1,16 @@
 <template>
   <div>
-    <h1 class="h3 mb-2">Questionnaire Governance</h1>
-    <p class="text-muted mb-3">
-      Manage the published questionnaire baseline used when new audits are created.
-    </p>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">Questionnaire - Governance</h1>
+        <p class="text-muted mb-0">
+          Manage the published questionnaire baseline used when new audits are created.
+        </p>
+      </div>
+      <router-link :to="{ name: 'AdminQuestionnaireHub' }" class="btn btn-outline-secondary btn-sm">
+        Back to Questionnaire
+      </router-link>
+    </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-body">

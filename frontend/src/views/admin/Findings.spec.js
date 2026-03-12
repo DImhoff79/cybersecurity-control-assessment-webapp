@@ -62,7 +62,7 @@ describe('Findings', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Findings & Remediation')
+    expect(wrapper.text()).toContain('Issue Management - Findings')
     expect(wrapper.text()).toContain('Gap found')
     expect(api.get).toHaveBeenCalledWith('/api/findings', { params: {} })
 

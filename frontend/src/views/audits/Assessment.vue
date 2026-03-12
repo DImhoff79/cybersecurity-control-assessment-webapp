@@ -1,29 +1,53 @@
 <template>
   <div>
-    <h1 class="h3 mb-2">{{ audit?.applicationName }} - {{ audit?.year }} (Assessment view)</h1>
-    <p v-if="audit" class="text-muted assessment-meta">
-      Status: {{ statusLabel(audit.status) }} |
-      Assigned to: {{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }} |
-      Due: {{ formatDate(audit.dueAt) }}
-    </p>
-    <div class="mb-3 assessment-top-actions">
-      <button
-        class="btn btn-outline-success btn-sm"
-        :disabled="!audit || (audit.status !== 'SUBMITTED' && audit.status !== 'ATTESTED')"
-        @click="attestAudit"
-      >
-        Attest Audit
-      </button>
-      <button
-        class="btn btn-success btn-sm"
-        :disabled="!audit || (audit.status !== 'ATTESTED' && audit.status !== 'SUBMITTED')"
-        @click="markComplete"
-      >
-        Mark Complete
-      </button>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h1 class="h3 mb-1">{{ audit?.applicationName }} - {{ audit?.year }}</h1>
+            <p v-if="audit" class="text-muted assessment-meta mb-2">
+              <span class="badge text-bg-light border me-2">{{ statusLabel(audit.status) }}</span>
+              Assigned to {{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }} | Due {{ formatDate(audit.dueAt) }}
+            </p>
+          </div>
+          <div class="assessment-top-actions">
+            <button
+              class="btn btn-outline-success btn-sm"
+              :disabled="!audit || (audit.status !== 'SUBMITTED' && audit.status !== 'ATTESTED')"
+              @click="attestAudit"
+            >
+              Attest Audit
+            </button>
+            <button
+              class="btn btn-success btn-sm"
+              :disabled="!audit || (audit.status !== 'ATTESTED' && audit.status !== 'SUBMITTED')"
+              @click="markComplete"
+            >
+              Mark Complete
+            </button>
+          </div>
+        </div>
+        <ul class="nav nav-pills mt-2">
+          <li class="nav-item">
+            <button type="button" class="nav-link" :class="{ active: activeWorkspaceTab === 'overview' }" @click="activeWorkspaceTab = 'overview'">
+              Overview
+            </button>
+          </li>
+          <li class="nav-item">
+            <button type="button" class="nav-link" :class="{ active: activeWorkspaceTab === 'controls' }" @click="activeWorkspaceTab = 'controls'">
+              Controls & Evidence
+            </button>
+          </li>
+          <li class="nav-item">
+            <button type="button" class="nav-link" :class="{ active: activeWorkspaceTab === 'timeline' }" @click="activeWorkspaceTab = 'timeline'">
+              Timeline
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div v-if="activeWorkspaceTab === 'overview'" class="card shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Collaborators</h2>
         <div v-if="!assignments.length" class="text-muted small mb-2">No collaborators assigned.</div>
@@ -56,7 +80,7 @@
     </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
-    <div v-else>
+    <div v-else-if="activeWorkspaceTab === 'controls'">
       <div v-if="!auditControls.length" class="card shadow-sm">
         <div class="card-body text-muted">No controls are linked to this audit yet.</div>
       </div>
@@ -205,7 +229,7 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mt-3">
+    <div v-if="activeWorkspaceTab === 'timeline'" class="card shadow-sm mt-3">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           <h2 class="h5 mb-0">Activity Timeline</h2>
@@ -264,6 +288,7 @@ const auditId = Number(route.params.auditId)
 const audit = ref(null)
 const auditControls = ref([])
 const loading = ref(true)
+const activeWorkspaceTab = ref('controls')
 const detailsModal = ref(null)
 const activityLogs = ref([])
 const activityFilter = ref({

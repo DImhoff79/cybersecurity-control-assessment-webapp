@@ -2,12 +2,13 @@
   <div>
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
       <div>
-        <h1 class="h3 mb-1">Questionnaire Builder</h1>
+        <h1 class="h3 mb-1">Questionnaire - Library Builder</h1>
         <p class="text-muted mb-0">Manage controls and questions in one place, then publish from governance.</p>
       </div>
-      <router-link :to="{ name: 'AdminQuestionnaireTemplates' }" class="btn btn-outline-primary btn-sm">
-        Go to Governance
-      </router-link>
+      <div class="d-flex gap-2">
+        <router-link :to="{ name: 'AdminQuestionnaireHub' }" class="btn btn-outline-secondary btn-sm">Back to Questionnaire</router-link>
+        <router-link :to="{ name: 'AdminQuestionnaireTemplates' }" class="btn btn-outline-primary btn-sm">Go to Governance</router-link>
+      </div>
     </div>
 
     <div class="card shadow-sm mb-3 sticky-rail">
