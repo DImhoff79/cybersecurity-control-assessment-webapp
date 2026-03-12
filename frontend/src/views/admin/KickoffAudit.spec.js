@@ -109,5 +109,43 @@ describe('KickoffAudit', () => {
     await flushPromises()
     expect(api.post).toHaveBeenCalledWith('/api/audits/11/attest', { statement: 'Looks good' })
 
+    const rowCheckbox = wrapper.find('tbody input[type="checkbox"]')
+    await rowCheckbox.setValue(true)
+    const bulkSelect = wrapper.find('select.bulk-user-select')
+    await bulkSelect.setValue('2')
+    const bulkAssignBtn = wrapper.findAll('button').find((b) => b.text() === 'Bulk Assign + Send')
+    await bulkAssignBtn.trigger('click')
+    await flushPromises()
+    expect(api.post).toHaveBeenCalledWith('/api/audits/bulk-assign', {
+      auditIds: [11],
+      userId: 2,
+      sendNow: true
+    })
+  })
+
+  it('filters by project and toggles sorting', async () => {
+    const wrapper = mount(KickoffAudit, {
+      global: {
+        stubs: {
+          BsModal: ModalStub,
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('App')
+    const projectFilter = wrapper.find('select.form-select.form-select-sm')
+    await projectFilter.setValue('none')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('App')
+
+    await projectFilter.setValue('all')
+    await flushPromises()
+    const yearSortBtn = wrapper.findAll('button').find((b) => b.text().includes('Year'))
+    await yearSortBtn.trigger('click')
+    await yearSortBtn.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('2026')
   })
 })

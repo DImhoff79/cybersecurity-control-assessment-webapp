@@ -126,9 +126,37 @@ describe('QuestionManager', () => {
       questionText: 'Do you review access annually?'
     }))
 
+    const saveMappingBtn = wrapper.findAll('button').find((b) => b.text() === 'Save')
+    await saveMappingBtn.trigger('click')
+    await flushPromises()
+    expect(api.put).toHaveBeenCalledWith('/api/controls/1/questions/11/mapping', expect.any(Object))
+
     const removeMappingBtn = wrapper.findAll('button').find((b) => b.text() === 'Remove')
     await removeMappingBtn.trigger('click')
     await flushPromises()
     expect(api.delete).toHaveBeenCalledWith('/api/controls/1/questions/11')
+  })
+
+  it('filters by owner visibility and search term', async () => {
+    const wrapper = mount(QuestionManager, {
+      global: {
+        stubs: {
+          BsModal: ModalStub,
+          RouterLink: true
+        }
+      }
+    })
+    await flushPromises()
+
+    const ownerFilter = wrapper.find('select.form-select')
+    await ownerFilter.setValue('HIDDEN')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Do you review access annually?')
+
+    await ownerFilter.setValue('ASKED')
+    const search = wrapper.find('input[placeholder="Search question text or control id"]')
+    await search.setValue('access')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Do you review access annually?')
   })
 })

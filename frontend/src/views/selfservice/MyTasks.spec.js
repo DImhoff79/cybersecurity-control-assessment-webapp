@@ -67,4 +67,22 @@ describe('MyTasks', () => {
 
     expect(api.put).toHaveBeenCalledWith('/api/audit-controls/100', { notes: 'Updated notes' })
   })
+
+  it('does not send note update when value is unchanged', async () => {
+    const wrapper = mount(MyTasks, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+    await flushPromises()
+
+    const notes = wrapper.find('tbody textarea')
+    await notes.setValue('Initial notes')
+    await notes.trigger('blur')
+    await flushPromises()
+
+    expect(api.put).not.toHaveBeenCalledWith('/api/audit-controls/100', { notes: 'Initial notes' })
+  })
 })
