@@ -12,7 +12,7 @@
 
           <div v-if="authStore.canAccessAdmin" class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Admin</span>
-            <div class="dropdown-menu border-0 shadow-sm">
+            <div class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
               <router-link v-if="authStore.hasPermission('APPLICATION_MANAGEMENT')" to="/admin/applications" class="dropdown-item">Applications</router-link>
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audits" class="dropdown-item">Audits</router-link>
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
@@ -72,41 +72,36 @@ async function logout() {
 </script>
 
 <style scoped>
+.brand-header {
+  overflow-x: clip;
+}
+
 .dropdown-hover {
   position: relative;
 }
 
 .dropdown-hover > .dropdown-menu {
-  display: block;
+  display: none;
   margin-top: 0;
   position: absolute;
   top: 100%;
-  left: 0;
+  left: auto;
+  right: 0;
   min-width: 12rem;
+  max-width: min(22rem, calc(100vw - 1rem));
   z-index: 1050;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(4px);
-  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
 }
 
 .dropdown-hover:hover > .dropdown-menu {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
+  display: block;
 }
 
 .dropdown-hover:focus-within > .dropdown-menu {
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
+  display: block;
 }
 
 .dropdown-menu-end {
-  right: 0;
-  left: auto;
+  right: 0 !important;
+  left: auto !important;
 }
 </style>
