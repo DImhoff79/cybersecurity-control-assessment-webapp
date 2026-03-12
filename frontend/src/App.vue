@@ -75,7 +75,7 @@
 
 <script setup>
 import api from './services/api'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useAuthStore } from './stores/auth'
 import AppToasts from './components/AppToasts.vue'
 
@@ -83,9 +83,9 @@ const authStore = useAuthStore()
 const notifications = ref([])
 const unreadCount = ref(0)
 
-onMounted(() => {
-  authStore.fetchUser()
-  loadNotifications()
+onMounted(async () => {
+  await authStore.fetchUser()
+  await loadNotifications()
 })
 
 async function logout() {
@@ -112,6 +112,18 @@ async function loadNotifications() {
     unreadCount.value = 0
   }
 }
+
+watch(
+  () => authStore.user?.id,
+  async (userId) => {
+    if (userId) {
+      await loadNotifications()
+    } else {
+      notifications.value = []
+      unreadCount.value = 0
+    }
+  }
+)
 
 async function markRead(notificationId) {
   try {

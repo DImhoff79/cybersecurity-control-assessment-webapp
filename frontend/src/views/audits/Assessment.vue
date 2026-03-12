@@ -146,9 +146,14 @@
                     <div class="text-muted">Expires: {{ formatDateTime(ev.expiresAt) }}</div>
                     <div class="text-muted">Retention: {{ formatDateTime(ev.retentionUntil) }}</div>
                     <div class="mt-1">
-                      <a v-if="ev.uri" :href="ev.uri" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm me-1">
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm me-1"
+                        :disabled="!ev.uri || ev.lifecycleStatus === 'DISPOSED'"
+                        @click="downloadEvidence(ev)"
+                      >
                         Download
-                      </a>
+                      </button>
                       <button class="btn btn-outline-success btn-sm me-1" @click="reviewEvidence(ac, ev, 'ACCEPTED')" :disabled="ev.reviewStatus === 'ACCEPTED'">
                         Accept
                       </button>
@@ -453,6 +458,35 @@ async function uploadEvidence(ac) {
     toastSuccess('Evidence file uploaded.')
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to upload evidence file')
+  }
+}
+
+async function downloadEvidence(evidence) {
+  if (!evidence?.uri || evidence.lifecycleStatus === 'DISPOSED') {
+    toastWarning('Disposed evidence is no longer downloadable.')
+    return
+  }
+  try {
+    const cred = localStorage.getItem('auth_credentials')
+    const response = await fetch(evidence.uri, {
+      method: 'GET',
+      credentials: 'include',
+      headers: cred ? { Authorization: `Basic ${cred}` } : {}
+    })
+    if (!response.ok) {
+      throw new Error(`Download failed (${response.status})`)
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = evidence.fileName || evidence.title || 'evidence.bin'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to download evidence')
   }
 }
 

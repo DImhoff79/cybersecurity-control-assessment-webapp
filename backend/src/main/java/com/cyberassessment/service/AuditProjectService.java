@@ -64,8 +64,8 @@ public class AuditProjectService {
 
     @Transactional
     public AuditProjectDto create(String name, String frameworkTag, Integer year, String notes, Instant startsAt, Instant dueAt, List<Long> applicationIds) {
-        if (!currentUserService.isAuditManager()) {
-            throw new IllegalArgumentException("Only AUDIT_MANAGER can create audit projects");
+        if (!currentUserService.isAdminOrAuditManager()) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can create audit projects");
         }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name is required");
@@ -121,8 +121,8 @@ public class AuditProjectService {
 
     @Transactional
     public AuditProjectDto update(Long projectId, String name, String frameworkTag, Integer year, String notes, Instant startsAt, Instant dueAt, List<Long> applicationIds) {
-        if (!currentUserService.isAuditManager()) {
-            throw new IllegalArgumentException("Only AUDIT_MANAGER can edit audit projects");
+        if (!currentUserService.isAdminOrAuditManager()) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can edit audit projects");
         }
         AuditProject project = auditProjectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Audit project not found"));
@@ -167,8 +167,8 @@ public class AuditProjectService {
 
     @Transactional
     public void delete(Long projectId) {
-        if (!currentUserService.isAuditManager()) {
-            throw new IllegalArgumentException("Only AUDIT_MANAGER can delete audit projects");
+        if (!currentUserService.isAdminOrAuditManager()) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can delete audit projects");
         }
         AuditProject project = auditProjectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Audit project not found"));

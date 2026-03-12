@@ -35,7 +35,7 @@ public class AuditProjectController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('AUDIT_MANAGER')")
+    @PreAuthorize("@currentUserService.isAdminOrAuditManager()")
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         try {
             String name = body.containsKey("name") ? String.valueOf(body.get("name")) : null;
@@ -61,7 +61,7 @@ public class AuditProjectController {
     }
 
     @PutMapping("/{projectId}")
-    @PreAuthorize("hasRole('AUDIT_MANAGER')")
+    @PreAuthorize("@currentUserService.isAdminOrAuditManager()")
     public ResponseEntity<?> update(@PathVariable Long projectId, @RequestBody Map<String, Object> body) {
         try {
             String name = body.containsKey("name") ? (String) body.get("name") : null;
@@ -87,7 +87,7 @@ public class AuditProjectController {
     }
 
     @DeleteMapping("/{projectId}")
-    @PreAuthorize("hasRole('AUDIT_MANAGER')")
+    @PreAuthorize("@currentUserService.isAdminOrAuditManager()")
     public ResponseEntity<?> delete(@PathVariable Long projectId) {
         try {
             auditProjectService.delete(projectId);

@@ -163,7 +163,7 @@ class AuditProjectServiceIntegrationTest {
                 null,
                 List.of(app.getId())
         )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Only AUDIT_MANAGER");
+                .hasMessageContaining("Only ADMIN or AUDIT_MANAGER");
     }
 
     private void authenticate(String email) {

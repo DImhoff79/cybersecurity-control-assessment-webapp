@@ -57,6 +57,12 @@ public class CurrentUserService {
                 .orElse(false);
     }
 
+    public boolean isAdminOrAuditManager() {
+        return getCurrentUser()
+                .map(u -> u.getRole() == UserRole.ADMIN || u.getRole() == UserRole.AUDIT_MANAGER)
+                .orElse(false);
+    }
+
     public boolean hasPermission(UserPermission permission) {
         if (permission == null) {
             return false;

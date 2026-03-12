@@ -201,8 +201,14 @@
                   </td>
                   <td>{{ formatDateTime(e.createdAt) }}</td>
                   <td>
-                    <a v-if="e.uri" :href="e.uri" target="_blank" rel="noopener noreferrer">Download</a>
-                    <span v-else>-</span>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                      :disabled="!e.uri || e.lifecycleStatus === 'DISPOSED'"
+                      @click="downloadEvidence(e)"
+                    >
+                      Download
+                    </button>
                   </td>
                   <td class="text-nowrap">
                     <button class="btn btn-outline-success btn-sm me-2" @click="reviewEvidence(e.evidenceId, 'ACCEPTED')">Accept</button>
@@ -412,6 +418,35 @@ async function archiveEvidence(evidenceId) {
     toastSuccess('Evidence archived.')
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to archive evidence')
+  }
+}
+
+async function downloadEvidence(evidence) {
+  if (!evidence?.uri || evidence.lifecycleStatus === 'DISPOSED') {
+    toastError('Disposed evidence is no longer downloadable.')
+    return
+  }
+  try {
+    const cred = localStorage.getItem('auth_credentials')
+    const response = await fetch(evidence.uri, {
+      method: 'GET',
+      credentials: 'include',
+      headers: cred ? { Authorization: `Basic ${cred}` } : {}
+    })
+    if (!response.ok) {
+      throw new Error(`Download failed (${response.status})`)
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = evidence.fileName || evidence.title || 'evidence.bin'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to download evidence')
   }
 }
 
