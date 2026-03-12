@@ -1,9 +1,14 @@
 <template>
   <div>
-    <h1 class="h3 mb-2">Completed Assessments Pending Review</h1>
-    <p class="text-muted mb-3">
-      These assessments were submitted by application owners and are ready for admin validation.
-    </p>
+    <div class="mb-3">
+      <h1 class="h3 mb-1">Completed Assessments Pending Review</h1>
+      <p class="text-muted mb-0">
+        These assessments were submitted by application owners and are ready for admin validation.
+      </p>
+    </div>
+    <div class="small text-muted mb-3">
+      Attest submitted audits before marking them reviewed to preserve the audit trail.
+    </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
     <div v-else-if="!submittedAudits.length" class="card shadow-sm">

@@ -1,8 +1,13 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Triage Hub</h1>
-    <div class="alert alert-info py-2">
-      Use this page to triage active audits and evidence: filter queues, send reminders, attest submitted audits, and review pending evidence from one place.
+    <div class="mb-3">
+      <h1 class="h3 mb-1">Triage Hub</h1>
+      <p class="text-muted mb-0">
+        Triage active audits and evidence from one execution workspace.
+      </p>
+    </div>
+    <div class="small text-muted mb-3">
+      Use saved filters to move quickly between assignment queues, evidence backlogs, and activity traces.
     </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
