@@ -26,9 +26,14 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - Audit projects and kickoff workflows
   - Audit project scope editing with linked-audit reconciliation (add/remove scoped apps)
   - Automatic assignment of project-created audits to each scoped application's owner
+  - Unified admin **Operations Queue** (triage + submitted reviews)
   - Assign/send/remind/attest
   - Self-service owner response flow
   - Task delegation via My Tasks
+- **Workspace UX**:
+  - Admin workspace uses left-sidebar + utility bar layout
+  - Self-service workspace uses the same shell pattern with role-appropriate navigation
+  - Admin workspace access is role-gated to `ADMIN`, `AUDIT_MANAGER`, and `AUDITOR`
 - **Reporting**:
   - Dashboard metrics, trends, per-year/per-project tables
   - CSV/PDF exports
@@ -74,27 +79,32 @@ npm run dev -- --host
 
 1. Start backend, then frontend.
 2. Log in as `admin@example.com` / `admin123`.
-3. Open **Admin -> Applications** to create/manage applications.
-4. Open **Admin -> Questionnaire Builder** to maintain controls and questions.
-5. Open **Admin -> Questionnaire Governance** to create a working snapshot and publish it.
-6. Open **Admin -> Audits** / **Audit Projects** to manage operational audit execution.
+3. Open **Admin Workspace -> Applications** to create/manage applications.
+4. Open **Admin Workspace -> Questionnaire** to maintain controls/questions and governance versions.
+5. Open **Admin Workspace -> Audit Projects** to create projects and scope applications.
+6. Open **Admin Workspace -> Operations Queue** for triage and submitted review workflows.
 
 ## Architecture Overview
 
 ### Frontend (`frontend/src`)
 
 - **Shell and navigation**
-  - `App.vue`: top-level layout, admin dropdowns, account menu
-  - `router/index.js`: route definitions, auth checks, permission/role guards, access-denied redirect
+  - `App.vue`: top-level app shell, self-service workspace layout, notification/account utility actions
+  - `layouts/AdminLayout.vue`: admin workspace shell (left sidebar + top utility bar)
+  - `config/adminNavigation.js`: section-based admin sidebar configuration
+  - `router/index.js`: route definitions, auth checks, permission/role guards, and admin-role access redirects
 - **State and API**
   - `stores/auth.js`: current user session, credentials, permission helpers
   - `services/api.js`: axios client, auth header injection, 401 handling
+  - `composables/useNotificationsMenu.js`: shared notifications menu loading/read interactions
 - **Primary views**
   - `views/admin/UserManagement.vue`: role-driven user administration
-  - `views/admin/QuestionnaireBuilder.vue`: tabs for controls + questions maintenance
-  - `views/admin/QuestionnaireTemplates.vue`: governance workflow, working snapshot lifecycle
+  - `views/admin/QuestionnaireHub.vue`: questionnaire entry point for builder + governance
+  - `views/admin/QuestionnaireBuilder.vue`: controls + questions maintenance
+  - `views/admin/QuestionnaireTemplates.vue`: governance workflow and working snapshot lifecycle
   - `views/admin/KickoffAudit.vue`, `AuditProjects.vue`: audit operations and project scoping
-  - `views/admin/Reports.vue`, `AuditorWorkbench.vue`, `ReviewQueue.vue`: reporting/review surfaces
+  - `views/admin/OperationsQueue.vue`: consolidated triage and submitted reviews
+  - `views/admin/Reports.vue`: reporting and export surfaces
   - `views/selfservice/MyAudits.vue`, `MyTasks.vue`, `AuditRespond.vue`: owner and assignee workflows
 - **Shared UI behavior**
   - `composables/useTableSort.js`: reusable sortable table heading behavior used across tables
@@ -114,7 +124,7 @@ npm run dev -- --host
   - `service/CurrentUserService.java`: centralized role/permission checks used by services
 - **Database migration**
   - `resources/db/migration`: Flyway migrations for schema and data changes
-  - Current local evolution includes governance/user-permission/plain-language refresh migrations through `V19`
+  - Current local evolution includes governance, activity, and production-readiness migrations through `V24`
 
 ## Test Commands
 
