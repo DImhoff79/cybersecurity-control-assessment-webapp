@@ -17,11 +17,8 @@ export const useAuthStore = defineStore('auth', {
       return new Set(state.user?.permissions || [])
     },
     canAccessAdmin(state) {
-      const perms = new Set(state.user?.permissions || [])
-      return perms.has('USER_MANAGEMENT') ||
-        perms.has('APPLICATION_MANAGEMENT') ||
-        perms.has('AUDIT_MANAGEMENT') ||
-        perms.has('REPORT_VIEW')
+      const role = state.user?.role
+      return role === 'ADMIN' || role === 'AUDIT_MANAGER' || role === 'AUDITOR'
     },
     hasPermission(state) {
       const perms = new Set(state.user?.permissions || [])

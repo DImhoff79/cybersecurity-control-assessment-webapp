@@ -122,6 +122,7 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'Login' })
   }
   if (to.path === '/admin') {
+    if (!authStore.canAccessAdmin) return next('/my-audits')
     if (authStore.hasPermission('REPORT_VIEW')) return next('/admin/operations')
     if (authStore.hasPermission('AUDIT_MANAGEMENT')) return next('/admin/audit-projects')
     if (authStore.hasPermission('APPLICATION_MANAGEMENT')) return next('/admin/applications')
