@@ -1,6 +1,11 @@
 <template>
   <div>
-    <h1 v-if="!embedded" class="h3 mb-3">Question Manager</h1>
+    <div v-if="!embedded" class="mb-3">
+      <h1 class="h3 mb-1">Question Manager</h1>
+      <p class="text-muted mb-0">
+        Manage plain-language questions and owner visibility for mapped controls.
+      </p>
+    </div>
     <div v-if="!embedded && cameFromGovernance" class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div class="small">
         You are editing questions as part of the questionnaire governance workflow.
@@ -13,6 +18,9 @@
           Back to Governance
         </router-link>
       </div>
+    </div>
+    <div v-if="!embedded" class="small text-muted mb-3">
+      Tip: use owner visibility filters to keep owner questionnaires focused and readable.
     </div>
 
     <div class="card shadow-sm mb-3">

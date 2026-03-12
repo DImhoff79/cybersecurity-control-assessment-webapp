@@ -1,6 +1,11 @@
 <template>
   <div>
-    <h1 v-if="!embedded" class="h3 mb-3">Control catalog</h1>
+    <div v-if="!embedded" class="mb-3">
+      <h1 class="h3 mb-1">Control Catalog</h1>
+      <p class="text-muted mb-0">
+        Maintain the control library used by questionnaire and audit workflows.
+      </p>
+    </div>
     <div v-if="!embedded && cameFromGovernance" class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div class="small">
         You are editing controls as part of the questionnaire governance workflow.
@@ -13,6 +18,9 @@
           Back to Governance
         </router-link>
       </div>
+    </div>
+    <div v-if="!embedded" class="small text-muted mb-3">
+      Tip: filter by framework and enabled status to curate your active baseline quickly.
     </div>
 
     <div class="card shadow-sm mb-3">

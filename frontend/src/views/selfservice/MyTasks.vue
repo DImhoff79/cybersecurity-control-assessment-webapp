@@ -1,6 +1,14 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">My Tasks</h1>
+    <div class="mb-3">
+      <h1 class="h3 mb-1">My Tasks</h1>
+      <p class="text-muted mb-0">
+        Complete delegated control tasks and keep status/notes up to date for reviewers.
+      </p>
+    </div>
+    <div class="small text-muted mb-3">
+      Notes save when the field loses focus; use Open Task to jump directly into the assessment context.
+    </div>
     <p v-if="!tasks.length && !loading" class="text-muted">No delegated control tasks assigned.</p>
     <div v-else class="card shadow-sm">
       <div class="card-body">

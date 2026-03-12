@@ -1,10 +1,15 @@
 <template>
   <div>
-    <h1 class="h3 mb-1">{{ audit?.applicationName }} - {{ audit?.year }} Assessment</h1>
-    <p v-if="audit" class="text-muted mb-3">
-      Status: {{ statusLabel(audit.status) }} | Progress: {{ completionPct }}%
-      <span v-if="audit.dueAt"> | Due: {{ new Date(audit.dueAt).toLocaleDateString() }}</span>
-    </p>
+    <div class="mb-3">
+      <h1 class="h3 mb-1">{{ audit?.applicationName }} - {{ audit?.year }} Assessment</h1>
+      <p v-if="audit" class="text-muted mb-0">
+        Status: {{ statusLabel(audit.status) }} | Progress: {{ completionPct }}%
+        <span v-if="audit.dueAt"> | Due: {{ new Date(audit.dueAt).toLocaleDateString() }}</span>
+      </p>
+    </div>
+    <div class="small text-muted mb-3">
+      Work through each step, save drafts often, and submit once all required responses are complete.
+    </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
     <div v-else-if="totalSteps === 0" class="card shadow-sm">
@@ -95,9 +100,12 @@
         </div>
       </div>
 
-      <div class="d-flex gap-2 flex-wrap">
-        <button type="button" class="btn btn-secondary" :disabled="saving || !canGoBack" @click="goBack">Back</button>
-        <button type="button" class="btn btn-secondary" :disabled="saving" @click="saveDraft">Save draft</button>
+      <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-secondary" :disabled="saving || !canGoBack" @click="goBack">Back</button>
+          <button type="button" class="btn btn-outline-secondary" :disabled="saving" @click="saveDraft">Save draft</button>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
 
         <button
           v-if="currentStage === 'human' && (!isLastHumanStep || additionalControls.length > 0)"
@@ -128,6 +136,7 @@
         >
           Submit assessment for review
         </button>
+        </div>
       </div>
     </div>
   </div>

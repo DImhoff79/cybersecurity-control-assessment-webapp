@@ -1,8 +1,15 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Audit Projects</h1>
-    <div class="alert alert-info py-2">
-      Create a point-in-time audit project (for example, PCI 2026), choose all in-scope applications, and automatically create linked audits for the selected scope.
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">Audit Projects</h1>
+        <p class="text-muted mb-0">
+          Create a point-in-time project, scope applications, and generate linked audits in one workflow.
+        </p>
+      </div>
+    </div>
+    <div class="small text-muted mb-3">
+      Example: create <strong>PCI 2026</strong>, scope all in-scope apps, then track progress across one project record.
     </div>
 
     <section class="card shadow-sm mb-3" v-if="canManageProjects">

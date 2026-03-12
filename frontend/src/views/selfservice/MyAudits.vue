@@ -1,6 +1,14 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">My Audits</h1>
+    <div class="mb-3">
+      <h1 class="h3 mb-1">My Audits</h1>
+      <p class="text-muted mb-0">
+        Track assigned assessments, completion progress, and next actions.
+      </p>
+    </div>
+    <div class="small text-muted mb-3">
+      Start or resume any in-progress audit, then submit when all sections are complete.
+    </div>
     <p v-if="!items.length && !loading" class="text-muted">No audits assigned to you.</p>
     <div v-else class="card shadow-sm">
       <div class="card-body">

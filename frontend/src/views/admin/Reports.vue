@@ -1,9 +1,19 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Audit Program Reports</h1>
-    <div class="d-flex gap-2 mb-3">
-      <button class="btn btn-outline-primary btn-sm" @click="downloadAuditsCsv">Export Audits CSV</button>
-      <button class="btn btn-primary btn-sm" @click="downloadBoardPackPdf">Export Board Pack PDF</button>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">Audit Program Reports</h1>
+        <p class="text-muted mb-0">
+          Monitor outcomes, export reports, and manage scheduled distribution.
+        </p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-primary btn-sm" @click="downloadAuditsCsv">Export Audits CSV</button>
+        <button class="btn btn-primary btn-sm" @click="downloadBoardPackPdf">Export Board Pack PDF</button>
+      </div>
+    </div>
+    <div class="small text-muted mb-3">
+      Use Scheduled Exports for recurring distribution and one-time exports for ad hoc requests.
     </div>
     <div class="card shadow-sm mb-3">
       <div class="card-body">
@@ -133,7 +143,7 @@
           </div>
         </div>
       </div>
-      <div class="card shadow-sm mt-3">
+      <div class="card shadow-sm mb-3">
         <div class="card-body">
           <h2 class="h5 mb-3">By Audit Project</h2>
           <div class="table-responsive">

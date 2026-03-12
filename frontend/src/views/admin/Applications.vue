@@ -1,9 +1,19 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Applications</h1>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">Applications</h1>
+        <p class="text-muted mb-0">
+          Manage the application inventory, ownership, and lifecycle metadata used across audits.
+        </p>
+      </div>
+      <button class="btn btn-primary btn-sm" @click="openModal()">Add application</button>
+    </div>
     <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <button class="btn btn-primary mb-3" @click="openModal()">Add application</button>
+        <div class="small text-muted mb-3">
+          Tip: keep owner and lifecycle values current so assignments and reporting stay accurate.
+        </div>
         <div class="table-responsive">
           <table class="table table-striped table-hover align-middle mb-0">
             <thead>

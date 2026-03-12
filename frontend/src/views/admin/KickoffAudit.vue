@@ -1,6 +1,13 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Audits</h1>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h1 class="h3 mb-1">Audits</h1>
+        <p class="text-muted mb-0">
+          Manage assignments, reminders, attestations, and completion across audit history.
+        </p>
+      </div>
+    </div>
 
     <section class="card shadow-sm mb-3">
       <div class="card-body">
@@ -17,6 +24,9 @@
     <section class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Audit history by application</h2>
+        <div class="small text-muted mb-3">
+          Select multiple rows to run bulk assignment actions.
+        </div>
         <div class="row g-2 mb-3">
           <div class="col-md-4">
             <label class="form-label small mb-1">Filter by project</label>
