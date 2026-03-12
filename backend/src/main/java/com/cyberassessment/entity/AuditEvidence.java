@@ -68,6 +68,28 @@ public class AuditEvidence {
     private Instant expiresAt;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "lifecycle_status", nullable = false, length = 40)
+    @Builder.Default
+    private EvidenceLifecycleStatus lifecycleStatus = EvidenceLifecycleStatus.ACTIVE;
+
+    @Column(name = "evidence_version", nullable = false)
+    @Builder.Default
+    private Integer version = 1;
+
+    @Column(name = "retention_until")
+    private Instant retentionUntil;
+
+    @Column(name = "legal_hold", nullable = false)
+    @Builder.Default
+    private Boolean legalHold = false;
+
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    @Column(name = "disposed_at")
+    private Instant disposedAt;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false)
     @Builder.Default
     private EvidenceReviewStatus reviewStatus = EvidenceReviewStatus.PENDING;

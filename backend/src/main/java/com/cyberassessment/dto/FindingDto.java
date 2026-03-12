@@ -32,6 +32,7 @@ public class FindingDto {
     private Instant resolvedAt;
     private Instant reminderSentAt;
     private Instant escalatedAt;
+    private String slaState;
     private Instant createdAt;
     private Instant updatedAt;
 }

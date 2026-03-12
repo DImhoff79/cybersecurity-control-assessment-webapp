@@ -177,6 +177,7 @@
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('fileName')">File {{ evidenceSortIndicator('fileName') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('notes')">Description {{ evidenceSortIndicator('notes') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('expiresAt')">Expires {{ evidenceSortIndicator('expiresAt') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('lifecycleStatus')">Lifecycle {{ evidenceSortIndicator('lifecycleStatus') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('createdAt')">Created {{ evidenceSortIndicator('createdAt') }}</button></th>
                   <th>Download</th>
                   <th></th>
@@ -194,6 +195,10 @@
                     <span v-if="e.stale" class="badge text-bg-danger me-1">Stale</span>
                     {{ formatDateTime(e.expiresAt) }}
                   </td>
+                  <td>
+                    <span class="badge text-bg-light border me-1">{{ e.lifecycleStatus || 'ACTIVE' }}</span>
+                    <span v-if="e.legalHold" class="badge text-bg-dark">Legal Hold</span>
+                  </td>
                   <td>{{ formatDateTime(e.createdAt) }}</td>
                   <td>
                     <a v-if="e.uri" :href="e.uri" target="_blank" rel="noopener noreferrer">Download</a>
@@ -202,10 +207,17 @@
                   <td class="text-nowrap">
                     <button class="btn btn-outline-success btn-sm me-2" @click="reviewEvidence(e.evidenceId, 'ACCEPTED')">Accept</button>
                     <button class="btn btn-outline-danger btn-sm" @click="reviewEvidence(e.evidenceId, 'REJECTED')">Reject</button>
+                    <button
+                      class="btn btn-outline-secondary btn-sm ms-2"
+                      :disabled="e.lifecycleStatus === 'ARCHIVED' || e.lifecycleStatus === 'DISPOSED' || e.legalHold"
+                      @click="archiveEvidence(e.evidenceId)"
+                    >
+                      Archive
+                    </button>
                   </td>
                 </tr>
                 <tr v-if="!sortedEvidence.length">
-                  <td colspan="10" class="text-muted text-center py-3">No evidence items match current filters.</td>
+                  <td colspan="11" class="text-muted text-center py-3">No evidence items match current filters.</td>
                 </tr>
               </tbody>
             </table>
@@ -390,6 +402,16 @@ async function reviewEvidence(evidenceId, reviewStatus) {
     toastSuccess(`Evidence ${reviewStatus === 'ACCEPTED' ? 'accepted' : 'rejected'}.`)
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to review evidence')
+  }
+}
+
+async function archiveEvidence(evidenceId) {
+  try {
+    await api.put(`/api/evidences/${evidenceId}/lifecycle/archive`)
+    await load()
+    toastSuccess('Evidence archived.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to archive evidence')
   }
 }
 

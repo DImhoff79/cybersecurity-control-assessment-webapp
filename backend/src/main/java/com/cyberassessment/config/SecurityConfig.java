@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -28,6 +29,8 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
     private final OAuth2LoginHandlers oAuth2LoginHandlers;
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
+    @Value("${app.auth.allow-basic:true}")
+    private boolean allowBasicAuth;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -39,8 +42,10 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
-                )
-                .httpBasic(basic -> {});
+                );
+        if (allowBasicAuth) {
+            http.httpBasic(basic -> {});
+        }
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
             http.oauth2Login(oauth -> oauth
                     .successHandler(oAuth2LoginHandlers)

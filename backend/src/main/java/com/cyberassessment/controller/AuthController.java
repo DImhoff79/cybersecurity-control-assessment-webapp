@@ -5,6 +5,7 @@ import com.cyberassessment.service.CurrentUserService;
 import com.cyberassessment.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -25,6 +26,10 @@ public class AuthController {
     private final CurrentUserService currentUserService;
     private final UserService userService;
     private final org.springframework.beans.factory.ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
+    @Value("${app.auth.allow-basic:true}")
+    private boolean allowBasicAuth;
+    @Value("${app.auth.mode:mixed}")
+    private String authMode;
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> me() {
@@ -46,6 +51,10 @@ public class AuthController {
             }
         }
         return Map.of(
+                "authMode", authMode,
+                "basic", Map.of(
+                        "enabled", allowBasicAuth
+                ),
                 "google", Map.of(
                         "enabled", registered.contains("google"),
                         "url", "/oauth2/authorization/google"

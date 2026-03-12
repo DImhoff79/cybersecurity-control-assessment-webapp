@@ -146,6 +146,27 @@ public class ControlExceptionService {
                 .requestedAt(row.getRequestedAt())
                 .decidedAt(row.getDecidedAt())
                 .expiresAt(row.getExpiresAt())
+                .slaState(computeSlaState(row))
                 .build();
+    }
+
+    private static String computeSlaState(ControlExceptionRequest row) {
+        Instant now = Instant.now();
+        if (row.getStatus() == ControlExceptionStatus.EXPIRED) {
+            return "BREACHED";
+        }
+        if (row.getStatus() == ControlExceptionStatus.REQUESTED) {
+            return "PENDING_DECISION";
+        }
+        if (row.getExpiresAt() == null) {
+            return "NO_EXPIRY";
+        }
+        if (row.getExpiresAt().isBefore(now)) {
+            return "BREACHED";
+        }
+        if (row.getExpiresAt().isBefore(now.plusSeconds(7 * 24 * 60 * 60L))) {
+            return "AT_RISK";
+        }
+        return "ON_TRACK";
     }
 }

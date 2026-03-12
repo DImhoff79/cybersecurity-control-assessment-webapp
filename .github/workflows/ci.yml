@@ -26,6 +26,9 @@ jobs:
         with:
           name: backend-jacoco-report
           path: backend/target/site/jacoco
+      - name: Verify backend coverage report exists
+        run: |
+          if (!(Test-Path "backend/target/site/jacoco/index.html")) { throw "Missing backend coverage report" }
 
   frontend:
     runs-on: windows-latest
@@ -53,3 +56,11 @@ jobs:
         with:
           name: frontend-coverage-report
           path: frontend/coverage
+      - name: Verify frontend coverage report exists
+        run: |
+          if (!(Test-Path "frontend/coverage/index.html")) { throw "Missing frontend coverage report" }
+      - name: Upload ops runbook artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ops-runbook
+          path: docs/ops-runbook.md

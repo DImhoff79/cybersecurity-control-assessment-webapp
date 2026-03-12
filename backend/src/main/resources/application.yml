@@ -65,6 +65,10 @@ management:
 
 # CORS allowed origins (Vue dev server)
 app:
+  auth:
+    mode: ${APP_AUTH_MODE:mixed}
+    allow-basic: ${APP_AUTH_ALLOW_BASIC:true}
+    seed-local-users: ${APP_AUTH_SEED_LOCAL_USERS:true}
   cors-allowed-origins: http://localhost:5173,http://localhost:3000
   frontend-base-url: http://localhost:5173
   evidence-storage-path: ./data/evidence
@@ -76,6 +80,8 @@ app:
     default-valid-days: 365
     retention-days: 365
     reminder-days-before-expiry: 14
+    archive-grace-days: 30
+    disposal-grace-days: 30
   automation:
     enabled: true
     reminder-days-before-due: 3

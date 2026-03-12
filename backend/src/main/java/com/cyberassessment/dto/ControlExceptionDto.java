@@ -33,4 +33,5 @@ public class ControlExceptionDto {
     private Instant requestedAt;
     private Instant decidedAt;
     private Instant expiresAt;
+    private String slaState;
 }

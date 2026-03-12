@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -19,8 +19,15 @@ public class DataLoader implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.auth.seed-local-users:true}")
+    private boolean seedLocalUsers;
+
     @Override
     public void run(ApplicationArguments args) {
+        if (!seedLocalUsers) {
+            log.info("Skipping local default user seeding (app.auth.seed-local-users=false)");
+            return;
+        }
         ensureDefaultUser("admin@example.com", "admin123", "System Administrator", UserRole.ADMIN);
         ensureDefaultUser("owner@example.com", "owner123", "Sample Application Owner", UserRole.APPLICATION_OWNER);
         ensureDefaultUser("auditor@example.com", "auditor123", "Sample Auditor", UserRole.AUDITOR);

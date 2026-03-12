@@ -11,6 +11,7 @@ import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.AuditEvidenceRepository;
 import com.cyberassessment.repository.AuditRepository;
 import com.cyberassessment.repository.FindingRepository;
+import com.cyberassessment.repository.NotificationRepository;
 import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,9 @@ public class AuditAutomationService {
     private final AuditActivityLogService auditActivityLogService;
     private final AsyncMailService asyncMailService;
     private final JdbcTemplate jdbcTemplate;
+    private final AuditEvidenceService auditEvidenceService;
+    private final ReportScheduleService reportScheduleService;
+    private final NotificationRepository notificationRepository;
 
     @Value("${app.automation.enabled:true}")
     private boolean enabled;
@@ -91,6 +95,9 @@ public class AuditAutomationService {
         auditRepository.saveAll(audits);
         runDailyRemediationEscalation(now);
         runDailyEvidenceRetentionAutomation(now);
+        auditEvidenceService.applyLifecycleAutomation(now);
+        reportScheduleService.runDueSchedules(now);
+        runDailyNotificationDigest(now);
     }
 
     private boolean tryAcquireExecutionLock() {
@@ -259,6 +266,34 @@ public class AuditAutomationService {
             asyncMailService.send(msg);
         } catch (Exception e) {
             log.warn("Failed to send evidence expiry reminder for audit {}", audit.getId(), e);
+        }
+    }
+
+    private void runDailyNotificationDigest(Instant now) {
+        List<User> allUsers = userRepository.findAll();
+        for (User user : allUsers) {
+            List<com.cyberassessment.entity.Notification> unread = notificationRepository.findByUserIdAndReadAtIsNullOrderByCreatedAtDesc(user.getId())
+                    .stream()
+                    .filter(n -> n.getDigestSentAt() == null)
+                    .limit(20)
+                    .toList();
+            if (unread.isEmpty()) {
+                continue;
+            }
+            try {
+                StringBuilder body = new StringBuilder("You have " + unread.size() + " unread assessment notifications:\n\n");
+                unread.forEach(n -> body.append("- [").append(n.getCategory()).append("] ")
+                        .append(n.getTitle()).append(": ").append(n.getMessage()).append("\n"));
+                SimpleMailMessage msg = new SimpleMailMessage();
+                msg.setTo(user.getEmail());
+                msg.setSubject("Daily assessment digest");
+                msg.setText(body.toString());
+                asyncMailService.send(msg);
+                unread.forEach(n -> n.setDigestSentAt(now));
+                notificationRepository.saveAll(unread);
+            } catch (Exception e) {
+                log.warn("Failed sending digest for user {}", user.getId(), e);
+            }
         }
     }
 }

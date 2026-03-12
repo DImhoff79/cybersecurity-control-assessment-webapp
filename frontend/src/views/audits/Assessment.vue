@@ -138,10 +138,13 @@
                       <strong>{{ ev.fileName || ev.title }}</strong>
                       <span v-if="ev.stale" class="badge text-bg-danger ms-1">Stale</span>
                       <span v-else-if="ev.expiresAt" class="badge text-bg-light border ms-1">Fresh</span>
+                      <span class="badge text-bg-light border ms-1">{{ ev.lifecycleStatus || 'ACTIVE' }}</span>
+                      <span v-if="ev.legalHold" class="badge text-bg-dark ms-1">Legal Hold</span>
                     </div>
                     <div class="text-muted">{{ ev.notes || '-' }}</div>
                     <div class="text-muted">Review: {{ ev.reviewStatus }}</div>
                     <div class="text-muted">Expires: {{ formatDateTime(ev.expiresAt) }}</div>
+                    <div class="text-muted">Retention: {{ formatDateTime(ev.retentionUntil) }}</div>
                     <div class="mt-1">
                       <a v-if="ev.uri" :href="ev.uri" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm me-1">
                         Download
@@ -151,6 +154,25 @@
                       </button>
                       <button class="btn btn-outline-danger btn-sm" @click="reviewEvidence(ac, ev, 'REJECTED')" :disabled="ev.reviewStatus === 'REJECTED'">
                         Reject
+                      </button>
+                    </div>
+                    <div class="mt-1">
+                      <button class="btn btn-outline-dark btn-sm me-1" @click="toggleLegalHold(ac, ev, !ev.legalHold)">
+                        {{ ev.legalHold ? 'Release Hold' : 'Legal Hold' }}
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary btn-sm me-1"
+                        @click="archiveEvidence(ac, ev)"
+                        :disabled="ev.lifecycleStatus === 'ARCHIVED' || ev.lifecycleStatus === 'DISPOSED' || ev.legalHold"
+                      >
+                        Archive
+                      </button>
+                      <button
+                        class="btn btn-outline-danger btn-sm"
+                        @click="disposeEvidence(ac, ev)"
+                        :disabled="ev.lifecycleStatus !== 'ARCHIVED' || ev.legalHold"
+                      >
+                        Dispose
                       </button>
                     </div>
                   </div>
@@ -364,6 +386,40 @@ async function reviewEvidence(ac, evidence, reviewStatus) {
     toastSuccess(`Evidence ${reviewStatus === 'ACCEPTED' ? 'accepted' : 'rejected'}.`)
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to review evidence')
+  }
+}
+
+async function toggleLegalHold(ac, evidence, legalHold) {
+  try {
+    await api.put(`/api/evidences/${evidence.id}/lifecycle/legal-hold`, { legalHold })
+    await reloadAuditControl(ac.id)
+    await loadActivityLogs()
+    toastSuccess(legalHold ? 'Legal hold enabled.' : 'Legal hold released.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to update legal hold')
+  }
+}
+
+async function archiveEvidence(ac, evidence) {
+  try {
+    await api.put(`/api/evidences/${evidence.id}/lifecycle/archive`)
+    await reloadAuditControl(ac.id)
+    await loadActivityLogs()
+    toastSuccess('Evidence archived.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to archive evidence')
+  }
+}
+
+async function disposeEvidence(ac, evidence) {
+  if (!confirm('Dispose this evidence? File content will be removed.')) return
+  try {
+    await api.put(`/api/evidences/${evidence.id}/lifecycle/dispose`)
+    await reloadAuditControl(ac.id)
+    await loadActivityLogs()
+    toastSuccess('Evidence disposed.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to dispose evidence')
   }
 }
 

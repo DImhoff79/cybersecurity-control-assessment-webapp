@@ -1,6 +1,7 @@
 package com.cyberassessment.dto;
 
 import com.cyberassessment.entity.EvidenceReviewStatus;
+import com.cyberassessment.entity.EvidenceLifecycleStatus;
 import com.cyberassessment.entity.EvidenceType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,5 +33,8 @@ public class AuditorEvidenceItemDto {
     private String notes;
     private Instant expiresAt;
     private Boolean stale;
+    private EvidenceLifecycleStatus lifecycleStatus;
+    private Boolean legalHold;
+    private Instant retentionUntil;
     private Instant createdAt;
 }

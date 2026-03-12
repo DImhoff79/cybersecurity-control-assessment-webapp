@@ -7,7 +7,7 @@
             <h1 class="h4 mb-2">Cybersecurity Control Assessment</h1>
             <p class="text-muted mb-4">Sign in to continue</p>
             <div v-if="oauthInfo" class="alert alert-info py-2">{{ oauthInfo }}</div>
-            <form @submit.prevent="submit">
+            <form v-if="providers.basic?.enabled" @submit.prevent="submit">
               <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input id="email" v-model="email" type="email" required autocomplete="username" class="form-control" />
@@ -19,6 +19,9 @@
               <div v-if="error" class="alert alert-danger py-2">{{ error }}</div>
               <button type="submit" class="btn btn-primary w-100" :disabled="loading">Sign in</button>
             </form>
+            <div v-else class="alert alert-secondary py-2 mb-0">
+              Local email/password sign-in is disabled for this environment.
+            </div>
             <hr class="my-4" />
             <div class="d-grid gap-2">
               <button
@@ -63,6 +66,8 @@ const error = ref('')
 const loading = ref(false)
 const oauthInfo = ref('')
 const providers = ref({
+  authMode: 'mixed',
+  basic: { enabled: true },
   google: { enabled: false, url: '/oauth2/authorization/google' },
   facebook: { enabled: false, url: '/oauth2/authorization/facebook' }
 })

@@ -54,6 +54,25 @@ public class AuditEvidenceController {
         return ResponseEntity.ok(updated);
     }
 
+    @PutMapping("/evidences/{evidenceId}/lifecycle/legal-hold")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    public ResponseEntity<AuditEvidenceDto> setLegalHold(@PathVariable Long evidenceId, @RequestBody Map<String, Object> body) {
+        boolean legalHold = body.get("legalHold") != null && Boolean.TRUE.equals(body.get("legalHold"));
+        return ResponseEntity.ok(auditEvidenceService.setLegalHold(evidenceId, legalHold));
+    }
+
+    @PutMapping("/evidences/{evidenceId}/lifecycle/archive")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    public ResponseEntity<AuditEvidenceDto> archive(@PathVariable Long evidenceId) {
+        return ResponseEntity.ok(auditEvidenceService.archive(evidenceId));
+    }
+
+    @PutMapping("/evidences/{evidenceId}/lifecycle/dispose")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    public ResponseEntity<AuditEvidenceDto> dispose(@PathVariable Long evidenceId) {
+        return ResponseEntity.ok(auditEvidenceService.dispose(evidenceId));
+    }
+
     @GetMapping("/evidences/{evidenceId}/download")
     public ResponseEntity<Resource> download(@PathVariable Long evidenceId) {
         Resource resource = auditEvidenceService.loadEvidenceFile(evidenceId);

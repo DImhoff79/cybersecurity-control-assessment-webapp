@@ -34,6 +34,7 @@
                 <th>Application</th>
                 <th>Control</th>
                 <th>Status</th>
+                <th>SLA</th>
                 <th>Requested by</th>
                 <th>Expires</th>
                 <th>Reason</th>
@@ -45,6 +46,7 @@
                 <td>{{ item.applicationName }} ({{ item.auditYear }})</td>
                 <td>{{ item.controlId ? `${item.controlId} - ${item.controlName}` : 'General exception' }}</td>
                 <td><span class="badge" :class="statusClass(item.status)">{{ item.status }}</span></td>
+                <td><span class="badge" :class="slaClass(item.slaState)">{{ item.slaState || '-' }}</span></td>
                 <td>{{ item.requestedByDisplayName || item.requestedByEmail || '-' }}</td>
                 <td>{{ formatDate(item.expiresAt) }}</td>
                 <td class="small">
@@ -257,6 +259,15 @@ function statusClass(status) {
     case 'REJECTED': return 'text-bg-danger'
     case 'EXPIRED': return 'text-bg-secondary'
     default: return 'text-bg-warning'
+  }
+}
+
+function slaClass(state) {
+  switch (state) {
+    case 'BREACHED': return 'text-bg-danger'
+    case 'AT_RISK': return 'text-bg-warning'
+    case 'ON_TRACK': return 'text-bg-success'
+    default: return 'text-bg-secondary'
   }
 }
 </script>

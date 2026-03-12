@@ -35,6 +35,7 @@
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('title')">Title {{ sortIndicator('title') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('severity')">Severity {{ sortIndicator('severity') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('slaState')">SLA {{ sortIndicator('slaState') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
                 <th></th>
@@ -52,6 +53,9 @@
                 </td>
                 <td>
                   <span class="badge" :class="statusClass(finding.status)">{{ finding.status }}</span>
+                </td>
+                <td>
+                  <span class="badge" :class="slaClass(finding.slaState)">{{ finding.slaState || '-' }}</span>
                 </td>
                 <td>{{ finding.ownerDisplayName || finding.ownerEmail || '-' }}</td>
                 <td>{{ formatDate(finding.dueAt) }}</td>
@@ -295,6 +299,16 @@ function statusClass(status) {
     case 'RESOLVED': return 'text-bg-success'
     case 'IN_PROGRESS': return 'text-bg-warning'
     case 'ACCEPTED_RISK': return 'text-bg-info'
+    default: return 'text-bg-secondary'
+  }
+}
+
+function slaClass(state) {
+  switch (state) {
+    case 'BREACHED': return 'text-bg-danger'
+    case 'AT_RISK': return 'text-bg-warning'
+    case 'ON_TRACK': return 'text-bg-success'
+    case 'RESOLVED': return 'text-bg-primary'
     default: return 'text-bg-secondary'
   }
 }

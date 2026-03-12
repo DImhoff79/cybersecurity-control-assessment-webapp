@@ -153,8 +153,27 @@ public class FindingService {
                 .resolvedAt(finding.getResolvedAt())
                 .reminderSentAt(finding.getReminderSentAt())
                 .escalatedAt(finding.getEscalatedAt())
+                .slaState(computeSlaState(finding))
                 .createdAt(finding.getCreatedAt())
                 .updatedAt(finding.getUpdatedAt())
                 .build();
+    }
+
+    private static String computeSlaState(Finding finding) {
+        if (finding.getStatus() == FindingStatus.RESOLVED) {
+            return "RESOLVED";
+        }
+        if (finding.getDueAt() == null) {
+            return "NO_DUE_DATE";
+        }
+        Instant now = Instant.now();
+        if (finding.getDueAt().isBefore(now)) {
+            return "BREACHED";
+        }
+        Instant atRiskThreshold = now.plusSeconds(3 * 24 * 60 * 60L);
+        if (finding.getDueAt().isBefore(atRiskThreshold)) {
+            return "AT_RISK";
+        }
+        return "ON_TRACK";
     }
 }

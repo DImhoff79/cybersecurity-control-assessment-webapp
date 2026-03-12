@@ -9,6 +9,29 @@
         <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-2">
           <router-link to="/my-audits" class="nav-link text-white px-2">My Audits</router-link>
           <router-link to="/my-tasks" class="nav-link text-white px-2">My Tasks</router-link>
+          <div class="nav-item dropdown-hover">
+            <span class="nav-link text-white px-2 dropdown-toggle">
+              Notifications
+              <span v-if="unreadCount > 0" class="badge text-bg-danger ms-1">{{ unreadCount }}</span>
+            </span>
+            <div class="dropdown-menu dropdown-menu-end border-0 shadow-sm notification-menu">
+              <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <strong class="small">Recent</strong>
+                <button class="btn btn-link btn-sm p-0 text-decoration-none" @click="markAllRead">Mark all read</button>
+              </div>
+              <div v-if="!notifications.length" class="px-3 py-2 small text-muted">No notifications.</div>
+              <button
+                v-for="note in notifications"
+                :key="note.id"
+                type="button"
+                class="dropdown-item small"
+                @click="markRead(note.id)"
+              >
+                <div class="fw-semibold">{{ note.title }}</div>
+                <div class="text-muted">{{ note.message }}</div>
+              </button>
+            </div>
+          </div>
 
           <div v-if="authStore.canAccessAdmin" class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Admin</span>
@@ -52,14 +75,17 @@
 
 <script setup>
 import api from './services/api'
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
 import AppToasts from './components/AppToasts.vue'
 
 const authStore = useAuthStore()
+const notifications = ref([])
+const unreadCount = ref(0)
 
 onMounted(() => {
   authStore.fetchUser()
+  loadNotifications()
 })
 
 async function logout() {
@@ -70,6 +96,39 @@ async function logout() {
   }
   authStore.clearCredentials()
   window.location.href = '/login'
+}
+
+async function loadNotifications() {
+  if (!authStore.hasCredentials) return
+  try {
+    const [itemsRes, unreadRes] = await Promise.all([
+      api.get('/api/notifications'),
+      api.get('/api/notifications/unread-count')
+    ])
+    notifications.value = itemsRes.data || []
+    unreadCount.value = unreadRes.data?.unread || 0
+  } catch {
+    notifications.value = []
+    unreadCount.value = 0
+  }
+}
+
+async function markRead(notificationId) {
+  try {
+    await api.put(`/api/notifications/${notificationId}/read`)
+    await loadNotifications()
+  } catch {
+    // Keep UI resilient.
+  }
+}
+
+async function markAllRead() {
+  try {
+    await api.put('/api/notifications/read-all')
+    await loadNotifications()
+  } catch {
+    // Keep UI resilient.
+  }
 }
 </script>
 
@@ -105,5 +164,11 @@ async function logout() {
 .dropdown-menu-end {
   right: 0 !important;
   left: auto !important;
+}
+
+.notification-menu {
+  width: 24rem;
+  max-height: 24rem;
+  overflow: auto;
 }
 </style>

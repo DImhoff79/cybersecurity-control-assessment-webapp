@@ -1,6 +1,7 @@
 package com.cyberassessment.repository;
 
 import com.cyberassessment.entity.AuditEvidence;
+import com.cyberassessment.entity.EvidenceLifecycleStatus;
 import com.cyberassessment.entity.EvidenceReviewStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -16,4 +17,8 @@ public interface AuditEvidenceRepository extends JpaRepository<AuditEvidence, Lo
     List<AuditEvidence> findByExpiresAtBeforeAndReviewStatusIn(Instant expiresAt, List<EvidenceReviewStatus> statuses);
 
     List<AuditEvidence> findByExpiresAtBefore(Instant expiresAt);
+
+    List<AuditEvidence> findByLifecycleStatusInAndExpiresAtBefore(List<EvidenceLifecycleStatus> statuses, Instant expiresAt);
+
+    List<AuditEvidence> findByLifecycleStatusAndArchivedAtBeforeAndLegalHoldFalse(EvidenceLifecycleStatus lifecycleStatus, Instant archivedAt);
 }

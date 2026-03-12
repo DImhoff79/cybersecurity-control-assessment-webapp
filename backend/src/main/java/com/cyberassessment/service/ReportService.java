@@ -266,6 +266,9 @@ public class ReportService {
                     .notes(e.getNotes())
                     .expiresAt(e.getExpiresAt())
                     .stale(e.getExpiresAt() != null && e.getExpiresAt().isBefore(Instant.now()))
+                    .lifecycleStatus(e.getLifecycleStatus())
+                    .legalHold(e.getLegalHold())
+                    .retentionUntil(e.getRetentionUntil())
                     .createdAt(e.getCreatedAt())
                     .build();
         }).toList();

@@ -189,6 +189,59 @@ class AuditEvidenceServiceIntegrationTest {
         assertThat(stale.getStale()).isTrue();
     }
 
+    @Test
+    void lifecycleAutomationArchivesAndDisposesWhenNotOnLegalHold() {
+        User admin = userRepository.save(User.builder()
+                .email("evidence-admin4@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("evidence-owner4@test.com")
+                .passwordHash("x")
+                .displayName("Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Evidence Lifecycle App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2039);
+        auditService.assign(audit.getId(), owner.getId());
+        auditService.sendToOwner(audit.getId());
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+
+        authenticate(owner.getEmail());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "lifecycle.txt",
+                "text/plain",
+                "lifecycle body".getBytes()
+        );
+        AuditEvidenceDto dto = auditEvidenceService.upload(auditControlId, "Lifecycle description", file);
+
+        authenticate(admin.getEmail());
+        AuditEvidence evidence = auditEvidenceRepository.findById(dto.getId()).orElseThrow();
+        evidence.setExpiresAt(Instant.now().minusSeconds(90L * 24 * 60 * 60));
+        evidence.setArchivedAt(Instant.now().minusSeconds(90L * 24 * 60 * 60));
+        evidence.setLifecycleStatus(EvidenceLifecycleStatus.ARCHIVED);
+        evidence.setLegalHold(false);
+        auditEvidenceRepository.save(evidence);
+
+        auditEvidenceService.applyLifecycleAutomation(Instant.now());
+
+        AuditEvidence disposed = auditEvidenceRepository.findById(dto.getId()).orElseThrow();
+        assertThat(disposed.getLifecycleStatus()).isEqualTo(EvidenceLifecycleStatus.DISPOSED);
+        assertThat(disposed.getDisposedAt()).isNotNull();
+        assertThat(disposed.getFileContent()).isNull();
+    }
+
     private void authenticate(String email) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(email, "x", Collections.emptyList())

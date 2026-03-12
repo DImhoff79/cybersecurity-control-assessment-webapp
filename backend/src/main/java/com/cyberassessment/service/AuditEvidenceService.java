@@ -50,6 +50,12 @@ public class AuditEvidenceService {
     @Value("${app.evidence-policy.default-valid-days:365}")
     private long defaultValidDays;
 
+    @Value("${app.evidence-policy.archive-grace-days:30}")
+    private long archiveGraceDays;
+
+    @Value("${app.evidence-policy.disposal-grace-days:30}")
+    private long disposalGraceDays;
+
     @Value("${app.evidence-storage-mode:db}")
     private String evidenceStorageMode;
 
@@ -70,6 +76,12 @@ public class AuditEvidenceService {
                 .notes(e.getNotes())
                 .collectedAt(e.getCollectedAt())
                 .expiresAt(e.getExpiresAt())
+                .lifecycleStatus(e.getLifecycleStatus())
+                .version(e.getVersion())
+                .retentionUntil(e.getRetentionUntil())
+                .legalHold(e.getLegalHold())
+                .archivedAt(e.getArchivedAt())
+                .disposedAt(e.getDisposedAt())
                 .reviewStatus(e.getReviewStatus())
                 .reviewedByUserId(reviewedBy != null ? reviewedBy.getId() : null)
                 .reviewedByEmail(reviewedBy != null ? reviewedBy.getEmail() : null)
@@ -169,6 +181,10 @@ public class AuditEvidenceService {
                     .fileContent(fileContent)
                     .collectedAt(collectedAt)
                     .expiresAt(expiresAt)
+                    .retentionUntil(collectedAt.plus(retentionDays, ChronoUnit.DAYS))
+                    .lifecycleStatus(EvidenceLifecycleStatus.ACTIVE)
+                    .version(1)
+                    .legalHold(false)
                     .reviewStatus(EvidenceReviewStatus.PENDING)
                     .createdBy(currentUserService.getCurrentUser().orElse(null))
                     .build();
@@ -191,6 +207,136 @@ public class AuditEvidenceService {
             throw new IllegalArgumentException("Evidence does not contain an uploaded file");
         }
         return new ByteArrayResource(evidence.getFileContent());
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
+    public AuditEvidenceDto setLegalHold(Long evidenceId, boolean legalHold) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
+        }
+        AuditEvidence evidence = auditEvidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new IllegalArgumentException("Evidence not found: " + evidenceId));
+        evidence.setLegalHold(legalHold);
+        evidence = auditEvidenceRepository.save(evidence);
+        auditActivityLogService.log(
+                evidence.getAuditControl().getAudit(),
+                legalHold ? AuditActivityType.EVIDENCE_LEGAL_HOLD_ENABLED : AuditActivityType.EVIDENCE_LEGAL_HOLD_DISABLED,
+                "Evidence " + evidence.getId() + (legalHold ? " put on legal hold" : " removed from legal hold")
+        );
+        return toDto(evidence);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
+    public AuditEvidenceDto archive(Long evidenceId) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
+        }
+        AuditEvidence evidence = auditEvidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new IllegalArgumentException("Evidence not found: " + evidenceId));
+        if (Boolean.TRUE.equals(evidence.getLegalHold())) {
+            throw new IllegalArgumentException("Evidence on legal hold cannot be archived");
+        }
+        if (evidence.getLifecycleStatus() == EvidenceLifecycleStatus.DISPOSED) {
+            throw new IllegalArgumentException("Disposed evidence cannot be archived");
+        }
+        if (evidence.getLifecycleStatus() != EvidenceLifecycleStatus.ARCHIVED) {
+            evidence.setLifecycleStatus(EvidenceLifecycleStatus.ARCHIVED);
+            evidence.setArchivedAt(Instant.now());
+            evidence = auditEvidenceRepository.save(evidence);
+            auditActivityLogService.log(
+                    evidence.getAuditControl().getAudit(),
+                    AuditActivityType.EVIDENCE_ARCHIVED,
+                    "Evidence " + evidence.getId() + " archived"
+            );
+        }
+        return toDto(evidence);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = {"reportSummary", "reportByYear", "reportTrends", "reportByProject"}, allEntries = true)
+    public AuditEvidenceDto dispose(Long evidenceId) {
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
+        }
+        AuditEvidence evidence = auditEvidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new IllegalArgumentException("Evidence not found: " + evidenceId));
+        if (Boolean.TRUE.equals(evidence.getLegalHold())) {
+            throw new IllegalArgumentException("Evidence on legal hold cannot be disposed");
+        }
+        if (evidence.getLifecycleStatus() != EvidenceLifecycleStatus.ARCHIVED) {
+            throw new IllegalArgumentException("Only archived evidence can be disposed");
+        }
+        evidence.setLifecycleStatus(EvidenceLifecycleStatus.DISPOSED);
+        evidence.setDisposedAt(Instant.now());
+        evidence.setFileContent(null);
+        evidence = auditEvidenceRepository.save(evidence);
+        auditActivityLogService.log(
+                evidence.getAuditControl().getAudit(),
+                AuditActivityType.EVIDENCE_DISPOSED,
+                "Evidence " + evidence.getId() + " disposed"
+        );
+        return toDto(evidence);
+    }
+
+    @Transactional
+    public void applyLifecycleAutomation(Instant now) {
+        List<AuditEvidence> dueForReview = auditEvidenceRepository.findByLifecycleStatusInAndExpiresAtBefore(
+                List.of(EvidenceLifecycleStatus.ACTIVE),
+                now
+        );
+        for (AuditEvidence evidence : dueForReview) {
+            evidence.setLifecycleStatus(EvidenceLifecycleStatus.REVIEW_DUE);
+            auditActivityLogService.log(
+                    evidence.getAuditControl().getAudit(),
+                    AuditActivityType.EVIDENCE_LIFECYCLE_REVIEW_DUE,
+                    "Evidence " + evidence.getId() + " entered review-due lifecycle state"
+            );
+        }
+
+        Instant archiveCutoff = now.minus(archiveGraceDays, ChronoUnit.DAYS);
+        List<AuditEvidence> dueForArchive = auditEvidenceRepository.findByLifecycleStatusInAndExpiresAtBefore(
+                List.of(EvidenceLifecycleStatus.REVIEW_DUE),
+                archiveCutoff
+        );
+        for (AuditEvidence evidence : dueForArchive) {
+            if (Boolean.TRUE.equals(evidence.getLegalHold())) {
+                continue;
+            }
+            evidence.setLifecycleStatus(EvidenceLifecycleStatus.ARCHIVED);
+            evidence.setArchivedAt(now);
+            auditActivityLogService.log(
+                    evidence.getAuditControl().getAudit(),
+                    AuditActivityType.EVIDENCE_ARCHIVED,
+                    "Evidence " + evidence.getId() + " archived by lifecycle automation"
+            );
+        }
+
+        Instant disposalCutoff = now.minus(disposalGraceDays, ChronoUnit.DAYS);
+        List<AuditEvidence> dueForDisposal = auditEvidenceRepository.findByLifecycleStatusAndArchivedAtBeforeAndLegalHoldFalse(
+                EvidenceLifecycleStatus.ARCHIVED,
+                disposalCutoff
+        );
+        for (AuditEvidence evidence : dueForDisposal) {
+            evidence.setLifecycleStatus(EvidenceLifecycleStatus.DISPOSED);
+            evidence.setDisposedAt(now);
+            evidence.setFileContent(null);
+            auditActivityLogService.log(
+                    evidence.getAuditControl().getAudit(),
+                    AuditActivityType.EVIDENCE_DISPOSED,
+                    "Evidence " + evidence.getId() + " disposed by lifecycle automation"
+            );
+        }
+        if (!dueForReview.isEmpty()) {
+            auditEvidenceRepository.saveAll(dueForReview);
+        }
+        if (!dueForArchive.isEmpty()) {
+            auditEvidenceRepository.saveAll(dueForArchive);
+        }
+        if (!dueForDisposal.isEmpty()) {
+            auditEvidenceRepository.saveAll(dueForDisposal);
+        }
     }
 
     private void ensureCanAccess(AuditControl auditControl) {

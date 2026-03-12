@@ -5,6 +5,64 @@
       <button class="btn btn-outline-primary btn-sm" @click="downloadAuditsCsv">Export Audits CSV</button>
       <button class="btn btn-primary btn-sm" @click="downloadBoardPackPdf">Export Board Pack PDF</button>
     </div>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Scheduled Exports</h2>
+        <form class="row g-2 mb-3" @submit.prevent="createSchedule">
+          <div class="col-md-3">
+            <input v-model="scheduleForm.name" class="form-control form-control-sm" placeholder="Schedule name" required />
+          </div>
+          <div class="col-md-2">
+            <select v-model="scheduleForm.reportType" class="form-select form-select-sm">
+              <option value="AUDITS_CSV">Audits CSV</option>
+              <option value="RECENT_ACTIVITY_CSV">Recent Activity CSV</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select v-model="scheduleForm.frequency" class="form-select form-select-sm">
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input v-model="scheduleForm.recipientEmails" class="form-control form-control-sm" placeholder="Recipients (comma-separated)" required />
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-outline-primary btn-sm w-100">Create</button>
+          </div>
+        </form>
+        <div v-if="schedules.length" class="table-responsive">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Frequency</th>
+                <th>Recipients</th>
+                <th>Next run</th>
+                <th>Last run</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in schedules" :key="s.id">
+                <td>{{ s.name }}</td>
+                <td>{{ s.reportType }}</td>
+                <td>{{ s.frequency }}</td>
+                <td>{{ s.recipientEmails }}</td>
+                <td>{{ formatDateTime(s.nextRunAt) }}</td>
+                <td>{{ formatDateTime(s.lastRunAt) }}</td>
+                <td>{{ s.lastRunStatus || '-' }}</td>
+                <td><button class="btn btn-outline-danger btn-sm" @click="deleteSchedule(s.id)">Delete</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else class="text-muted small">No schedules configured.</div>
+      </div>
+    </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
     <div v-else>
@@ -117,7 +175,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import api from '../../services/api'
-import { toastError } from '../../services/toast'
+import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
 
 const loading = ref(true)
@@ -125,6 +183,13 @@ const summary = ref(null)
 const byYear = ref([])
 const trends = ref([])
 const byProject = ref([])
+const schedules = ref([])
+const scheduleForm = ref({
+  name: '',
+  reportType: 'AUDITS_CSV',
+  frequency: 'WEEKLY',
+  recipientEmails: ''
+})
 
 const { sortedRows: sortedByYear, toggleSort: toggleByYearSort, sortIndicator: byYearSortIndicator } = useTableSort(byYear, {
   initialKey: 'year'
@@ -155,16 +220,18 @@ const cards = computed(() => {
 
 onMounted(async () => {
   try {
-    const [res, byYearRes, trendsRes, byProjectRes] = await Promise.all([
+    const [res, byYearRes, trendsRes, byProjectRes, schedulesRes] = await Promise.all([
       api.get('/api/reports/summary'),
       api.get('/api/reports/by-year'),
       api.get('/api/reports/trends'),
-      api.get('/api/reports/by-project')
+      api.get('/api/reports/by-project'),
+      api.get('/api/reports/schedules')
     ])
     summary.value = res.data || {}
     byYear.value = byYearRes.data || []
     trends.value = trendsRes.data || []
     byProject.value = byProjectRes.data || []
+    schedules.value = schedulesRes.data || []
   } finally {
     loading.value = false
   }
@@ -201,6 +268,36 @@ function seriesPoints(kind) {
   if (kind === 'complete') return points.map((p) => `${p.x},${p.completeY}`).join(' ')
   if (kind === 'open') return points.map((p) => `${p.x},${p.openY}`).join(' ')
   return points.map((p) => `${p.x},${p.overdueY}`).join(' ')
+}
+
+function formatDateTime(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString()
+}
+
+async function createSchedule() {
+  try {
+    await api.post('/api/reports/schedules', {
+      ...scheduleForm.value
+    })
+    scheduleForm.value.name = ''
+    scheduleForm.value.recipientEmails = ''
+    const schedulesRes = await api.get('/api/reports/schedules')
+    schedules.value = schedulesRes.data || []
+    toastSuccess('Report schedule created.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to create schedule')
+  }
+}
+
+async function deleteSchedule(id) {
+  try {
+    await api.delete(`/api/reports/schedules/${id}`)
+    schedules.value = schedules.value.filter((s) => s.id !== id)
+    toastSuccess('Report schedule deleted.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to delete schedule')
+  }
 }
 
 async function downloadAuditsCsv() {
