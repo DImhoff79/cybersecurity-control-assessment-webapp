@@ -161,6 +161,95 @@
             <label class="form-label">Notes</label>
             <textarea v-model.trim="editForm.notes" class="form-control" rows="2" />
           </div>
+          <div class="col-12">
+            <label class="form-label">Applications in scope</label>
+            <div class="alert alert-light border py-2 small mb-2">
+              Update scope exactly the same way as create: move apps between Available and In this project, then save.
+            </div>
+            <div class="row g-3">
+              <div class="col-lg-6">
+                <div class="card border">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h3 class="h6 mb-0">Available applications</h3>
+                      <span class="small text-muted">{{ editAvailableApps.length }} available</span>
+                    </div>
+                    <input v-model.trim="editAppSearch" class="form-control form-control-sm mb-2" placeholder="Search by app name, owner, or scope..." />
+                    <div class="d-flex gap-2 mb-2">
+                      <button type="button" class="btn btn-outline-primary btn-sm" :disabled="!editAvailableSelection.length" @click="addEditChecked">
+                        Add checked
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!editAvailableApps.length" @click="addEditAllVisible">
+                        Add all visible
+                      </button>
+                    </div>
+                    <div class="transfer-list border rounded">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width: 34px;"></th>
+                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEditAvailableSort()">Application {{ editAvailableSortIndicator() }}</button></th>
+                            <th style="width: 80px;"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="app in editAvailableApps" :key="`edit-available-${app.id}`">
+                            <td><input v-model="editAvailableSelection" class="form-check-input" type="checkbox" :value="app.id" /></td>
+                            <td>
+                              {{ app.name }}
+                              <div class="small text-muted">{{ app.regulatoryScope || '-' }}</div>
+                            </td>
+                            <td><button type="button" class="btn btn-outline-primary btn-sm" @click="addEditApplication(app.id)">Add</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div v-if="!editAvailableApps.length" class="text-muted small p-2">No available apps match your search.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-lg-6">
+                <div class="card border">
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h3 class="h6 mb-0">In this project</h3>
+                      <span class="small text-muted">{{ editSelectedApplications.length }} selected</span>
+                    </div>
+                    <div class="d-flex gap-2 mb-2">
+                      <button type="button" class="btn btn-outline-danger btn-sm" :disabled="!editSelectedSelection.length" @click="removeEditChecked">
+                        Remove checked
+                      </button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!editSelectedApplications.length" @click="editForm.applicationIds = []">
+                        Remove all
+                      </button>
+                    </div>
+                    <div class="transfer-list border rounded">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style="width: 34px;"></th>
+                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEditSelectedSort()">Application {{ editSelectedSortIndicator() }}</button></th>
+                            <th style="width: 90px;"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="app in editSelectedApplications" :key="`edit-selected-${app.id}`">
+                            <td><input v-model="editSelectedSelection" class="form-check-input" type="checkbox" :value="app.id" /></td>
+                            <td>
+                              {{ app.name }}
+                              <div class="small text-muted">{{ app.regulatoryScope || '-' }}</div>
+                            </td>
+                            <td><button type="button" class="btn btn-outline-danger btn-sm" @click="removeEditApplication(app.id)">Remove</button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div v-if="!editSelectedApplications.length" class="text-muted small p-2">No apps in this project yet.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="col-12 d-flex gap-2">
             <button type="submit" class="btn btn-primary">Save changes</button>
             <button type="button" class="btn btn-outline-secondary" @click="cancelEdit">Cancel</button>
@@ -188,7 +277,10 @@
             </thead>
             <tbody>
               <tr v-for="p in sortedProjects" :key="p.id">
-                <td>{{ p.name }}</td>
+                <td>
+                  <div class="fw-semibold">{{ p.name }}</div>
+                  <div class="small text-muted">{{ (p.scopedApplications || []).map((a) => a.name).join(', ') || 'No scoped apps' }}</div>
+                </td>
                 <td>{{ p.frameworkTag || '-' }}</td>
                 <td>{{ p.year }}</td>
                 <td>{{ (p.scopedApplications || []).length }}</td>
@@ -221,13 +313,19 @@ const availableSelection = ref([])
 const selectedSelection = ref([])
 const availableSortDir = ref('asc')
 const selectedSortDir = ref('asc')
+const editAppSearch = ref('')
+const editAvailableSelection = ref([])
+const editSelectedSelection = ref([])
+const editAvailableSortDir = ref('asc')
+const editSelectedSortDir = ref('asc')
 const editingProjectId = ref(null)
 const editForm = reactive({
   name: '',
   frameworkTag: '',
   year: new Date().getFullYear(),
   dueAt: '',
-  notes: ''
+  notes: '',
+  applicationIds: []
 })
 const form = reactive({
   name: '',
@@ -259,6 +357,29 @@ const selectedApplications = computed(() => {
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
   return selectedSortDir.value === 'asc' ? ordered : ordered.reverse()
+})
+
+const editAvailableApps = computed(() => {
+  const term = editAppSearch.value.trim().toLowerCase()
+  const selected = new Set(editForm.applicationIds)
+  const rows = applications.value
+    .filter((a) => !selected.has(a.id))
+    .filter((a) => {
+      if (!term) return true
+      const hay = `${a.name} ${a.regulatoryScope || ''} ${a.ownerDisplayName || ''} ${a.ownerEmail || ''}`.toLowerCase()
+      return hay.includes(term)
+    })
+  const ordered = rows.slice().sort((a, b) => a.name.localeCompare(b.name))
+  return editAvailableSortDir.value === 'asc' ? ordered : ordered.reverse()
+})
+
+const editSelectedApplications = computed(() => {
+  const selected = new Set(editForm.applicationIds)
+  const ordered = applications.value
+    .filter((a) => selected.has(a.id))
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+  return editSelectedSortDir.value === 'asc' ? ordered : ordered.reverse()
 })
 
 const selectedPreview = computed(() => selectedApplications.value.slice(0, 5).map((a) => a.name).join(', '))
@@ -316,6 +437,12 @@ watch(selectedApplications, () => {
   selectedSelection.value = selectedSelection.value.filter((id) => selected.has(id))
 })
 
+watch(editSelectedApplications, () => {
+  const selected = new Set(editForm.applicationIds)
+  editAvailableSelection.value = editAvailableSelection.value.filter((id) => !selected.has(id))
+  editSelectedSelection.value = editSelectedSelection.value.filter((id) => selected.has(id))
+})
+
 async function createProject() {
   if (!canManageProjects.value) {
     toastError('Only AUDIT_MANAGER can create audit projects')
@@ -349,10 +476,42 @@ function startEdit(project) {
   editForm.year = project.year || new Date().getFullYear()
   editForm.notes = project.notes || ''
   editForm.dueAt = project.dueAt ? new Date(project.dueAt).toISOString().slice(0, 10) : ''
+  editForm.applicationIds = (project.scopedApplications || []).map((a) => a.id)
+  editAppSearch.value = ''
+  editAvailableSelection.value = []
+  editSelectedSelection.value = []
 }
 
 function cancelEdit() {
   editingProjectId.value = null
+}
+
+function addEditApplication(appId) {
+  if (!editForm.applicationIds.includes(appId)) editForm.applicationIds.push(appId)
+  editAvailableSelection.value = editAvailableSelection.value.filter((id) => id !== appId)
+}
+
+function addEditChecked() {
+  if (!editAvailableSelection.value.length) return
+  editForm.applicationIds = Array.from(new Set([...editForm.applicationIds, ...editAvailableSelection.value]))
+  editAvailableSelection.value = []
+}
+
+function addEditAllVisible() {
+  editForm.applicationIds = Array.from(new Set([...editForm.applicationIds, ...editAvailableApps.value.map((a) => a.id)]))
+  editAvailableSelection.value = []
+}
+
+function removeEditApplication(appId) {
+  editForm.applicationIds = editForm.applicationIds.filter((id) => id !== appId)
+  editSelectedSelection.value = editSelectedSelection.value.filter((id) => id !== appId)
+}
+
+function removeEditChecked() {
+  if (!editSelectedSelection.value.length) return
+  const toRemove = new Set(editSelectedSelection.value)
+  editForm.applicationIds = editForm.applicationIds.filter((id) => !toRemove.has(id))
+  editSelectedSelection.value = []
 }
 
 async function saveEdit() {
@@ -362,7 +521,8 @@ async function saveEdit() {
       name: editForm.name,
       frameworkTag: editForm.frameworkTag || null,
       year: editForm.year,
-      notes: editForm.notes || null
+      notes: editForm.notes || null,
+      applicationIds: editForm.applicationIds
     }
     if (editForm.dueAt) payload.dueAt = `${editForm.dueAt}T23:59:59Z`
     await api.put(`/api/audit-projects/${editingProjectId.value}`, payload)
@@ -407,6 +567,22 @@ function toggleSelectedSort() {
 
 function selectedSortIndicator() {
   return selectedSortDir.value === 'asc' ? '↑' : '↓'
+}
+
+function toggleEditAvailableSort() {
+  editAvailableSortDir.value = editAvailableSortDir.value === 'asc' ? 'desc' : 'asc'
+}
+
+function editAvailableSortIndicator() {
+  return editAvailableSortDir.value === 'asc' ? '↑' : '↓'
+}
+
+function toggleEditSelectedSort() {
+  editSelectedSortDir.value = editSelectedSortDir.value === 'asc' ? 'desc' : 'asc'
+}
+
+function editSelectedSortIndicator() {
+  return editSelectedSortDir.value === 'asc' ? '↑' : '↓'
 }
 </script>
 

@@ -13,7 +13,7 @@ describe('MyAudits', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     api.get.mockImplementation((url) => {
-      if (url === '/api/my-audits/overview') {
+      if (url === '/api/my-audits') {
         return Promise.resolve({
           data: [
             { id: 1, applicationName: 'App One', year: 2026, status: 'IN_PROGRESS', completionPct: 100 },
@@ -35,6 +35,7 @@ describe('MyAudits', () => {
     })
     await flushPromises()
 
+    expect(api.get).toHaveBeenCalledWith('/api/my-audits')
     expect(wrapper.text()).toContain('100%')
     expect(wrapper.text()).toContain('Resume audit')
   })

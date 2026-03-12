@@ -47,23 +47,25 @@ class AuditProjectServiceIntegrationTest {
 
     @Test
     void createBuildsProjectAndGeneratesScopedAudits() {
-        User admin = userRepository.save(User.builder()
-                .email("project-admin@test.com")
+        User auditManager = userRepository.save(User.builder()
+                .email("project-manager@test.com")
                 .passwordHash("x")
-                .displayName("Project Admin")
-                .role(UserRole.ADMIN)
+                .displayName("Project Manager")
+                .role(UserRole.AUDIT_MANAGER)
+                .permissions(UserRole.AUDIT_MANAGER.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("project-owner@test.com")
                 .passwordHash("x")
                 .displayName("Project Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
 
         Application app1 = applicationRepository.save(Application.builder().name("PCI Billing").owner(owner).build());
         Application app2 = applicationRepository.save(Application.builder().name("PCI Orders").owner(owner).build());
 
-        authenticate(admin.getEmail());
+        authenticate(auditManager.getEmail());
         auditService.create(app1.getId(), 2099); // pre-existing audit for duplicate guard
 
         AuditProjectDto created = auditProjectService.create(
@@ -79,12 +81,65 @@ class AuditProjectServiceIntegrationTest {
         assertThat(created.getId()).isNotNull();
         assertThat(created.getName()).isEqualTo("PCI 2036");
         assertThat(created.getScopedApplications()).hasSize(2);
-        assertThat(created.getTotalAudits()).isEqualTo(1); // one app already had a year-matching audit
+        assertThat(created.getTotalAudits()).isEqualTo(2); // existing year-matching audit is linked + missing audit is created
         assertThat(created.getAudits()).allMatch(a -> "PCI 2036".equals(a.getProjectName()));
+        assertThat(created.getAudits()).allMatch(a -> "project-owner@test.com".equals(a.getAssignedToEmail()));
 
         Audit linkedAudit = auditRepository.findByApplicationIdAndYear(app2.getId(), 2099).orElseThrow();
         assertThat(linkedAudit.getAuditProject()).isNotNull();
         assertThat(linkedAudit.getAuditProject().getId()).isEqualTo(created.getId());
+    }
+
+    @Test
+    void updateReconcilesProjectScopeAndLinkedAudits() {
+        User auditManager = userRepository.save(User.builder()
+                .email("project-manager-update@test.com")
+                .passwordHash("x")
+                .displayName("Project Manager")
+                .role(UserRole.AUDIT_MANAGER)
+                .permissions(UserRole.AUDIT_MANAGER.defaultPermissions())
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("project-owner-update@test.com")
+                .passwordHash("x")
+                .displayName("Project Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app1 = applicationRepository.save(Application.builder().name("Legacy Scope App").owner(owner).build());
+        Application app2 = applicationRepository.save(Application.builder().name("New Scope App").owner(owner).build());
+
+        authenticate(auditManager.getEmail());
+        AuditProjectDto created = auditProjectService.create(
+                "Scope Project",
+                "PCI",
+                2097,
+                "Initial scope",
+                null,
+                Instant.parse("2097-11-30T23:59:59Z"),
+                List.of(app1.getId())
+        );
+
+        AuditProjectDto updated = auditProjectService.update(
+                created.getId(),
+                "Scope Project",
+                "PCI",
+                2097,
+                "Updated scope",
+                null,
+                Instant.parse("2097-11-30T23:59:59Z"),
+                List.of(app2.getId())
+        );
+
+        assertThat(updated.getScopedApplications()).extracting("id").containsExactly(app2.getId());
+
+        Audit oldAudit = auditRepository.findByApplicationIdAndYear(app1.getId(), 2097).orElseThrow();
+        Audit newAudit = auditRepository.findByApplicationIdAndYear(app2.getId(), 2097).orElseThrow();
+        assertThat(oldAudit.getAuditProject()).isNull();
+        assertThat(newAudit.getAuditProject()).isNotNull();
+        assertThat(newAudit.getAuditProject().getId()).isEqualTo(created.getId());
+        assertThat(newAudit.getAssignedTo()).isNotNull();
+        assertThat(newAudit.getAssignedTo().getEmail()).isEqualTo(owner.getEmail());
     }
 
     @Test
@@ -94,6 +149,7 @@ class AuditProjectServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Not Admin")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder().name("Project App").build());
         authenticate(nonAdmin.getEmail());
@@ -107,7 +163,7 @@ class AuditProjectServiceIntegrationTest {
                 null,
                 List.of(app.getId())
         )).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Only admins");
+                .hasMessageContaining("Only AUDIT_MANAGER");
     }
 
     private void authenticate(String email) {

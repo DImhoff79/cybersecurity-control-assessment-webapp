@@ -39,17 +39,29 @@
 
       <div v-if="currentStage === 'human'" class="card shadow-sm mb-3">
         <div class="card-body">
-          <p class="small text-muted mb-2">Guided questions in plain language</p>
-          <div class="fw-semibold mb-2">{{ currentHumanIndex + 1 }}. {{ currentHumanQuestion?.questionText }}</div>
-          <p v-if="currentHumanQuestion?.mappings?.length > 1" class="text-muted small mb-2">
-            This one answer applies to {{ currentHumanQuestion.mappings.length }} related controls.
-          </p>
-          <p v-if="currentHumanQuestion?.helpText" class="text-muted small mb-3">{{ currentHumanQuestion.helpText }}</p>
+          <p class="small text-muted mb-2">Guided questions in plain language (grouped by topic)</p>
+          <div class="fw-semibold mb-1">{{ currentGuidedSection?.title }}</div>
+          <p class="text-muted small mb-3">{{ currentGuidedSection?.description }}</p>
 
-          <label class="form-label">Your answer</label>
-          <select v-model="answers[currentHumanKey]" class="form-select">
-            <option v-for="opt in answerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-          </select>
+          <div
+            v-for="(question, idx) in currentSectionQuestions"
+            :key="question.questionId"
+            class="border rounded p-3 mb-3"
+          >
+            <div class="fw-semibold mb-2">{{ idx + 1 }}. {{ question.questionText }}</div>
+            <p v-if="question.mappings?.length > 1" class="text-muted small mb-2">
+              This answer applies to {{ question.mappings.length }} related controls: {{ mappedControlSummary(question) }}.
+            </p>
+            <p v-else class="text-muted small mb-2">
+              Control: {{ mappedControlSummary(question) }}
+            </p>
+            <p v-if="question.helpText" class="text-muted small mb-3">{{ question.helpText }}</p>
+
+            <label class="form-label">Your answer</label>
+            <select v-model="answers[questionKey(question.questionId)]" class="form-select">
+              <option v-for="opt in answerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -181,11 +193,77 @@ const guidedQuestions = computed(() => {
   })
 })
 
-const currentHumanQuestion = computed(() => guidedQuestions.value[currentHumanIndex.value] || null)
-const currentHumanKey = computed(() => {
-  if (!currentHumanQuestion.value) return ''
-  return `q-${currentHumanQuestion.value.questionId}`
+const guidedSections = computed(() => {
+  const grouped = new Map()
+  for (const question of guidedQuestions.value) {
+    const section = inferQuestionSection(question)
+    if (!grouped.has(section.key)) {
+      grouped.set(section.key, {
+        key: section.key,
+        title: section.title,
+        description: section.description,
+        questions: []
+      })
+    }
+    grouped.get(section.key).questions.push(question)
+  }
+  return Array.from(grouped.values())
 })
+
+const currentGuidedSection = computed(() => guidedSections.value[currentHumanIndex.value] || null)
+const currentSectionQuestions = computed(() => currentGuidedSection.value?.questions || [])
+
+function questionKey(questionId) {
+  return `q-${questionId}`
+}
+
+function mappedControlSummary(question) {
+  return (question.mappings || []).map((m) => m.controlControlId).join(', ')
+}
+
+function inferQuestionSection(question) {
+  const controlIds = (question.mappings || []).map((m) => m.controlControlId || '')
+  if (controlIds.some((id) => id.startsWith('AC-') || id.startsWith('IA-') || id === 'PCI-7' || id === 'PCI-8' || id === 'SOX-ACCESS' || id.startsWith('HIPAA-164.308(a)(4)'))) {
+    return {
+      key: 'access-identity',
+      title: 'Access and Identity',
+      description: 'Who can access the application, and how access is validated.'
+    }
+  }
+  if (controlIds.some((id) => id.startsWith('AU-') || id === 'PCI-10' || id === 'SOX-OPS' || id.startsWith('HIPAA-164.312(b)'))) {
+    return {
+      key: 'monitoring-logging',
+      title: 'Monitoring and Logging',
+      description: 'How activity is recorded and reviewed for unusual behavior.'
+    }
+  }
+  if (controlIds.some((id) => id.startsWith('SI-') || id === 'PCI-5' || id === 'PCI-6' || id === 'SOX-LOGICAL')) {
+    return {
+      key: 'security-maintenance',
+      title: 'Security Maintenance',
+      description: 'How security updates, malware protection, and remediation are handled.'
+    }
+  }
+  if (controlIds.some((id) => id.startsWith('IR-') || id.startsWith('HIPAA-164.308(a)(6)'))) {
+    return {
+      key: 'incident-response',
+      title: 'Incident Response',
+      description: 'How your team responds when a security incident occurs.'
+    }
+  }
+  if (controlIds.some((id) => id.startsWith('AT-') || id === 'SOX-GOV' || id.startsWith('HIPAA-164.308(a)(5)'))) {
+    return {
+      key: 'awareness-governance',
+      title: 'Awareness and Governance',
+      description: 'Security awareness, roles, and day-to-day governance practices.'
+    }
+  }
+  return {
+    key: 'general-security',
+    title: 'General Security Practices',
+    description: 'General controls that support secure operation of the application.'
+  }
+}
 
 const currentAdditionalControl = computed(() => additionalControls.value[currentAdditionalIndex.value] || null)
 
@@ -203,7 +281,7 @@ const additionalAnsweredCount = computed(() => {
   }).length
 })
 
-const totalSteps = computed(() => guidedQuestions.value.length + additionalControls.value.length)
+const totalSteps = computed(() => guidedSections.value.length + additionalControls.value.length)
 const completedSteps = computed(() => humanAnsweredCount.value + additionalAnsweredCount.value)
 const completionPct = computed(() => {
   if (totalSteps.value === 0) return 0
@@ -214,7 +292,7 @@ const humanComplete = computed(() => humanAnsweredCount.value === guidedQuestion
 const isSubmitted = computed(() => ['SUBMITTED', 'ATTESTED', 'COMPLETE'].includes(audit.value?.status))
 
 const isLastHumanStep = computed(() => {
-  return currentHumanIndex.value >= guidedQuestions.value.length - 1
+  return currentHumanIndex.value >= guidedSections.value.length - 1
 })
 
 const isLastAdditionalStep = computed(() => {
@@ -223,12 +301,12 @@ const isLastAdditionalStep = computed(() => {
 
 const currentStepNumber = computed(() => {
   if (currentStage.value === 'human') return currentHumanIndex.value + 1
-  return guidedQuestions.value.length + currentAdditionalIndex.value + 1
+  return guidedSections.value.length + currentAdditionalIndex.value + 1
 })
 
 const canGoBack = computed(() => {
   if (currentStage.value === 'human') return currentHumanIndex.value > 0
-  return currentAdditionalIndex.value > 0 || guidedQuestions.value.length > 0
+  return currentAdditionalIndex.value > 0 || guidedSections.value.length > 0
 })
 
 onMounted(load)
@@ -246,7 +324,7 @@ async function load() {
     controls.value = controlsRes.data || []
 
     guidedQuestions.value.forEach((q) => {
-      const key = `q-${q.questionId}`
+      const key = questionKey(q.questionId)
       answers[key] = normalizeExistingAnswer(q.existingAnswerText)
     })
 
@@ -267,14 +345,16 @@ async function load() {
 }
 
 function initializeStartingStep() {
-  const firstUnansweredHuman = guidedQuestions.value.findIndex((q) => {
-    const key = `q-${q.questionId}`
-    return !isHumanAnswered(answers[key])
+  const firstUnansweredHumanQuestion = guidedQuestions.value.find((q) => {
+    return !isHumanAnswered(answers[questionKey(q.questionId)])
   })
 
-  if (firstUnansweredHuman >= 0) {
+  if (firstUnansweredHumanQuestion && guidedSections.value.length > 0) {
+    const sectionIndex = guidedSections.value.findIndex((section) =>
+      section.questions.some((q) => q.questionId === firstUnansweredHumanQuestion.questionId)
+    )
     currentStage.value = 'human'
-    currentHumanIndex.value = firstUnansweredHuman
+    currentHumanIndex.value = sectionIndex >= 0 ? sectionIndex : 0
     return
   }
 
@@ -299,9 +379,9 @@ function goBack() {
       currentAdditionalIndex.value -= 1
       return
     }
-    if (guidedQuestions.value.length > 0) {
+    if (guidedSections.value.length > 0) {
       currentStage.value = 'human'
-      currentHumanIndex.value = Math.max(guidedQuestions.value.length - 1, 0)
+      currentHumanIndex.value = Math.max(guidedSections.value.length - 1, 0)
     }
     return
   }
@@ -313,6 +393,14 @@ function goBack() {
 
 function goNext() {
   if (currentStage.value === 'human') {
+    const hasUnansweredInSection = currentSectionQuestions.value.some((question) =>
+      !isHumanAnswered(answers[questionKey(question.questionId)])
+    )
+    if (hasUnansweredInSection) {
+      toastWarning('Please answer all questions in this section before moving on.')
+      return
+    }
+
     if (!isLastHumanStep.value) {
       currentHumanIndex.value += 1
       return
@@ -381,7 +469,7 @@ async function saveHumanAnswers() {
       q.mappings.map((mapping) => ({
         questionId: q.questionId,
         auditControlId: mapping.auditControlId,
-        answerText: toStoredAnswer(answers[`q-${q.questionId}`])
+        answerText: toStoredAnswer(answers[questionKey(q.questionId)])
       }))
     )
   }

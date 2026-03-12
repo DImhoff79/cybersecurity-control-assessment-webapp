@@ -4,6 +4,7 @@ import com.cyberassessment.entity.User;
 import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +25,8 @@ class DefaultUsersIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private DataLoader dataLoader;
 
     @Test
     void defaultAdminAndOwnerAccountsExistAndPasswordsMatch() {
@@ -47,5 +50,20 @@ class DefaultUsersIntegrationTest {
         assertThat(auditManager).isNotNull();
         assertThat(auditManager.getRole()).isEqualTo(UserRole.AUDIT_MANAGER);
         assertThat(passwordEncoder.matches("manager123", auditManager.getPasswordHash())).isTrue();
+    }
+
+    @Test
+    void missingDefaultOwnerIsRecreatedOnStartupRunner() throws Exception {
+        User owner = userRepository.findByEmail("owner@example.com").orElse(null);
+        assertThat(owner).isNotNull();
+        userRepository.delete(owner);
+        assertThat(userRepository.findByEmail("owner@example.com")).isEmpty();
+
+        dataLoader.run(new DefaultApplicationArguments(new String[0]));
+
+        User recreatedOwner = userRepository.findByEmail("owner@example.com").orElse(null);
+        assertThat(recreatedOwner).isNotNull();
+        assertThat(recreatedOwner.getRole()).isEqualTo(UserRole.APPLICATION_OWNER);
+        assertThat(passwordEncoder.matches("owner123", recreatedOwner.getPasswordHash())).isTrue();
     }
 }

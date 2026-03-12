@@ -72,7 +72,7 @@ const { sortedRows, toggleSort, sortIndicator } = useTableSort(items, {
 
 onMounted(async () => {
   try {
-    const res = await api.get('/api/my-audits/overview')
+    const res = await api.get('/api/my-audits')
     items.value = res.data || []
   } finally {
     loading.value = false

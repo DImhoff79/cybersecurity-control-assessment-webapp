@@ -13,7 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -92,13 +95,9 @@ public class AuditProjectService {
         Long projectId = project.getId();
 
         for (Application app : applications) {
-            if (auditRepository.findByApplicationIdAndYear(app.getId(), year).isPresent()) {
-                continue;
-            }
-            auditService.create(app.getId(), year, dueAt, projectId);
+            ensureAuditLinkedForProjectApplication(project, app, dueAt);
         }
-        List<AuditDto> audits = auditRepository.findAll().stream()
-                .filter(a -> a.getAuditProject() != null && a.getAuditProject().getId().equals(projectId))
+        List<AuditDto> audits = auditRepository.findByAuditProjectId(projectId).stream()
                 .map(AuditService::toDto)
                 .toList();
         return AuditProjectDto.builder()
@@ -146,6 +145,23 @@ public class AuditProjectService {
             project.setApplications(new ArrayList<>(applications));
         }
         project = auditProjectRepository.save(project);
+
+        // Keep linked audits aligned with the project's current scope + year.
+        Set<Long> scopedAppIds = new HashSet<>(project.getApplications().stream().map(Application::getId).toList());
+        List<Audit> linkedAudits = auditRepository.findByAuditProjectId(projectId);
+        for (Audit linked : linkedAudits) {
+            boolean appStillScoped = scopedAppIds.contains(linked.getApplication().getId());
+            boolean yearMatches = Objects.equals(linked.getYear(), project.getYear());
+            if (!appStillScoped || !yearMatches) {
+                linked.setAuditProject(null);
+            }
+        }
+        auditRepository.saveAll(linkedAudits);
+
+        for (Application app : project.getApplications()) {
+            ensureAuditLinkedForProjectApplication(project, app, project.getDueAt());
+        }
+
         return toDto(project);
     }
 
@@ -162,5 +178,34 @@ public class AuditProjectService {
         }
         auditRepository.saveAll(audits);
         auditProjectRepository.delete(project);
+    }
+
+    private void ensureAuditLinkedForProjectApplication(AuditProject project, Application app, Instant dueAt) {
+        Audit existing = auditRepository.findByApplicationIdAndYear(app.getId(), project.getYear()).orElse(null);
+        Audit targetAudit;
+        if (existing == null) {
+            AuditDto created = auditService.create(app.getId(), project.getYear(), dueAt, project.getId());
+            targetAudit = auditRepository.findById(created.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Created audit not found"));
+        } else {
+            if (existing.getAuditProject() != null && !Objects.equals(existing.getAuditProject().getId(), project.getId())) {
+                throw new IllegalArgumentException(
+                        "Application \"" + app.getName() + "\" already has a " + project.getYear()
+                                + " audit in another project");
+            }
+            if (existing.getAuditProject() == null || !Objects.equals(existing.getAuditProject().getId(), project.getId())) {
+                existing.setAuditProject(project);
+            }
+            if (existing.getDueAt() == null && dueAt != null) {
+                existing.setDueAt(dueAt);
+            }
+            targetAudit = auditRepository.save(existing);
+        }
+
+        // Default assignment: route new project audits to each application's owner.
+        if (app.getOwner() != null && (targetAudit.getAssignedTo() == null
+                || !Objects.equals(targetAudit.getAssignedTo().getId(), app.getOwner().getId()))) {
+            auditService.assign(targetAudit.getId(), app.getOwner().getId());
+        }
     }
 }

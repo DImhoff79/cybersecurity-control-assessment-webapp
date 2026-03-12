@@ -109,4 +109,56 @@ describe('AuditRespond', () => {
 
     expect(api.post).toHaveBeenCalledWith('/api/audits/1/submit')
   })
+
+  it('groups similar guided questions into the same section', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/audits/1') {
+        return Promise.resolve({ data: { id: 1, applicationName: 'App', year: 2026, status: 'IN_PROGRESS' } })
+      }
+      if (url === '/api/audits/1/questions') {
+        return Promise.resolve({
+          data: [
+            {
+              questionId: 201,
+              auditControlId: 301,
+              controlId: 21,
+              controlControlId: 'AC-2',
+              controlName: 'Account Management',
+              questionText: 'Do you review user access regularly?',
+              helpText: '',
+              displayOrder: 0,
+              existingAnswerText: ''
+            },
+            {
+              questionId: 202,
+              auditControlId: 302,
+              controlId: 22,
+              controlControlId: 'IA-2',
+              controlName: 'Identification and Authentication',
+              questionText: 'Do users sign in with MFA?',
+              helpText: '',
+              displayOrder: 1,
+              existingAnswerText: ''
+            }
+          ]
+        })
+      }
+      if (url === '/api/audits/1/controls') {
+        return Promise.resolve({
+          data: [
+            { id: 301, controlId: 21, controlControlId: 'AC-2', controlName: 'Account Management', status: 'NOT_STARTED' },
+            { id: 302, controlId: 22, controlControlId: 'IA-2', controlName: 'Identification and Authentication', status: 'NOT_STARTED' }
+          ]
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    const wrapper = mount(AuditRespond)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Access and Identity')
+    expect(wrapper.text()).toContain('Do you review user access regularly?')
+    expect(wrapper.text()).toContain('Do users sign in with MFA?')
+  })
 })

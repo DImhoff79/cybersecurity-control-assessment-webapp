@@ -21,47 +21,24 @@ public class DataLoader implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (userRepository.count() > 0) {
+        ensureDefaultUser("admin@example.com", "admin123", "System Administrator", UserRole.ADMIN);
+        ensureDefaultUser("owner@example.com", "owner123", "Sample Application Owner", UserRole.APPLICATION_OWNER);
+        ensureDefaultUser("auditor@example.com", "auditor123", "Sample Auditor", UserRole.AUDITOR);
+        ensureDefaultUser("audit.manager@example.com", "manager123", "Sample Audit Manager", UserRole.AUDIT_MANAGER);
+    }
+
+    private void ensureDefaultUser(String email, String rawPassword, String displayName, UserRole role) {
+        if (userRepository.existsByEmail(email)) {
             return;
         }
-        User admin = User.builder()
-                .email("admin@example.com")
-                .passwordHash(passwordEncoder.encode("admin123"))
-                .displayName("System Administrator")
-                .role(UserRole.ADMIN)
-                .permissions(UserRole.ADMIN.defaultPermissions())
+        User user = User.builder()
+                .email(email)
+                .passwordHash(passwordEncoder.encode(rawPassword))
+                .displayName(displayName)
+                .role(role)
+                .permissions(role.defaultPermissions())
                 .build();
-        userRepository.save(admin);
-        log.info("Created default admin user: admin@example.com / admin123");
-
-        User appOwner = User.builder()
-                .email("owner@example.com")
-                .passwordHash(passwordEncoder.encode("owner123"))
-                .displayName("Sample Application Owner")
-                .role(UserRole.APPLICATION_OWNER)
-                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
-                .build();
-        userRepository.save(appOwner);
-        log.info("Created sample application owner: owner@example.com / owner123");
-
-        User auditor = User.builder()
-                .email("auditor@example.com")
-                .passwordHash(passwordEncoder.encode("auditor123"))
-                .displayName("Sample Auditor")
-                .role(UserRole.AUDITOR)
-                .permissions(UserRole.AUDITOR.defaultPermissions())
-                .build();
-        userRepository.save(auditor);
-        log.info("Created sample auditor: auditor@example.com / auditor123");
-
-        User auditManager = User.builder()
-                .email("audit.manager@example.com")
-                .passwordHash(passwordEncoder.encode("manager123"))
-                .displayName("Sample Audit Manager")
-                .role(UserRole.AUDIT_MANAGER)
-                .permissions(UserRole.AUDIT_MANAGER.defaultPermissions())
-                .build();
-        userRepository.save(auditManager);
-        log.info("Created sample audit manager: audit.manager@example.com / manager123");
+        userRepository.save(user);
+        log.info("Created default user: {} / {}", email, rawPassword);
     }
 }

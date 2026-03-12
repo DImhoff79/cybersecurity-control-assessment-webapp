@@ -5,7 +5,9 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     loading: false,
-    _fetchUserPromise: null
+    _fetchUserPromise: null,
+    authCredentials: localStorage.getItem('auth_credentials'),
+    authMode: localStorage.getItem('auth_mode')
   }),
   getters: {
     isAdmin(state) {
@@ -28,10 +30,8 @@ export const useAuthStore = defineStore('auth', {
     hasRole(state) {
       return (role) => state.user?.role === role
     },
-    hasCredentials() {
-      const cred = localStorage.getItem('auth_credentials')
-      const mode = localStorage.getItem('auth_mode')
-      return !!cred || mode === 'oauth'
+    hasCredentials(state) {
+      return !!state.authCredentials || state.authMode === 'oauth'
     }
   },
   actions: {
@@ -39,6 +39,8 @@ export const useAuthStore = defineStore('auth', {
       const encoded = btoa(`${email}:${password}`)
       localStorage.setItem('auth_credentials', encoded)
       localStorage.setItem('auth_mode', 'basic')
+      this.authCredentials = encoded
+      this.authMode = 'basic'
       const user = await this.fetchUser()
       if (!user) {
         this.clearCredentials()
@@ -48,11 +50,15 @@ export const useAuthStore = defineStore('auth', {
     setOAuthSession() {
       localStorage.removeItem('auth_credentials')
       localStorage.setItem('auth_mode', 'oauth')
+      this.authCredentials = null
+      this.authMode = 'oauth'
       return this.fetchUser()
     },
     clearCredentials() {
       localStorage.removeItem('auth_credentials')
       localStorage.removeItem('auth_mode')
+      this.authCredentials = null
+      this.authMode = null
       this.user = null
     },
     async fetchUser() {
@@ -68,7 +74,7 @@ export const useAuthStore = defineStore('auth', {
           return this.user
         } catch (err) {
           if (err?.response?.status === 401) {
-            this.user = null
+            this.clearCredentials()
             return null
           }
           throw err

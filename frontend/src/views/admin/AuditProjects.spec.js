@@ -32,6 +32,7 @@ describe('AuditProjects', () => {
       return Promise.resolve({ data: [] })
     })
     api.post.mockResolvedValue({ data: { id: 99 } })
+    api.put.mockResolvedValue({ data: { id: 50 } })
   })
 
   it('supports clear add/remove selection between available and in-project lists', async () => {
@@ -77,5 +78,25 @@ describe('AuditProjects', () => {
     const payload = api.post.mock.calls[0][1]
     expect(payload.applicationIds).toHaveLength(12)
     expect(payload.applicationIds).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]))
+  })
+
+  it('loads scoped apps into edit form and sends scope on save', async () => {
+    const wrapper = mount(AuditProjects)
+    await flushPromises()
+
+    const editBtn = wrapper.findAll('button').find((b) => b.text() === 'Edit')
+    await editBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Edit project')
+    expect(wrapper.text()).toContain('1 selected')
+
+    const forms = wrapper.findAll('form')
+    await forms[1].trigger('submit.prevent')
+    await flushPromises()
+
+    expect(api.put).toHaveBeenCalledWith('/api/audit-projects/50', expect.objectContaining({
+      applicationIds: [1]
+    }))
   })
 })

@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QuestionManager from './QuestionManager.vue'
 import api from '../../services/api'
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() })
+}))
+
 vi.mock('../../services/api', () => ({
   default: {
     get: vi.fn(),
@@ -38,7 +43,8 @@ describe('QuestionManager', () => {
     const wrapper = mount(QuestionManager, {
       global: {
         stubs: {
-          BsModal: true
+          BsModal: true,
+          RouterLink: true
         }
       }
     })
