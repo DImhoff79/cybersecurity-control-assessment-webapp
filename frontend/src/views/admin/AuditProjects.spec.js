@@ -99,4 +99,18 @@ describe('AuditProjects', () => {
       applicationIds: [1]
     }))
   })
+
+  it('deletes project and reloads data', async () => {
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    api.delete.mockResolvedValue({ data: {} })
+    const wrapper = mount(AuditProjects)
+    await flushPromises()
+
+    const deleteBtn = wrapper.findAll('button').find((b) => b.text() === 'Delete')
+    await deleteBtn.trigger('click')
+    await flushPromises()
+
+    expect(api.delete).toHaveBeenCalledWith('/api/audit-projects/50')
+    expect(api.get).toHaveBeenCalledWith('/api/audit-projects')
+  })
 })
