@@ -7,6 +7,10 @@
 
     <div v-if="loading" class="text-muted">Loading...</div>
     <div v-else>
+      <div v-if="loadError" class="alert alert-danger py-2 d-flex justify-content-between align-items-center gap-2">
+        <span>{{ loadError }}</span>
+        <button type="button" class="btn btn-outline-danger btn-sm" @click="load">Retry</button>
+      </div>
       <div class="row g-3 mb-3">
         <div class="col-md-3" v-for="card in cards" :key="card.label">
           <div class="card shadow-sm h-100">
@@ -70,6 +74,7 @@
                   <label for="shareFilter" class="form-check-label small">Share</label>
                 </div>
                 <button class="btn btn-outline-primary btn-sm" @click="saveCurrentFilter">Save</button>
+                <button class="btn btn-outline-secondary btn-sm" @click="resetAuditFilters">Reset</button>
               </div>
             </div>
             <div class="col-12" v-if="savedFilters.length">
@@ -122,6 +127,9 @@
                     <button class="btn btn-outline-success btn-sm" :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'" @click="attest(a.auditId)">Attest</button>
                   </td>
                 </tr>
+                <tr v-if="!sortedAudits.length">
+                  <td colspan="9" class="text-muted text-center py-3">No audits match current filters.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -150,6 +158,9 @@
               <label class="form-label small mb-1">Search</label>
               <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, file, description..." />
             </div>
+            <div class="col-md-12 d-flex justify-content-end">
+              <button class="btn btn-outline-secondary btn-sm" @click="resetEvidenceFilters">Reset evidence filters</button>
+            </div>
           </div>
           <h2 class="h5 mb-3">Evidence Review Queue</h2>
           <div class="small text-muted mb-2">
@@ -165,6 +176,7 @@
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('framework')">Framework {{ evidenceSortIndicator('framework') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('fileName')">File {{ evidenceSortIndicator('fileName') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('notes')">Description {{ evidenceSortIndicator('notes') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('expiresAt')">Expires {{ evidenceSortIndicator('expiresAt') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('createdAt')">Created {{ evidenceSortIndicator('createdAt') }}</button></th>
                   <th>Download</th>
                   <th></th>
@@ -178,6 +190,10 @@
                   <td>{{ e.framework || '-' }}</td>
                   <td>{{ e.fileName || '-' }}</td>
                   <td>{{ e.notes || '-' }}</td>
+                  <td>
+                    <span v-if="e.stale" class="badge text-bg-danger me-1">Stale</span>
+                    {{ formatDateTime(e.expiresAt) }}
+                  </td>
                   <td>{{ formatDateTime(e.createdAt) }}</td>
                   <td>
                     <a v-if="e.uri" :href="e.uri" target="_blank" rel="noopener noreferrer">Download</a>
@@ -187,6 +203,68 @@
                     <button class="btn btn-outline-success btn-sm me-2" @click="reviewEvidence(e.evidenceId, 'ACCEPTED')">Accept</button>
                     <button class="btn btn-outline-danger btn-sm" @click="reviewEvidence(e.evidenceId, 'REJECTED')">Reject</button>
                   </td>
+                </tr>
+                <tr v-if="!sortedEvidence.length">
+                  <td colspan="10" class="text-muted text-center py-3">No evidence items match current filters.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mt-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h2 class="h5 mb-0">Recent Activity Feed</h2>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <button class="btn btn-outline-primary btn-sm" @click="exportRecentActivityCsv">Export CSV</button>
+              <select v-model="activityFilter.projectId" class="form-select form-select-sm">
+                <option value="all">All projects</option>
+                <option value="none">No project (legacy)</option>
+                <option v-for="p in projectOptions" :key="`act-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
+              </select>
+              <select v-model="activityFilter.category" class="form-select form-select-sm">
+                <option value="all">All events</option>
+                <option value="finding">Findings</option>
+                <option value="exception">Exceptions</option>
+                <option value="evidence">Evidence</option>
+                <option value="audit">Audit workflow</option>
+              </select>
+              <input v-model="activityFilter.search" class="form-control form-control-sm" placeholder="Search details or actor..." />
+              <button class="btn btn-outline-secondary btn-sm" @click="resetActivityFilters">Reset</button>
+            </div>
+          </div>
+          <div class="small text-muted mb-2">
+            Showing {{ filteredActivity.length }} of {{ (dashboard.recentActivity || []).length }} events
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('createdAt')">When {{ activitySortIndicator('createdAt') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('applicationName')">Application {{ activitySortIndicator('applicationName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('projectName')">Project {{ activitySortIndicator('projectName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('activityType')">Type {{ activitySortIndicator('activityType') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('details')">Details {{ activitySortIndicator('details') }}</button></th>
+                  <th>Actor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="event in sortedActivity" :key="event.id">
+                  <td>{{ formatDateTime(event.createdAt) }}</td>
+                  <td>{{ event.applicationName }} ({{ event.year }})</td>
+                  <td>{{ event.projectName || '-' }}</td>
+                  <td><span class="badge text-bg-light border">{{ event.activityType }}</span></td>
+                  <td>{{ event.details || '-' }}</td>
+                  <td>{{ event.actorEmail || 'system' }}</td>
+                  <td class="text-nowrap">
+                    <router-link :to="`/admin/audits/${event.auditId}`" class="btn btn-outline-primary btn-sm">Open Audit</router-link>
+                  </td>
+                </tr>
+                <tr v-if="!sortedActivity.length">
+                  <td colspan="7" class="text-muted text-center py-3">No activity events match current filters.</td>
                 </tr>
               </tbody>
             </table>
@@ -204,6 +282,7 @@ import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
 
 const loading = ref(true)
+const loadError = ref('')
 const dashboard = ref({ summary: {}, auditsNeedingAttention: [], evidenceQueue: [] })
 const currentUserEmail = ref('')
 const filterName = ref('')
@@ -221,6 +300,11 @@ const evidenceFilter = reactive({
   framework: 'all',
   search: ''
 })
+const activityFilter = reactive({
+  projectId: 'all',
+  category: 'all',
+  search: ''
+})
 
 const cards = computed(() => {
   const s = dashboard.value.summary || {}
@@ -236,6 +320,7 @@ onMounted(load)
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const [res, meRes] = await Promise.all([
       api.get('/api/reports/auditor-dashboard'),
@@ -244,9 +329,38 @@ async function load() {
     dashboard.value = res.data || { summary: {}, auditsNeedingAttention: [], evidenceQueue: [] }
     currentUserEmail.value = meRes.data?.email || ''
     await loadSavedFilters()
+  } catch (e) {
+    loadError.value = e.response?.data?.error || 'Failed to load auditor dashboard data.'
+    toastError(loadError.value)
   } finally {
     loading.value = false
   }
+}
+
+function resetAuditFilters() {
+  Object.assign(auditFilter, {
+    queue: 'all',
+    status: 'all',
+    projectId: 'all',
+    framework: 'all',
+    search: ''
+  })
+}
+
+function resetEvidenceFilters() {
+  Object.assign(evidenceFilter, {
+    projectId: 'all',
+    framework: 'all',
+    search: ''
+  })
+}
+
+function resetActivityFilters() {
+  Object.assign(activityFilter, {
+    projectId: 'all',
+    category: 'all',
+    search: ''
+  })
 }
 
 async function remind(auditId) {
@@ -365,11 +479,36 @@ const filteredEvidence = computed(() => {
   })
 })
 
+const filteredActivity = computed(() => {
+  const term = activityFilter.search.trim().toLowerCase()
+  return (dashboard.value.recentActivity || []).filter((event) => {
+    if (activityFilter.projectId === 'none' && event.projectId) return false
+    if (activityFilter.projectId !== 'all' && activityFilter.projectId !== 'none' && String(event.projectId) !== activityFilter.projectId) return false
+    const type = String(event.activityType || '')
+    if (activityFilter.category !== 'all') {
+      const matchesCategory =
+        (activityFilter.category === 'finding' && type.startsWith('FINDING_')) ||
+        (activityFilter.category === 'exception' && type.startsWith('EXCEPTION_')) ||
+        (activityFilter.category === 'evidence' && type.startsWith('EVIDENCE_')) ||
+        (activityFilter.category === 'audit' && type.startsWith('AUDIT_'))
+      if (!matchesCategory) return false
+    }
+    if (!term) return true
+    const haystack = `${event.applicationName} ${event.projectName || ''} ${type} ${event.details || ''} ${event.actorEmail || ''}`.toLowerCase()
+    return haystack.includes(term)
+  })
+})
+
 const { sortedRows: sortedAudits, toggleSort: toggleAuditSort, sortIndicator: auditSortIndicator } = useTableSort(filteredAudits, {
   initialKey: 'dueAt'
 })
 
 const { sortedRows: sortedEvidence, toggleSort: toggleEvidenceSort, sortIndicator: evidenceSortIndicator } = useTableSort(filteredEvidence, {
+  initialKey: 'createdAt',
+  initialDirection: 'desc'
+})
+
+const { sortedRows: sortedActivity, toggleSort: toggleActivitySort, sortIndicator: activitySortIndicator } = useTableSort(filteredActivity, {
   initialKey: 'createdAt',
   initialDirection: 'desc'
 })
@@ -395,7 +534,8 @@ async function saveCurrentFilter() {
       shared: shareFilter.value,
       filterState: {
         auditFilter: { ...auditFilter },
-        evidenceFilter: { ...evidenceFilter }
+        evidenceFilter: { ...evidenceFilter },
+        activityFilter: { ...activityFilter }
       }
     })
     filterName.value = ''
@@ -412,6 +552,7 @@ function loadSavedFilter(id) {
   const state = found.filterState || {}
   Object.assign(auditFilter, state.auditFilter || {})
   Object.assign(evidenceFilter, state.evidenceFilter || {})
+  Object.assign(activityFilter, state.activityFilter || {})
   toastSuccess(`Loaded filter "${found.name}".`)
 }
 
@@ -425,7 +566,37 @@ async function clearSavedFilters() {
   }
 }
 
-watch([auditFilter, evidenceFilter], () => {
+async function exportRecentActivityCsv() {
+  try {
+    const params = {}
+    if (activityFilter.category && activityFilter.category !== 'all') {
+      params.category = activityFilter.category
+    }
+    if (activityFilter.search?.trim()) {
+      params.search = activityFilter.search.trim()
+    }
+    if (activityFilter.projectId && activityFilter.projectId !== 'all' && activityFilter.projectId !== 'none') {
+      params.projectId = Number(activityFilter.projectId)
+    }
+    if (activityFilter.projectId === 'none') {
+      params.noProjectOnly = true
+    }
+    const response = await api.get('/api/reports/recent-activity.csv', { params, responseType: 'blob' })
+    const blob = new Blob([response.data], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'recent-activity.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to export recent activity CSV')
+  }
+}
+
+watch([auditFilter, evidenceFilter, activityFilter], () => {
   // Keep UI reactive and deterministic for saved-filter snapshots.
 }, { deep: true })
 </script>

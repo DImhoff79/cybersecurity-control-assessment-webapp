@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Map;
@@ -62,6 +63,20 @@ public class ReportController {
         String csv = reportService.auditsCsv();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audits-report.csv\"")
+                .contentType(new MediaType("text", "csv"))
+                .body(csv);
+    }
+
+    @GetMapping("/recent-activity.csv")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
+    public ResponseEntity<String> exportRecentActivityCsv(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false, defaultValue = "false") boolean noProjectOnly) {
+        String csv = reportService.recentActivityCsv(category, search, projectId, noProjectOnly);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"recent-activity.csv\"")
                 .contentType(new MediaType("text", "csv"))
                 .body(csv);
     }

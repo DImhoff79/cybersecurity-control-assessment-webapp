@@ -18,4 +18,6 @@ public class AuditorDashboardDto {
     private List<AuditorAuditItemDto> auditsNeedingAttention = new ArrayList<>();
     @Builder.Default
     private List<AuditorEvidenceItemDto> evidenceQueue = new ArrayList<>();
+    @Builder.Default
+    private List<AuditorActivityItemDto> recentActivity = new ArrayList<>();
 }

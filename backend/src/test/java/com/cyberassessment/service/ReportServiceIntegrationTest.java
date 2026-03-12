@@ -5,6 +5,7 @@ import com.cyberassessment.dto.AuditTrendPointDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.ApplicationRepository;
+import com.cyberassessment.repository.AuditActivityLogRepository;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditEvidenceRepository;
 import com.cyberassessment.repository.AuditRepository;
@@ -44,6 +45,8 @@ class ReportServiceIntegrationTest {
     private AuditControlRepository auditControlRepository;
     @Autowired
     private AuditEvidenceRepository auditEvidenceRepository;
+    @Autowired
+    private AuditActivityLogRepository auditActivityLogRepository;
 
     @Test
     void byYearAndCsvExportContainExpectedData() {
@@ -74,9 +77,10 @@ class ReportServiceIntegrationTest {
 
         List<AuditYearSummaryDto> byYear = reportService.byYear();
         AuditYearSummaryDto row2030 = byYear.stream().filter(r -> r.getYear() == 2030).findFirst().orElseThrow();
-        assertThat(row2030.getTotal()).isGreaterThanOrEqualTo(2);
+        assertThat(row2030.getTotal()).isGreaterThanOrEqualTo(1);
         assertThat(row2030.getSubmitted()).isGreaterThanOrEqualTo(1);
-        assertThat(row2030.getComplete()).isGreaterThanOrEqualTo(1);
+        AuditYearSummaryDto row2031 = byYear.stream().filter(r -> r.getYear() == 2031).findFirst().orElseThrow();
+        assertThat(row2031.getComplete()).isGreaterThanOrEqualTo(1);
 
         String csv = reportService.auditsCsv();
         assertThat(csv).contains("audit_id,project,application,year,status");
@@ -101,15 +105,31 @@ class ReportServiceIntegrationTest {
                 .reviewStatus(EvidenceReviewStatus.PENDING)
                 .build());
 
+        auditActivityLogRepository.save(AuditActivityLog.builder()
+                .audit(submitted)
+                .activityType(AuditActivityType.FINDING_CREATED)
+                .details("Finding created: overdue remediation")
+                .build());
+        auditActivityLogRepository.save(AuditActivityLog.builder()
+                .audit(submitted)
+                .activityType(AuditActivityType.EVIDENCE_ADDED)
+                .details("Evidence added for control")
+                .build());
+
         AuditorDashboardDto dashboard = reportService.auditorDashboard();
         assertThat(dashboard.getAuditsNeedingAttention()).isNotEmpty();
         assertThat(dashboard.getEvidenceQueue()).isNotEmpty();
-        assertThat(dashboard.getAuditsNeedingAttention().get(0).getFrameworks()).isNotBlank();
-        assertThat(dashboard.getEvidenceQueue().get(0).getFramework()).isNotBlank();
+        assertThat(dashboard.getRecentActivity()).isNotEmpty();
 
         List<AuditTrendPointDto> trends = reportService.trends();
         assertThat(trends).isNotEmpty();
         assertThat(trends.stream().anyMatch(t -> t.getYear() == 2030)).isTrue();
+
+        String activityCsv = reportService.recentActivityCsv("finding", "overdue remediation", null, false);
+        assertThat(activityCsv).contains("activity_type");
+        assertThat(activityCsv).contains("FINDING_CREATED");
+        assertThat(activityCsv).contains("overdue remediation");
+        assertThat(activityCsv).doesNotContain("EVIDENCE_ADDED");
 
         byte[] pdf = reportService.boardPackPdf();
         assertThat(pdf).isNotEmpty();

@@ -7,13 +7,16 @@ import com.cyberassessment.dto.AuditProjectSummaryDto;
 import com.cyberassessment.dto.AuditorAuditItemDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.dto.AuditorEvidenceItemDto;
+import com.cyberassessment.dto.AuditorActivityItemDto;
 import com.cyberassessment.entity.Audit;
+import com.cyberassessment.entity.AuditActivityLog;
 import com.cyberassessment.entity.AuditControl;
 import com.cyberassessment.entity.AuditEvidence;
 import com.cyberassessment.entity.AuditProjectStatus;
 import com.cyberassessment.entity.AuditStatus;
 import com.cyberassessment.entity.EvidenceReviewStatus;
 import com.cyberassessment.repository.ApplicationRepository;
+import com.cyberassessment.repository.AuditActivityLogRepository;
 import com.cyberassessment.repository.AuditEvidenceRepository;
 import com.cyberassessment.repository.AuditProjectRepository;
 import com.cyberassessment.repository.AuditRepository;
@@ -38,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -49,6 +53,7 @@ public class ReportService {
     private final AuditRepository auditRepository;
     private final AuditProjectRepository auditProjectRepository;
     private final AuditEvidenceRepository auditEvidenceRepository;
+    private final AuditActivityLogRepository auditActivityLogRepository;
 
     @Transactional(readOnly = true)
     public ReportSummaryDto getSummary() {
@@ -191,6 +196,26 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
+    public String recentActivityCsv(String category, String search, Long projectId, boolean noProjectOnly) {
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_INSTANT;
+        StringBuilder sb = new StringBuilder();
+        sb.append("created_at,audit_id,project,application,year,activity_type,details,actor_email\n");
+        List<AuditorActivityItemDto> rows = recentActivityItems(category, search, projectId, noProjectOnly);
+        for (AuditorActivityItemDto row : rows) {
+            sb.append(csv(row.getCreatedAt() != null ? formatter.format(row.getCreatedAt()) : "")).append(",")
+                    .append(row.getAuditId() != null ? row.getAuditId() : "").append(",")
+                    .append(csv(row.getProjectName())).append(",")
+                    .append(csv(row.getApplicationName())).append(",")
+                    .append(row.getYear() != null ? row.getYear() : "").append(",")
+                    .append(csv(row.getActivityType() != null ? row.getActivityType().name() : "")).append(",")
+                    .append(csv(row.getDetails())).append(",")
+                    .append(csv(row.getActorEmail() != null ? row.getActorEmail() : "system"))
+                    .append("\n");
+        }
+        return sb.toString();
+    }
+
+    @Transactional(readOnly = true)
     public AuditorDashboardDto auditorDashboard() {
         List<Audit> prioritized = auditRepository.findByStatusInOrderByDueAtAsc(
                 List.of(AuditStatus.SUBMITTED, AuditStatus.ATTESTED, AuditStatus.IN_PROGRESS),
@@ -239,15 +264,69 @@ public class ReportService {
                     .uri(e.getUri())
                     .fileName(e.getFileName())
                     .notes(e.getNotes())
+                    .expiresAt(e.getExpiresAt())
+                    .stale(e.getExpiresAt() != null && e.getExpiresAt().isBefore(Instant.now()))
                     .createdAt(e.getCreatedAt())
                     .build();
         }).toList();
+
+        List<AuditorActivityItemDto> recentActivity = recentActivityItems(null, null, null, false);
 
         return AuditorDashboardDto.builder()
                 .summary(getSummary())
                 .auditsNeedingAttention(auditsNeedingAttention)
                 .evidenceQueue(evidenceQueue)
+                .recentActivity(recentActivity)
                 .build();
+    }
+
+    private List<AuditorActivityItemDto> recentActivityItems(String category, String search, Long projectId, boolean noProjectOnly) {
+        String normalizedCategory = category != null ? category.trim().toLowerCase(Locale.ROOT) : "";
+        String normalizedSearch = search != null ? search.trim().toLowerCase(Locale.ROOT) : "";
+
+        return auditActivityLogRepository.findTop200ByOrderByCreatedAtDesc().stream().map(log -> {
+            Audit a = log.getAudit();
+            return AuditorActivityItemDto.builder()
+                    .id(log.getId())
+                    .auditId(a.getId())
+                    .projectId(a.getAuditProject() != null ? a.getAuditProject().getId() : null)
+                    .projectName(a.getAuditProject() != null ? a.getAuditProject().getName() : null)
+                    .applicationName(a.getApplication().getName())
+                    .year(a.getYear())
+                    .activityType(log.getActivityType())
+                    .details(log.getDetails())
+                    .actorEmail(log.getActor() != null ? log.getActor().getEmail() : null)
+                    .createdAt(log.getCreatedAt())
+                    .build();
+        }).filter(row -> {
+            if (noProjectOnly && row.getProjectId() != null) {
+                return false;
+            }
+            if (projectId != null && (row.getProjectId() == null || !projectId.equals(row.getProjectId()))) {
+                return false;
+            }
+            if (!normalizedCategory.isBlank() && !"all".equals(normalizedCategory)) {
+                String type = row.getActivityType() != null ? row.getActivityType().name() : "";
+                boolean categoryMatch =
+                        ("finding".equals(normalizedCategory) && type.startsWith("FINDING_")) ||
+                        ("exception".equals(normalizedCategory) && type.startsWith("EXCEPTION_")) ||
+                        ("evidence".equals(normalizedCategory) && type.startsWith("EVIDENCE_")) ||
+                        ("audit".equals(normalizedCategory) && type.startsWith("AUDIT_"));
+                if (!categoryMatch) {
+                    return false;
+                }
+            }
+            if (!normalizedSearch.isBlank()) {
+                String haystack = ((row.getApplicationName() != null ? row.getApplicationName() : "") + " "
+                        + (row.getProjectName() != null ? row.getProjectName() : "") + " "
+                        + (row.getActivityType() != null ? row.getActivityType().name() : "") + " "
+                        + (row.getDetails() != null ? row.getDetails() : "") + " "
+                        + (row.getActorEmail() != null ? row.getActorEmail() : ""))
+                        .toLowerCase(Locale.ROOT);
+                return haystack.contains(normalizedSearch);
+            }
+            return true;
+        }).toList();
     }
 
     @Transactional(readOnly = true)

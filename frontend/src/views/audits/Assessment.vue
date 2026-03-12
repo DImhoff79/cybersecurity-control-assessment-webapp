@@ -134,9 +134,14 @@
                   </p>
                   <div v-if="!ac.evidences?.length" class="text-muted small mb-2">No evidence attached.</div>
                   <div v-for="ev in ac.evidences || []" :key="ev.id" class="small border-top pt-2 mt-2">
-                    <div><strong>{{ ev.fileName || ev.title }}</strong></div>
+                    <div>
+                      <strong>{{ ev.fileName || ev.title }}</strong>
+                      <span v-if="ev.stale" class="badge text-bg-danger ms-1">Stale</span>
+                      <span v-else-if="ev.expiresAt" class="badge text-bg-light border ms-1">Fresh</span>
+                    </div>
                     <div class="text-muted">{{ ev.notes || '-' }}</div>
                     <div class="text-muted">Review: {{ ev.reviewStatus }}</div>
+                    <div class="text-muted">Expires: {{ formatDateTime(ev.expiresAt) }}</div>
                     <div class="mt-1">
                       <a v-if="ev.uri" :href="ev.uri" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm me-1">
                         Download
@@ -175,9 +180,28 @@
 
     <div class="card shadow-sm mt-3">
       <div class="card-body">
-        <h2 class="h5 mb-3">Activity Timeline</h2>
-        <div v-if="!activityLogs.length" class="text-muted">No activity yet.</div>
-        <div v-for="log in activityLogs" :key="log.id" class="border-top pt-2 mt-2 small">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <h2 class="h5 mb-0">Activity Timeline</h2>
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <select v-model="activityFilter.category" class="form-select form-select-sm">
+              <option value="all">All events</option>
+              <option value="finding">Findings</option>
+              <option value="exception">Exceptions</option>
+              <option value="evidence">Evidence</option>
+              <option value="audit">Audit workflow</option>
+            </select>
+            <input
+              v-model="activityFilter.search"
+              class="form-control form-control-sm"
+              placeholder="Search actor or details..."
+            />
+          </div>
+        </div>
+        <div class="small text-muted mb-2">
+          Showing {{ filteredActivityLogs.length }} of {{ activityLogs.length }} events
+        </div>
+        <div v-if="!filteredActivityLogs.length" class="text-muted">No matching activity events.</div>
+        <div v-for="log in filteredActivityLogs" :key="log.id" class="border-top pt-2 mt-2 small">
           <div><strong>{{ log.activityType }}</strong> - {{ log.details || '-' }}</div>
           <div class="text-muted">{{ formatDateTime(log.createdAt) }} by {{ log.actorEmail || 'system' }}</div>
         </div>
@@ -215,6 +239,10 @@ const auditControls = ref([])
 const loading = ref(true)
 const detailsModal = ref(null)
 const activityLogs = ref([])
+const activityFilter = ref({
+  category: 'all',
+  search: ''
+})
 const evidenceDrafts = ref({})
 const evidenceFiles = ref({})
 const controlAssignmentDrafts = ref({})
@@ -433,6 +461,25 @@ const detailExamples = computed(() => {
     .map((q) => q.helpText || q.questionText)
     .filter(Boolean)
     .slice(0, 5)
+})
+
+const filteredActivityLogs = computed(() => {
+  const filter = activityFilter.value
+  const term = filter.search.trim().toLowerCase()
+  return activityLogs.value.filter((log) => {
+    const type = String(log.activityType || '')
+    if (filter.category !== 'all') {
+      const matchesCategory =
+        (filter.category === 'finding' && type.startsWith('FINDING_')) ||
+        (filter.category === 'exception' && type.startsWith('EXCEPTION_')) ||
+        (filter.category === 'evidence' && type.startsWith('EVIDENCE_')) ||
+        (filter.category === 'audit' && type.startsWith('AUDIT_'))
+      if (!matchesCategory) return false
+    }
+    if (!term) return true
+    const haystack = `${type} ${log.details || ''} ${log.actorEmail || ''}`.toLowerCase()
+    return haystack.includes(term)
+  })
 })
 
 async function openControlDetails(controlId) {

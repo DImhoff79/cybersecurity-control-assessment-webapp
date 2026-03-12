@@ -3,10 +3,15 @@ package com.cyberassessment.service;
 import com.cyberassessment.entity.Audit;
 import com.cyberassessment.entity.AuditActivityType;
 import com.cyberassessment.entity.AuditEvidence;
+import com.cyberassessment.entity.Finding;
+import com.cyberassessment.entity.FindingStatus;
 import com.cyberassessment.entity.AuditStatus;
-import com.cyberassessment.entity.EvidenceReviewStatus;
+import com.cyberassessment.entity.User;
+import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.AuditEvidenceRepository;
 import com.cyberassessment.repository.AuditRepository;
+import com.cyberassessment.repository.FindingRepository;
+import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +35,8 @@ public class AuditAutomationService {
 
     private final AuditRepository auditRepository;
     private final AuditEvidenceRepository auditEvidenceRepository;
+    private final FindingRepository findingRepository;
+    private final UserRepository userRepository;
     private final AuditActivityLogService auditActivityLogService;
     private final AsyncMailService asyncMailService;
     private final JdbcTemplate jdbcTemplate;
@@ -40,6 +49,12 @@ public class AuditAutomationService {
 
     @Value("${app.evidence-policy.reminder-days-before-expiry:14}")
     private long reminderDaysBeforeEvidenceExpiry;
+
+    @Value("${app.remediation.reminder-min-hours-between:24}")
+    private long remediationReminderMinHoursBetween;
+
+    @Value("${app.remediation.escalation-days-overdue:7}")
+    private long remediationEscalationDaysOverdue;
 
     @Scheduled(cron = "0 0 7 * * *")
     @Transactional
@@ -74,6 +89,7 @@ public class AuditAutomationService {
             }
         }
         auditRepository.saveAll(audits);
+        runDailyRemediationEscalation(now);
         runDailyEvidenceRetentionAutomation(now);
     }
 
@@ -124,28 +140,121 @@ public class AuditAutomationService {
 
     private void runDailyEvidenceRetentionAutomation(Instant now) {
         Instant expiresBefore = now.plus(Duration.ofDays(reminderDaysBeforeEvidenceExpiry));
-        List<AuditEvidence> candidates = auditEvidenceRepository.findByExpiresAtBeforeAndReviewStatusIn(
-                expiresBefore,
-                List.of(EvidenceReviewStatus.PENDING, EvidenceReviewStatus.REJECTED)
-        );
+        List<AuditEvidence> candidates = auditEvidenceRepository.findByExpiresAtBefore(expiresBefore);
         for (AuditEvidence evidence : candidates) {
             if (evidence.getExpiresAt() == null) continue;
             long daysRemaining = Duration.between(now, evidence.getExpiresAt()).toDays();
-            if (daysRemaining < 0) continue;
             Audit audit = evidence.getAuditControl().getAudit();
-            String details = "Evidence \"" + (evidence.getFileName() != null ? evidence.getFileName() : evidence.getTitle())
-                    + "\" expires in " + daysRemaining + " day(s).";
-            auditActivityLogService.log(audit, AuditActivityType.EVIDENCE_EXPIRING, details);
-            sendEvidenceExpiryEmail(audit, details);
+            String evidenceName = evidence.getFileName() != null ? evidence.getFileName() : evidence.getTitle();
+            if (daysRemaining < 0) {
+                String staleDetails = "Evidence \"" + evidenceName + "\" is stale (expired "
+                        + Math.abs(daysRemaining) + " day(s) ago).";
+                auditActivityLogService.log(audit, AuditActivityType.EVIDENCE_STALE, staleDetails);
+                sendEvidenceExpiryEmail(audit, staleDetails, true);
+            } else {
+                String expiringDetails = "Evidence \"" + evidenceName + "\" expires in " + daysRemaining + " day(s).";
+                auditActivityLogService.log(audit, AuditActivityType.EVIDENCE_EXPIRING, expiringDetails);
+                sendEvidenceExpiryEmail(audit, expiringDetails, false);
+            }
         }
     }
 
-    private void sendEvidenceExpiryEmail(Audit audit, String details) {
+    private void runDailyRemediationEscalation(Instant now) {
+        List<Finding> overdue = findingRepository.findByStatusInAndDueAtBefore(
+                List.of(FindingStatus.OPEN, FindingStatus.IN_PROGRESS),
+                now
+        );
+        if (overdue.isEmpty()) {
+            return;
+        }
+        for (Finding finding : overdue) {
+            boolean reminderDue = finding.getReminderSentAt() == null
+                    || Duration.between(finding.getReminderSentAt(), now).toHours() >= remediationReminderMinHoursBetween;
+            if (reminderDue) {
+                sendFindingReminder(finding, now);
+                finding.setReminderSentAt(now);
+                auditActivityLogService.log(
+                        finding.getAudit(),
+                        AuditActivityType.FINDING_REMINDER_SENT,
+                        "Overdue finding reminder sent: " + finding.getTitle()
+                );
+            }
+
+            long daysOverdue = Duration.between(finding.getDueAt(), now).toDays();
+            boolean escalationDue = daysOverdue >= remediationEscalationDaysOverdue
+                    && (finding.getEscalatedAt() == null
+                    || Duration.between(finding.getEscalatedAt(), now).toHours() >= remediationReminderMinHoursBetween);
+            if (escalationDue) {
+                sendFindingEscalation(finding, daysOverdue);
+                finding.setEscalatedAt(now);
+                auditActivityLogService.log(
+                        finding.getAudit(),
+                        AuditActivityType.FINDING_ESCALATED,
+                        "Overdue finding escalated: " + finding.getTitle()
+                );
+            }
+        }
+        findingRepository.saveAll(overdue);
+    }
+
+    private void sendFindingReminder(Finding finding, Instant now) {
+        if (finding.getOwner() == null || finding.getOwner().getEmail() == null || finding.getOwner().getEmail().isBlank()) {
+            return;
+        }
+        long daysOverdue = Duration.between(finding.getDueAt(), now).toDays();
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(finding.getOwner().getEmail());
+            msg.setSubject("Overdue remediation finding: " + finding.getTitle());
+            msg.setText("The finding \"" + finding.getTitle() + "\" for application "
+                    + finding.getAudit().getApplication().getName()
+                    + " is overdue by " + Math.max(1, daysOverdue) + " day(s)."
+                    + "\n\nPlease update remediation status and target closure date.");
+            asyncMailService.send(msg);
+        } catch (Exception e) {
+            log.warn("Failed to send finding reminder for finding {}", finding.getId(), e);
+        }
+    }
+
+    private void sendFindingEscalation(Finding finding, long daysOverdue) {
+        Set<String> recipients = new LinkedHashSet<>();
+        if (finding.getOwner() != null && finding.getOwner().getEmail() != null && !finding.getOwner().getEmail().isBlank()) {
+            recipients.add(finding.getOwner().getEmail());
+        }
+        userRepository.findByRole(UserRole.ADMIN).stream()
+                .map(User::getEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .forEach(recipients::add);
+        userRepository.findByRole(UserRole.AUDIT_MANAGER).stream()
+                .map(User::getEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .forEach(recipients::add);
+
+        if (recipients.isEmpty()) {
+            return;
+        }
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(recipients.toArray(new String[0]));
+            msg.setSubject("Escalation: overdue remediation finding");
+            msg.setText("Finding \"" + finding.getTitle() + "\" for application "
+                    + finding.getAudit().getApplication().getName()
+                    + " is overdue by " + Math.max(1, daysOverdue) + " day(s)."
+                    + "\nStatus: " + finding.getStatus()
+                    + "\nOwner: " + (finding.getOwner() != null ? finding.getOwner().getEmail() : "unassigned")
+                    + "\n\nPlease review and drive remediation closure.");
+            asyncMailService.send(msg);
+        } catch (Exception e) {
+            log.warn("Failed to send finding escalation for finding {}", finding.getId(), e);
+        }
+    }
+
+    private void sendEvidenceExpiryEmail(Audit audit, String details, boolean stale) {
         if (audit.getAssignedTo() == null) return;
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
             msg.setTo(audit.getAssignedTo().getEmail());
-            msg.setSubject("Evidence retention reminder: " + audit.getApplication().getName());
+            msg.setSubject((stale ? "Evidence is stale: " : "Evidence retention reminder: ") + audit.getApplication().getName());
             msg.setText(details + "\n\nPlease review and refresh evidence in the assessment workspace.");
             asyncMailService.send(msg);
         } catch (Exception e) {

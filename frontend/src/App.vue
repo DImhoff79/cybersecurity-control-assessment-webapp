@@ -17,6 +17,8 @@
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audits" class="dropdown-item">Audits</router-link>
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/review-queue" class="dropdown-item">Review Queue</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/findings" class="dropdown-item">Findings</router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/control-exceptions" class="dropdown-item">Control Exceptions</router-link>
               <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/reports" class="dropdown-item">Reports</router-link>
               <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/auditor-workbench" class="dropdown-item">Auditor Workbench</router-link>
               <router-link v-if="authStore.hasPermission('USER_MANAGEMENT')" to="/admin/users" class="dropdown-item">Users</router-link>

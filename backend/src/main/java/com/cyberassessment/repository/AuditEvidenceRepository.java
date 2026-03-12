@@ -14,4 +14,6 @@ public interface AuditEvidenceRepository extends JpaRepository<AuditEvidence, Lo
     List<AuditEvidence> findByReviewStatusOrderByCreatedAtDesc(EvidenceReviewStatus reviewStatus);
 
     List<AuditEvidence> findByExpiresAtBeforeAndReviewStatusIn(Instant expiresAt, List<EvidenceReviewStatus> statuses);
+
+    List<AuditEvidence> findByExpiresAtBefore(Instant expiresAt);
 }

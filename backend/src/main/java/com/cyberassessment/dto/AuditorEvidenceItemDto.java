@@ -30,5 +30,7 @@ public class AuditorEvidenceItemDto {
     private String uri;
     private String fileName;
     private String notes;
+    private Instant expiresAt;
+    private Boolean stale;
     private Instant createdAt;
 }

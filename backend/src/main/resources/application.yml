@@ -73,11 +73,15 @@ app:
     min-description-length: 8
     max-file-size-bytes: 10485760
     allowed-content-types: application/pdf,text/plain,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv
+    default-valid-days: 365
     retention-days: 365
     reminder-days-before-expiry: 14
   automation:
     enabled: true
     reminder-days-before-due: 3
+  remediation:
+    reminder-min-hours-between: 24
+    escalation-days-overdue: 7
   scalability:
     slos:
       api-p95-ms: 350

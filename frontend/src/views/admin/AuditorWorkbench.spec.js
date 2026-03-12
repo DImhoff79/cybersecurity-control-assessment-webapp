@@ -15,6 +15,8 @@ vi.mock('../../services/api', () => ({
 describe('AuditorWorkbench', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    global.URL.createObjectURL = vi.fn(() => 'blob:mock')
+    global.URL.revokeObjectURL = vi.fn()
     api.get.mockImplementation((url) => {
       if (url === '/api/auth/me') {
         return Promise.resolve({ data: { email: 'auditor@test.com' } })
@@ -66,6 +68,20 @@ describe('AuditorWorkbench', () => {
               createdAt: null,
               uri: '/api/evidences/9/download'
             }
+          ],
+          recentActivity: [
+            {
+              id: 700,
+              auditId: 1,
+              projectId: 10,
+              projectName: 'PCI 2026',
+              applicationName: 'App A',
+              year: 2026,
+              activityType: 'FINDING_CREATED',
+              details: 'Finding created from assessment',
+              actorEmail: 'auditor@test.com',
+              createdAt: null
+            }
           ]
         }
       })
@@ -107,5 +123,48 @@ describe('AuditorWorkbench', () => {
     await saveBtn.trigger('click')
     await flushPromises()
     expect(api.post).toHaveBeenCalledWith('/api/reports/saved-filters', expect.any(Object))
+
+    expect(wrapper.text()).toContain('Recent Activity Feed')
+    expect(wrapper.text()).toContain('Finding created from assessment')
+  })
+
+  it('exports recent activity csv with selected filters', async () => {
+    const wrapper = mount(AuditorWorkbench, {
+      global: {
+        stubs: { RouterLink: { template: '<a><slot /></a>' } }
+      }
+    })
+    await flushPromises()
+
+    const activityProjectSelect = wrapper.findAll('select').find((s) =>
+      s.element.options?.[0]?.text?.includes('All projects'))
+    await activityProjectSelect.setValue('10')
+
+    const activityCategorySelect = wrapper.findAll('select').find((s) =>
+      s.element.options?.[0]?.text?.includes('All events'))
+    await activityCategorySelect.setValue('finding')
+
+    const activitySearch = wrapper.find('input[placeholder="Search details or actor..."]')
+    await activitySearch.setValue('Finding')
+
+    api.get.mockImplementationOnce((url, options) => {
+      if (url === '/api/reports/recent-activity.csv') {
+        return Promise.resolve({ data: new Blob(['a,b']) })
+      }
+      return Promise.resolve({ data: {} })
+    })
+
+    const exportBtn = wrapper.findAll('button').find((b) => b.text() === 'Export CSV')
+    await exportBtn.trigger('click')
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/api/reports/recent-activity.csv', {
+      params: {
+        category: 'finding',
+        search: 'Finding',
+        projectId: 10
+      },
+      responseType: 'blob'
+    })
   })
 })

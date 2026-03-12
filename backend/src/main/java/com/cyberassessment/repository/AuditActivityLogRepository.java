@@ -8,4 +8,6 @@ import java.util.List;
 public interface AuditActivityLogRepository extends JpaRepository<AuditActivityLog, Long> {
 
     List<AuditActivityLog> findByAuditIdOrderByCreatedAtDesc(Long auditId);
+
+    List<AuditActivityLog> findTop200ByOrderByCreatedAtDesc();
 }

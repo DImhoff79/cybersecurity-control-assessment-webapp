@@ -5,6 +5,7 @@ import com.cyberassessment.dto.AuditEvidenceDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.ApplicationRepository;
 import com.cyberassessment.repository.AuditControlRepository;
+import com.cyberassessment.repository.AuditEvidenceRepository;
 import com.cyberassessment.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.List;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -41,6 +44,8 @@ class AuditEvidenceServiceIntegrationTest {
     private ApplicationRepository applicationRepository;
     @Autowired
     private AuditControlRepository auditControlRepository;
+    @Autowired
+    private AuditEvidenceRepository auditEvidenceRepository;
 
     @AfterEach
     void clearSecurity() {
@@ -54,12 +59,14 @@ class AuditEvidenceServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("evidence-owner@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Evidence App")
@@ -89,6 +96,7 @@ class AuditEvidenceServiceIntegrationTest {
         assertThat(dto.getFileName()).isEqualTo("evidence.txt");
         assertThat(dto.getSizeBytes()).isEqualTo(file.getSize());
         assertThat(dto.getUri()).contains("/api/evidences/");
+        assertThat(dto.getStale()).isFalse();
 
         Resource resource = auditEvidenceService.loadEvidenceFile(dto.getId());
         assertThat(resource.exists()).isTrue();
@@ -101,12 +109,14 @@ class AuditEvidenceServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("evidence-owner2@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Evidence Policy App")
@@ -131,6 +141,52 @@ class AuditEvidenceServiceIntegrationTest {
         assertThrows(IllegalArgumentException.class, () ->
                 auditEvidenceService.upload(auditControlId, "short", file)
         );
+    }
+
+    @Test
+    void listByAuditControlFlagsStaleEvidence() {
+        User admin = userRepository.save(User.builder()
+                .email("evidence-admin3@test.com")
+                .passwordHash("x")
+                .displayName("Admin")
+                .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("evidence-owner3@test.com")
+                .passwordHash("x")
+                .displayName("Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Evidence Freshness App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2038);
+        auditService.assign(audit.getId(), owner.getId());
+        auditService.sendToOwner(audit.getId());
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+
+        authenticate(owner.getEmail());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "freshness.txt",
+                "text/plain",
+                "evidence body".getBytes()
+        );
+        AuditEvidenceDto dto = auditEvidenceService.upload(auditControlId, "Freshness description", file);
+
+        AuditEvidence evidence = auditEvidenceRepository.findById(dto.getId()).orElseThrow();
+        evidence.setExpiresAt(Instant.now().minusSeconds(3600));
+        auditEvidenceRepository.save(evidence);
+
+        List<AuditEvidenceDto> listed = auditEvidenceService.listByAuditControl(auditControlId);
+        AuditEvidenceDto stale = listed.stream().filter(e -> e.getId().equals(dto.getId())).findFirst().orElseThrow();
+        assertThat(stale.getStale()).isTrue();
     }
 
     private void authenticate(String email) {

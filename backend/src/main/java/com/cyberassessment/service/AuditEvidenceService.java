@@ -47,6 +47,9 @@ public class AuditEvidenceService {
     @Value("${app.evidence-policy.retention-days:365}")
     private long retentionDays;
 
+    @Value("${app.evidence-policy.default-valid-days:365}")
+    private long defaultValidDays;
+
     @Value("${app.evidence-storage-mode:db}")
     private String evidenceStorageMode;
 
@@ -75,6 +78,7 @@ public class AuditEvidenceService {
                 .createdByEmail(createdBy != null ? createdBy.getEmail() : null)
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
+                .stale(isStale(e))
                 .build();
     }
 
@@ -150,6 +154,8 @@ public class AuditEvidenceService {
             byte[] fileContent = file.getBytes();
             String storageKey = Instant.now().toEpochMilli() + "_" + safeName;
 
+            Instant collectedAt = Instant.now();
+            Instant expiresAt = collectedAt.plus(defaultValidDays > 0 ? defaultValidDays : retentionDays, ChronoUnit.DAYS);
             AuditEvidence evidence = AuditEvidence.builder()
                     .auditControl(ac)
                     .evidenceType(EvidenceType.DOCUMENT)
@@ -161,8 +167,8 @@ public class AuditEvidenceService {
                     .mimeType(file.getContentType())
                     .sizeBytes(file.getSize())
                     .fileContent(fileContent)
-                    .collectedAt(Instant.now())
-                    .expiresAt(Instant.now().plus(retentionDays, ChronoUnit.DAYS))
+                    .collectedAt(collectedAt)
+                    .expiresAt(expiresAt)
                     .reviewStatus(EvidenceReviewStatus.PENDING)
                     .createdBy(currentUserService.getCurrentUser().orElse(null))
                     .build();
@@ -207,5 +213,9 @@ public class AuditEvidenceService {
                 .filter(s -> !s.isBlank())
                 .map(String::toLowerCase)
                 .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    private static boolean isStale(AuditEvidence evidence) {
+        return evidence.getExpiresAt() != null && evidence.getExpiresAt().isBefore(Instant.now());
     }
 }

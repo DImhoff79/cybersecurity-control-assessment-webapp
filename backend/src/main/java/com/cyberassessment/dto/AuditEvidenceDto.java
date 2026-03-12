@@ -35,4 +35,5 @@ public class AuditEvidenceDto {
     private String createdByEmail;
     private Instant createdAt;
     private Instant updatedAt;
+    private Boolean stale;
 }
