@@ -51,17 +51,17 @@
             <table class="table table-striped mb-0">
               <thead>
                 <tr>
-                  <th>Year</th>
-                  <th>Total</th>
-                  <th>Draft</th>
-                  <th>In Progress</th>
-                  <th>Submitted</th>
-                  <th>Attested</th>
-                  <th>Complete</th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('year')">Year {{ byYearSortIndicator('year') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('total')">Total {{ byYearSortIndicator('total') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('draft')">Draft {{ byYearSortIndicator('draft') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('inProgress')">In Progress {{ byYearSortIndicator('inProgress') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('submitted')">Submitted {{ byYearSortIndicator('submitted') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('attested')">Attested {{ byYearSortIndicator('attested') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('complete')">Complete {{ byYearSortIndicator('complete') }}</button></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in byYear" :key="row.year">
+                <tr v-for="row in sortedByYear" :key="row.year">
                   <td>{{ row.year }}</td>
                   <td>{{ row.total }}</td>
                   <td>{{ row.draft }}</td>
@@ -82,19 +82,19 @@
             <table class="table table-striped mb-0">
               <thead>
                 <tr>
-                  <th>Project</th>
-                  <th>Framework</th>
-                  <th>Year</th>
-                  <th>Apps</th>
-                  <th>Total Audits</th>
-                  <th>Open</th>
-                  <th>Submitted</th>
-                  <th>Attested</th>
-                  <th>Complete</th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('project')">Project {{ byProjectSortIndicator('project') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('framework')">Framework {{ byProjectSortIndicator('framework') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('year')">Year {{ byProjectSortIndicator('year') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('scopedApplications')">Apps {{ byProjectSortIndicator('scopedApplications') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('totalAudits')">Total Audits {{ byProjectSortIndicator('totalAudits') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('openAudits')">Open {{ byProjectSortIndicator('openAudits') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('submittedAudits')">Submitted {{ byProjectSortIndicator('submittedAudits') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('attestedAudits')">Attested {{ byProjectSortIndicator('attestedAudits') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('completeAudits')">Complete {{ byProjectSortIndicator('completeAudits') }}</button></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in byProject" :key="row.projectId">
+                <tr v-for="row in sortedByProject" :key="row.projectId">
                   <td>{{ row.projectName }}</td>
                   <td>{{ row.frameworkTag || '-' }}</td>
                   <td>{{ row.year }}</td>
@@ -118,12 +118,25 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '../../services/api'
 import { toastError } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const loading = ref(true)
 const summary = ref(null)
 const byYear = ref([])
 const trends = ref([])
 const byProject = ref([])
+
+const { sortedRows: sortedByYear, toggleSort: toggleByYearSort, sortIndicator: byYearSortIndicator } = useTableSort(byYear, {
+  initialKey: 'year'
+})
+
+const { sortedRows: sortedByProject, toggleSort: toggleByProjectSort, sortIndicator: byProjectSortIndicator } = useTableSort(byProject, {
+  initialKey: 'project',
+  valueGetters: {
+    project: (row) => row.projectName || '',
+    framework: (row) => row.frameworkTag || ''
+  }
+})
 
 const cards = computed(() => {
   const s = summary.value || {}

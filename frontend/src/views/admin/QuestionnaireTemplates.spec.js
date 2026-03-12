@@ -6,7 +6,8 @@ import api from '../../services/api'
 vi.mock('../../services/api', () => ({
   default: {
     get: vi.fn(),
-    post: vi.fn()
+    post: vi.fn(),
+    delete: vi.fn()
   }
 }))
 
@@ -25,15 +26,16 @@ describe('QuestionnaireTemplates', () => {
       return Promise.resolve({ data: [] })
     })
     api.post.mockResolvedValue({ data: {} })
+    api.delete.mockResolvedValue({ data: {} })
   })
 
-  it('creates draft and publishes template', async () => {
+  it('creates working snapshot and publishes template', async () => {
     const wrapper = mount(QuestionnaireTemplates, {
-      global: { stubs: { BsModal: true } }
+      global: { stubs: { BsModal: true, RouterLink: true } }
     })
     await flushPromises()
 
-    const createBtn = wrapper.findAll('button').find((b) => b.text().includes('Create Draft'))
+    const createBtn = wrapper.findAll('button').find((b) => b.text().includes('Create Working Snapshot'))
     await createBtn.trigger('click')
     await flushPromises()
     expect(api.post).toHaveBeenCalledWith('/api/questionnaire-templates/draft-from-current', { notes: null })
@@ -42,5 +44,19 @@ describe('QuestionnaireTemplates', () => {
     await publishBtn.trigger('click')
     await flushPromises()
     expect(api.post).toHaveBeenCalledWith('/api/questionnaire-templates/1/publish')
+  })
+
+  it('deletes a working snapshot', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = mount(QuestionnaireTemplates, {
+      global: { stubs: { BsModal: true, RouterLink: true } }
+    })
+    await flushPromises()
+
+    const deleteBtn = wrapper.findAll('button').find((b) => b.text() === 'Delete')
+    await deleteBtn.trigger('click')
+    await flushPromises()
+
+    expect(api.delete).toHaveBeenCalledWith('/api/questionnaire-templates/1')
   })
 })

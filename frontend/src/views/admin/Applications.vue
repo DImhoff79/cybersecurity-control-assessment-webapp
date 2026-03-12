@@ -8,16 +8,16 @@
           <table class="table table-striped table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Owner</th>
-                <th>Criticality</th>
-                <th>Lifecycle</th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('name')">Name {{ sortIndicator('name') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('description')">Description {{ sortIndicator('description') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('criticality')">Criticality {{ sortIndicator('criticality') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('lifecycle')">Lifecycle {{ sortIndicator('lifecycle') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in applications" :key="a.id">
+              <tr v-for="a in sortedRows" :key="a.id">
                 <td>{{ a.name }}</td>
                 <td>{{ a.description || '-' }}</td>
                 <td>{{ a.ownerDisplayName || a.ownerEmail || '-' }}</td>
@@ -105,10 +105,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const applications = ref([])
 const users = ref([])
@@ -124,6 +125,15 @@ const form = reactive({
   businessOwnerName: '',
   technicalOwnerName: '',
   lifecycleStatus: null
+})
+
+const sortableApplications = computed(() => applications.value)
+const { sortedRows, toggleSort, sortIndicator } = useTableSort(sortableApplications, {
+  initialKey: 'name',
+  valueGetters: {
+    owner: (row) => row.ownerDisplayName || row.ownerEmail || '',
+    lifecycle: (row) => row.lifecycleStatus || ''
+  }
 })
 
 onMounted(load)

@@ -9,18 +9,18 @@
           <table class="table table-striped align-middle mb-0">
             <thead>
               <tr>
-                <th>Application</th>
-                <th>Audit</th>
-                <th>Control</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Due</th>
-                <th>Notes</th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('auditYear')">Audit {{ sortIndicator('auditYear') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('control')">Control {{ sortIndicator('control') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('assignmentRole')">Role {{ sortIndicator('assignmentRole') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('notes')">Notes {{ sortIndicator('notes') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="t in tasks" :key="t.assignmentId">
+              <tr v-for="t in sortedRows" :key="t.assignmentId">
                 <td>{{ t.applicationName }}</td>
                 <td>{{ t.auditYear }}</td>
                 <td>{{ t.controlControlId }} - {{ t.controlName }}</td>
@@ -54,9 +54,16 @@
 import { onMounted, ref } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const tasks = ref([])
 const loading = ref(true)
+const { sortedRows, toggleSort, sortIndicator } = useTableSort(tasks, {
+  initialKey: 'dueAt',
+  valueGetters: {
+    control: (row) => `${row.controlControlId} ${row.controlName}`
+  }
+})
 
 onMounted(load)
 

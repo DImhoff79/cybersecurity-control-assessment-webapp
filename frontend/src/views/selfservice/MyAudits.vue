@@ -8,16 +8,16 @@
           <table class="table table-striped table-hover align-middle mb-0 my-audits-table">
             <thead>
               <tr>
-                <th>Application</th>
-                <th>Year</th>
-                <th>Project</th>
-                <th>Status</th>
-                <th>Completion</th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('projectName')">Project {{ sortIndicator('projectName') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completionPct')">Completion {{ sortIndicator('completionPct') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in items" :key="a.id">
+              <tr v-for="a in sortedRows" :key="a.id">
                 <td>{{ a.applicationName }}</td>
                 <td>{{ a.year }}</td>
                 <td>{{ a.projectName || '-' }}</td>
@@ -62,9 +62,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../services/api'
+import { useTableSort } from '../../composables/useTableSort'
 
 const items = ref([])
 const loading = ref(true)
+const { sortedRows, toggleSort, sortIndicator } = useTableSort(items, {
+  initialKey: 'applicationName'
+})
 
 onMounted(async () => {
   try {

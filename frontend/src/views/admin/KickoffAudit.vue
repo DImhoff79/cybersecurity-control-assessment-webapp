@@ -36,11 +36,11 @@
                   <th>
                     <input type="checkbox" :checked="allSelected(app.id)" @change="toggleSelectAll(app.id, $event.target.checked)" />
                   </th>
-                  <th>Year</th>
-                  <th>Project</th>
-                  <th>Status</th>
-                  <th>Assigned to</th>
-                  <th>Due</th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('projectName')">Project {{ sortIndicator('projectName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('assignedTo')">Assigned to {{ sortIndicator('assignedTo') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
                   <th></th>
                 </tr>
               </thead>
@@ -126,6 +126,7 @@ const auditsByApp = ref({})
 const selectedAuditIds = ref([])
 const bulkUserId = ref(null)
 const projectFilter = ref('all')
+const activeSort = ref({ key: 'year', direction: 'asc' })
 
 const isAssignModalOpen = computed({
   get: () => !!assignModal.value,
@@ -295,14 +296,51 @@ function statusBadgeClass(status) {
 
 function visibleAuditsForApp(appId) {
   const rows = auditsByApp.value[appId] || []
-  if (projectFilter.value === 'all') return rows
-  if (projectFilter.value === 'none') return rows.filter((a) => !a.projectId)
-  return rows.filter((a) => String(a.projectId) === projectFilter.value)
+  const filtered = projectFilter.value === 'all'
+    ? rows
+    : projectFilter.value === 'none'
+      ? rows.filter((a) => !a.projectId)
+      : rows.filter((a) => String(a.projectId) === projectFilter.value)
+  const getterMap = {
+    year: (row) => row.year,
+    projectName: (row) => row.projectName || '',
+    status: (row) => row.status || '',
+    assignedTo: (row) => row.assignedToDisplayName || row.assignedToEmail || '',
+    dueAt: (row) => row.dueAt || ''
+  }
+  const getter = getterMap[activeSort.value.key] || getterMap.year
+  const ordered = [...filtered].sort((a, b) => {
+    const av = getter(a)
+    const bv = getter(b)
+    if (av == null && bv == null) return 0
+    if (av == null) return -1
+    if (bv == null) return 1
+    if (typeof av === 'number' && typeof bv === 'number') return av - bv
+    const ad = Date.parse(av)
+    const bd = Date.parse(bv)
+    if (!Number.isNaN(ad) && !Number.isNaN(bd)) return ad - bd
+    return String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' })
+  })
+  return activeSort.value.direction === 'asc' ? ordered : ordered.reverse()
 }
 
 const filteredApplications = computed(() => {
   return applications.value.filter((app) => visibleAuditsForApp(app.id).length > 0)
 })
+
+function toggleSort(key) {
+  if (activeSort.value.key === key) {
+    activeSort.value.direction = activeSort.value.direction === 'asc' ? 'desc' : 'asc'
+    return
+  }
+  activeSort.value.key = key
+  activeSort.value.direction = 'asc'
+}
+
+function sortIndicator(key) {
+  if (activeSort.value.key !== key) return '↕'
+  return activeSort.value.direction === 'asc' ? '↑' : '↓'
+}
 </script>
 
 <style scoped>

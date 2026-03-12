@@ -1,6 +1,19 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Control catalog</h1>
+    <h1 v-if="!embedded" class="h3 mb-3">Control catalog</h1>
+    <div v-if="!embedded && cameFromGovernance" class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="small">
+        You are editing controls as part of the questionnaire governance workflow.
+      </div>
+      <div class="d-flex gap-2">
+        <router-link :to="{ name: 'AdminQuestions', query: { from: 'governance' } }" class="btn btn-outline-primary btn-sm">
+          Go to Questions
+        </router-link>
+        <router-link :to="{ name: 'AdminQuestionnaireTemplates' }" class="btn btn-primary btn-sm">
+          Back to Governance
+        </router-link>
+      </div>
+    </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-body row g-3 align-items-end">
@@ -32,15 +45,15 @@
           <table class="table table-striped table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Framework</th>
-                <th>Enabled</th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('controlId')">ID {{ controlSortIndicator('controlId') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('name')">Name {{ controlSortIndicator('name') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('framework')">Framework {{ controlSortIndicator('framework') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('enabled')">Enabled {{ controlSortIndicator('enabled') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="c in filteredControls" :key="c.id">
+              <tr v-for="c in sortedControls" :key="c.id">
                 <td>{{ c.controlId }}</td>
                 <td>
                   <button class="btn btn-link p-0 text-decoration-none" type="button" @click="openControlDetails(c.id)">
@@ -128,12 +141,12 @@
         <table class="table table-striped table-hover align-middle">
           <thead>
             <tr>
-              <th>Question</th>
+              <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="q in questionsList" :key="q.id">
+            <tr v-for="q in sortedQuestions" :key="q.id">
               <td>{{ q.questionText }}</td>
               <td class="text-nowrap">
                 <button class="btn btn-secondary btn-sm me-2" @click="editQuestion(q)">Edit</button>
@@ -175,10 +188,20 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
+defineProps({
+  embedded: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const route = useRoute()
 const controls = ref([])
 const filterFramework = ref('')
 const filterEnabled = ref(false)
@@ -190,12 +213,21 @@ const questionsModal = ref(null)
 const questionsList = ref([])
 const newQuestionText = ref('')
 const detailsModal = ref(null)
+const cameFromGovernance = computed(() => route.query.from === 'governance')
 
 const filteredControls = computed(() => {
   let list = controls.value
   if (filterFramework.value) list = list.filter((c) => c.framework === filterFramework.value)
   if (filterEnabled.value) list = list.filter((c) => c.enabled)
   return list
+})
+
+const { sortedRows: sortedControls, toggleSort: toggleControlSort, sortIndicator: controlSortIndicator } = useTableSort(filteredControls, {
+  initialKey: 'controlId'
+})
+
+const { sortedRows: sortedQuestions, toggleSort: toggleQuestionSort, sortIndicator: questionSortIndicator } = useTableSort(questionsList, {
+  initialKey: 'questionText'
 })
 
 const isEditOpen = computed({

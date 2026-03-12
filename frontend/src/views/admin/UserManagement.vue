@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">User Management</h1>
+    <h1 class="h3 mb-1">User Management</h1>
+    <p class="text-muted mb-3">
+      Approve access and assign roles. User identity fields are read-only after account creation.
+    </p>
 
     <section class="card shadow-sm mb-3">
       <div class="card-body">
@@ -10,19 +13,19 @@
           <table class="table table-striped mb-0">
             <thead>
               <tr>
-                <th>Email</th>
-                <th>Name</th>
-                <th>Provider</th>
-                <th>Requested</th>
-                <th>Role</th>
-                <th></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('email')">Email {{ pendingSortIndicator('email') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('displayName')">Name {{ pendingSortIndicator('displayName') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('provider')">Provider {{ pendingSortIndicator('provider') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('requestedAt')">Requested {{ pendingSortIndicator('requestedAt') }}</button></th>
+                <th class="w-role">Grant Role</th>
+                <th class="w-action"></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in pendingRequests" :key="r.id">
+              <tr v-for="r in sortedPendingRequests" :key="r.id">
                 <td>{{ r.email }}</td>
                 <td>{{ r.displayName || '-' }}</td>
-                <td>{{ r.provider }}</td>
+                <td><span class="badge text-bg-light border">{{ r.provider }}</span></td>
                 <td>{{ formatDate(r.requestedAt) }}</td>
                 <td>
                   <select v-model="decisionRole[r.id]" class="form-select form-select-sm">
@@ -42,79 +45,61 @@
 
     <section class="card shadow-sm">
       <div class="card-body">
-        <h2 class="h5 mb-3">Create User</h2>
-        <form class="row g-2 mb-4" @submit.prevent="createUser">
-          <div class="col-md-3">
-            <input v-model.trim="createForm.email" type="email" class="form-control" placeholder="Email" required>
+        <h2 class="h5 mb-2">Create User</h2>
+        <p class="small text-muted mb-3">
+          Permissions are automatically assigned from the selected role.
+        </p>
+        <form class="row g-3 mb-4 border rounded p-3 bg-light-subtle" @submit.prevent="createUser">
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">Email</label>
+            <input v-model.trim="createForm.email" type="email" class="form-control" placeholder="name@company.com" required>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Display Name</label>
             <input v-model.trim="createForm.displayName" type="text" class="form-control" placeholder="Display name">
           </div>
           <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">Password</label>
             <input v-model="createForm.password" type="password" class="form-control" placeholder="Password" required minlength="8">
           </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Role</label>
             <select v-model="createForm.role" class="form-select">
               <option v-for="role in roles" :key="role.value" :value="role.value">{{ role.label }}</option>
             </select>
           </div>
-          <div class="col-md-3 d-flex align-items-center justify-content-end">
+          <div class="col-12 d-flex justify-content-end align-items-center">
             <button class="btn btn-primary" type="submit">Create User</button>
-          </div>
-          <div class="col-12">
-            <div class="small text-muted mb-1">Permissions</div>
-            <div class="d-flex flex-wrap gap-3">
-              <label v-for="permission in permissions" :key="permission.value" class="form-check">
-                <input
-                  class="form-check-input me-1"
-                  type="checkbox"
-                  :value="permission.value"
-                  :checked="createForm.permissions.includes(permission.value)"
-                  @change="togglePermission(createForm.permissions, permission.value, $event.target.checked)"
-                >
-                <span class="form-check-label">{{ permission.label }}</span>
-              </label>
-            </div>
           </div>
         </form>
 
         <h2 class="h5 mb-3">Users</h2>
         <div class="table-responsive">
-          <table class="table table-striped mb-0">
+          <table class="table table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>Email</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Permissions</th>
-                <th></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleUserSort('user')">User {{ userSortIndicator('user') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleUserSort('role')">Role {{ userSortIndicator('role') }}</button></th>
+                <th class="w-action"></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="u in users" :key="u.id">
-                <td><input v-model.trim="userForm(u.id).email" type="email" class="form-control form-control-sm"></td>
-                <td><input v-model.trim="userForm(u.id).displayName" type="text" class="form-control form-control-sm"></td>
+              <tr v-for="u in sortedUsers" :key="u.id">
                 <td>
-                  <select v-model="userForm(u.id).role" class="form-select form-select-sm">
+                  <div class="fw-semibold">{{ userForm(u.id).displayName || 'No display name' }}</div>
+                  <div class="small text-muted">{{ userForm(u.id).email }}</div>
+                </td>
+                <td>
+                  <select
+                    v-model="userForm(u.id).role"
+                    class="form-select form-select-sm"
+                  >
                     <option v-for="role in roles" :key="role.value" :value="role.value">{{ role.label }}</option>
                   </select>
                 </td>
-                <td>
-                  <div class="d-flex flex-wrap gap-2">
-                    <label v-for="permission in permissions" :key="permission.value + u.id" class="form-check">
-                      <input
-                        class="form-check-input me-1"
-                        type="checkbox"
-                        :value="permission.value"
-                        :checked="userForm(u.id).permissions.includes(permission.value)"
-                        @change="togglePermission(userForm(u.id).permissions, permission.value, $event.target.checked)"
-                      >
-                      <span class="form-check-label small">{{ permission.label }}</span>
-                    </label>
-                  </div>
-                </td>
                 <td class="text-nowrap">
                   <button class="btn btn-primary btn-sm me-2" @click="updateUser(u.id)">Save</button>
+                  <button class="btn btn-outline-secondary btn-sm me-2" @click="resetUserForm(u.id)">Reset</button>
                   <button class="btn btn-outline-danger btn-sm" @click="deleteUser(u.id)">Delete</button>
                 </td>
               </tr>
@@ -130,6 +115,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const users = ref([])
 const pendingRequests = ref([])
@@ -143,20 +129,22 @@ const roles = [
   { value: 'APPLICATION_OWNER', label: 'Application Owner' }
 ]
 
-const permissions = [
-  { value: 'USER_MANAGEMENT', label: 'User Management' },
-  { value: 'APPLICATION_MANAGEMENT', label: 'Application Management' },
-  { value: 'AUDIT_MANAGEMENT', label: 'Audit Management' },
-  { value: 'AUDIT_EXECUTION', label: 'Audit Execution' },
-  { value: 'REPORT_VIEW', label: 'Report View' }
-]
+const { sortedRows: sortedPendingRequests, toggleSort: togglePendingSort, sortIndicator: pendingSortIndicator } = useTableSort(pendingRequests, {
+  initialKey: 'requestedAt'
+})
+
+const { sortedRows: sortedUsers, toggleSort: toggleUserSort, sortIndicator: userSortIndicator } = useTableSort(users, {
+  initialKey: 'user',
+  valueGetters: {
+    user: (row) => row.displayName || row.email || ''
+  }
+})
 
 const createForm = reactive({
   email: '',
   displayName: '',
   password: '',
-  role: 'APPLICATION_OWNER',
-  permissions: []
+  role: 'APPLICATION_OWNER'
 })
 
 onMounted(load)
@@ -177,7 +165,7 @@ async function load() {
       email: user.email || '',
       displayName: user.displayName || '',
       role: user.role || 'APPLICATION_OWNER',
-      permissions: [...(user.permissions || [])]
+      originalRole: user.role || 'APPLICATION_OWNER'
     }
   }
 }
@@ -208,15 +196,13 @@ async function createUser() {
       email: createForm.email,
       displayName: createForm.displayName || null,
       password: createForm.password,
-      role: createForm.role,
-      permissions: createForm.permissions
+      role: createForm.role
     })
     toastSuccess('User created.')
     createForm.email = ''
     createForm.displayName = ''
     createForm.password = ''
     createForm.role = 'APPLICATION_OWNER'
-    createForm.permissions = []
     await load()
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to create user')
@@ -227,10 +213,7 @@ async function updateUser(userId) {
   const form = editForms[userId]
   try {
     await api.put(`/api/users/${userId}`, {
-      email: form.email,
-      displayName: form.displayName || null,
-      role: form.role,
-      permissions: form.permissions
+      role: form.role
     })
     toastSuccess('User updated.')
     await load()
@@ -250,25 +233,21 @@ async function deleteUser(userId) {
   }
 }
 
-function togglePermission(target, permission, checked) {
-  if (checked) {
-    if (!target.includes(permission)) target.push(permission)
-    return
-  }
-  const idx = target.indexOf(permission)
-  if (idx >= 0) target.splice(idx, 1)
-}
-
 function userForm(userId) {
   if (!editForms[userId]) {
     editForms[userId] = {
       email: '',
       displayName: '',
       role: 'APPLICATION_OWNER',
-      permissions: []
+      originalRole: 'APPLICATION_OWNER'
     }
   }
   return editForms[userId]
+}
+
+function resetUserForm(userId) {
+  const form = userForm(userId)
+  form.role = form.originalRole
 }
 
 function formatDate(value) {
@@ -276,3 +255,13 @@ function formatDate(value) {
   return new Date(value).toLocaleString()
 }
 </script>
+
+<style scoped>
+.w-action {
+  width: 190px;
+}
+
+.w-role {
+  width: 190px;
+}
+</style>

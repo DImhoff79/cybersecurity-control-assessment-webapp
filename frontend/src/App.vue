@@ -12,7 +12,7 @@
 
           <div v-if="authStore.canAccessAdmin" class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Admin</span>
-            <div class="dropdown-menu show border-0 shadow-sm">
+            <div class="dropdown-menu border-0 shadow-sm">
               <router-link v-if="authStore.hasPermission('APPLICATION_MANAGEMENT')" to="/admin/applications" class="dropdown-item">Applications</router-link>
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audits" class="dropdown-item">Audits</router-link>
               <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/audit-projects" class="dropdown-item">Audit Projects</router-link>
@@ -20,15 +20,20 @@
               <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/reports" class="dropdown-item">Reports</router-link>
               <router-link v-if="authStore.hasPermission('REPORT_VIEW')" to="/admin/auditor-workbench" class="dropdown-item">Auditor Workbench</router-link>
               <router-link v-if="authStore.hasPermission('USER_MANAGEMENT')" to="/admin/users" class="dropdown-item">Users</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/questionnaire-templates" class="dropdown-item">Questionnaire Templates</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/controls" class="dropdown-item">Controls</router-link>
-              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/questions" class="dropdown-item">Questions</router-link>
+              <router-link
+                v-if="authStore.hasPermission('AUDIT_MANAGEMENT') && (authStore.hasRole('ADMIN') || authStore.hasRole('AUDIT_MANAGER'))"
+                to="/admin/questionnaire-templates"
+                class="dropdown-item"
+              >
+                Questionnaire Governance
+              </router-link>
+              <router-link v-if="authStore.hasPermission('AUDIT_MANAGEMENT')" to="/admin/questionnaire-builder" class="dropdown-item">Questionnaire Builder</router-link>
             </div>
           </div>
 
           <div class="nav-item dropdown-hover">
             <span class="nav-link text-white px-2 dropdown-toggle">Account</span>
-            <div class="dropdown-menu dropdown-menu-end show border-0 shadow-sm">
+            <div class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
               <router-link to="/profile" class="dropdown-item">Profile</router-link>
               <button type="button" class="dropdown-item" @click="logout">Log out</button>
             </div>
@@ -72,16 +77,32 @@ async function logout() {
 }
 
 .dropdown-hover > .dropdown-menu {
-  display: none;
+  display: block;
   margin-top: 0;
   position: absolute;
   top: 100%;
   left: 0;
   min-width: 12rem;
+  z-index: 1050;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
 }
 
 .dropdown-hover:hover > .dropdown-menu {
-  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.dropdown-hover:focus-within > .dropdown-menu {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .dropdown-menu-end {

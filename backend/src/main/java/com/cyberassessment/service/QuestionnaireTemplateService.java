@@ -72,8 +72,8 @@ public class QuestionnaireTemplateService {
 
     @Transactional
     public QuestionnaireTemplateDto createDraftFromCurrent(String notes) {
-        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
+        if (!(currentUserService.isAdmin() || currentUserService.isAuditManager())) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can manage questionnaire governance");
         }
         int nextVersion = questionnaireTemplateRepository.findTopByOrderByVersionNoDesc().map(t -> t.getVersionNo() + 1).orElse(1);
         QuestionnaireTemplate template = QuestionnaireTemplate.builder()
@@ -89,8 +89,8 @@ public class QuestionnaireTemplateService {
 
     @Transactional
     public QuestionnaireTemplateDto bootstrapInitialFromCurrent(String notes) {
-        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
+        if (!(currentUserService.isAdmin() || currentUserService.isAuditManager())) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can manage questionnaire governance");
         }
         if (questionnaireTemplateRepository.count() > 0) {
             throw new IllegalArgumentException("Templates already exist");
@@ -110,8 +110,8 @@ public class QuestionnaireTemplateService {
 
     @Transactional
     public QuestionnaireTemplateDto publish(Long templateId) {
-        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
+        if (!(currentUserService.isAdmin() || currentUserService.isAuditManager())) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can manage questionnaire governance");
         }
         QuestionnaireTemplate template = questionnaireTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new IllegalArgumentException("Template not found"));
@@ -125,6 +125,19 @@ public class QuestionnaireTemplateService {
         template.setPublishedBy(currentUserService.getCurrentUser().orElse(null));
         template = questionnaireTemplateRepository.save(template);
         return toDto(template);
+    }
+
+    @Transactional
+    public void deleteDraft(Long templateId) {
+        if (!(currentUserService.isAdmin() || currentUserService.isAuditManager())) {
+            throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can manage questionnaire governance");
+        }
+        QuestionnaireTemplate template = questionnaireTemplateRepository.findById(templateId)
+                .orElseThrow(() -> new IllegalArgumentException("Template not found"));
+        if (template.getStatus() != QuestionnaireTemplateStatus.DRAFT) {
+            throw new IllegalArgumentException("Only working snapshots can be deleted");
+        }
+        questionnaireTemplateRepository.delete(template);
     }
 
     @Transactional(readOnly = true)

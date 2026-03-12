@@ -50,6 +50,18 @@ body {
   color: #1b2b62;
 }
 
+.table thead th .btn.btn-link {
+  color: #1b2b62;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.table thead th .btn.btn-link:hover,
+.table thead th .btn.btn-link:focus {
+  color: #0f1f52;
+  text-decoration: none;
+}
+
 .status-badge {
   font-weight: 600;
   letter-spacing: 0.1px;

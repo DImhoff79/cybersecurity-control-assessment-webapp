@@ -17,9 +17,29 @@ const router = createRouter({
     { path: '/admin/reports', name: 'AdminReports', component: () => import('../views/admin/Reports.vue'), meta: { permission: 'REPORT_VIEW' } },
     { path: '/admin/auditor-workbench', name: 'AdminAuditorWorkbench', component: () => import('../views/admin/AuditorWorkbench.vue'), meta: { permission: 'REPORT_VIEW' } },
     { path: '/admin/users', name: 'AdminUsers', component: () => import('../views/admin/UserManagement.vue'), meta: { permission: 'USER_MANAGEMENT' } },
-    { path: '/admin/questionnaire-templates', name: 'AdminQuestionnaireTemplates', component: () => import('../views/admin/QuestionnaireTemplates.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
-    { path: '/admin/controls', name: 'AdminControls', component: () => import('../views/admin/ControlCatalog.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
-    { path: '/admin/questions', name: 'AdminQuestions', component: () => import('../views/admin/QuestionManager.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    {
+      path: '/admin/questionnaire-templates',
+      name: 'AdminQuestionnaireTemplates',
+      component: () => import('../views/admin/QuestionnaireTemplates.vue'),
+      meta: { permission: 'AUDIT_MANAGEMENT', roles: ['ADMIN', 'AUDIT_MANAGER'] }
+    },
+    { path: '/admin/questionnaire-builder', name: 'AdminQuestionnaireBuilder', component: () => import('../views/admin/QuestionnaireBuilder.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
+    {
+      path: '/admin/controls',
+      name: 'AdminControls',
+      redirect: (to) => ({
+        name: 'AdminQuestionnaireBuilder',
+        query: { ...to.query, tab: 'controls' }
+      })
+    },
+    {
+      path: '/admin/questions',
+      name: 'AdminQuestions',
+      redirect: (to) => ({
+        name: 'AdminQuestionnaireBuilder',
+        query: { ...to.query, tab: 'questions' }
+      })
+    },
     { path: '/admin/audits/:auditId', name: 'AuditDetail', component: () => import('../views/audits/Assessment.vue'), meta: { permission: 'AUDIT_MANAGEMENT' } },
     { path: '/access-denied', name: 'AccessDenied', component: () => import('../views/AccessDenied.vue') },
     { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue') },
@@ -43,6 +63,14 @@ router.beforeEach((to, from, next) => {
         name: 'AccessDenied',
         query: {
           from: to.fullPath
+        }
+      })
+    } else if (to.meta.roles?.length && !to.meta.roles.includes(authStore.user?.role)) {
+      next({
+        name: 'AccessDenied',
+        query: {
+          from: to.fullPath,
+          required: to.meta.roles.join(' or ')
         }
       })
     } else if (to.meta.permission && !authStore.hasPermission(to.meta.permission)) {

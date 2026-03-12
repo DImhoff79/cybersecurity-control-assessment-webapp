@@ -15,16 +15,16 @@
           <table class="table table-striped table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>Application</th>
-                <th>Year</th>
-                <th>Status</th>
-                <th>Submitted by</th>
-                <th>Submitted at</th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('submittedBy')">Submitted by {{ sortIndicator('submittedBy') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completedAt')">Submitted at {{ sortIndicator('completedAt') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="audit in submittedAudits" :key="audit.id">
+              <tr v-for="audit in sortedRows" :key="audit.id">
                 <td>{{ audit.applicationName }}</td>
                 <td>{{ audit.year }}</td>
                 <td>
@@ -63,6 +63,7 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const audits = ref([])
 const loading = ref(true)
@@ -71,6 +72,13 @@ const submittedAudits = computed(() => {
   return audits.value
     .filter((a) => a.status === 'SUBMITTED' || a.status === 'ATTESTED')
     .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
+})
+const { sortedRows, toggleSort, sortIndicator } = useTableSort(submittedAudits, {
+  initialKey: 'completedAt',
+  initialDirection: 'desc',
+  valueGetters: {
+    submittedBy: (row) => row.assignedToDisplayName || row.assignedToEmail || ''
+  }
 })
 
 onMounted(load)

@@ -25,6 +25,9 @@ export const useAuthStore = defineStore('auth', {
       const perms = new Set(state.user?.permissions || [])
       return (permission) => perms.has(permission)
     },
+    hasRole(state) {
+      return (role) => state.user?.role === role
+    },
     hasCredentials() {
       const cred = localStorage.getItem('auth_credentials')
       const mode = localStorage.getItem('auth_mode')
@@ -33,33 +36,14 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async setCredentials(email, password) {
-      const safeEmail = (email || '').trim()
-      const encoded = btoa(`${safeEmail}:${(password || '').trim()}`)
-      this.loading = true
-      try {
-        const res = await api.get('/api/auth/me', {
-          headers: {
-            Authorization: `Basic ${encoded}`
-          }
-        })
-        const user = res.data?.id != null ? res.data : null
-        this.user = user
-        if (user) {
-          localStorage.setItem('auth_credentials', encoded)
-          localStorage.setItem('auth_mode', 'basic')
-          return user
-        }
+      const encoded = btoa(`${email}:${password}`)
+      localStorage.setItem('auth_credentials', encoded)
+      localStorage.setItem('auth_mode', 'basic')
+      const user = await this.fetchUser()
+      if (!user) {
         this.clearCredentials()
-        return null
-      } catch (err) {
-        if (err?.response?.status === 401) {
-          this.clearCredentials()
-          return null
-        }
-        throw err
-      } finally {
-        this.loading = false
       }
+      return user
     },
     setOAuthSession() {
       localStorage.removeItem('auth_credentials')

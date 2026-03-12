@@ -95,19 +95,19 @@
             <table class="table table-striped align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Application</th>
-                  <th>Project</th>
-                  <th>Year</th>
-                  <th>Status</th>
-                  <th>Assigned</th>
-                  <th>Frameworks</th>
-                  <th>Due</th>
-                  <th>Pending Evidence</th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('applicationName')">Application {{ auditSortIndicator('applicationName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('projectName')">Project {{ auditSortIndicator('projectName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('year')">Year {{ auditSortIndicator('year') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('status')">Status {{ auditSortIndicator('status') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('assignedToEmail')">Assigned {{ auditSortIndicator('assignedToEmail') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('frameworks')">Frameworks {{ auditSortIndicator('frameworks') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('dueAt')">Due {{ auditSortIndicator('dueAt') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('pendingEvidenceCount')">Pending Evidence {{ auditSortIndicator('pendingEvidenceCount') }}</button></th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="a in filteredAudits" :key="a.auditId">
+                <tr v-for="a in sortedAudits" :key="a.auditId">
                   <td>{{ a.applicationName }}</td>
                   <td>{{ a.projectName || '-' }}</td>
                   <td>{{ a.year }}</td>
@@ -159,19 +159,19 @@
             <table class="table table-striped align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Application</th>
-                  <th>Project</th>
-                  <th>Control</th>
-                  <th>Framework</th>
-                  <th>File</th>
-                  <th>Description</th>
-                  <th>Created</th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('applicationName')">Application {{ evidenceSortIndicator('applicationName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('projectName')">Project {{ evidenceSortIndicator('projectName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('controlControlId')">Control {{ evidenceSortIndicator('controlControlId') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('framework')">Framework {{ evidenceSortIndicator('framework') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('fileName')">File {{ evidenceSortIndicator('fileName') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('notes')">Description {{ evidenceSortIndicator('notes') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('createdAt')">Created {{ evidenceSortIndicator('createdAt') }}</button></th>
                   <th>Download</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="e in filteredEvidence" :key="e.evidenceId">
+                <tr v-for="e in sortedEvidence" :key="e.evidenceId">
                   <td>{{ e.applicationName }} ({{ e.year }})</td>
                   <td>{{ e.projectName || '-' }}</td>
                   <td>{{ e.controlControlId }}</td>
@@ -201,6 +201,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const loading = ref(true)
 const dashboard = ref({ summary: {}, auditsNeedingAttention: [], evidenceQueue: [] })
@@ -362,6 +363,15 @@ const filteredEvidence = computed(() => {
     const haystack = `${e.applicationName} ${e.projectName || ''} ${e.controlControlId} ${e.controlName} ${e.fileName || ''} ${e.title || ''} ${e.notes || ''}`.toLowerCase()
     return haystack.includes(term)
   })
+})
+
+const { sortedRows: sortedAudits, toggleSort: toggleAuditSort, sortIndicator: auditSortIndicator } = useTableSort(filteredAudits, {
+  initialKey: 'dueAt'
+})
+
+const { sortedRows: sortedEvidence, toggleSort: toggleEvidenceSort, sortIndicator: evidenceSortIndicator } = useTableSort(filteredEvidence, {
+  initialKey: 'createdAt',
+  initialDirection: 'desc'
 })
 
 async function loadSavedFilters() {

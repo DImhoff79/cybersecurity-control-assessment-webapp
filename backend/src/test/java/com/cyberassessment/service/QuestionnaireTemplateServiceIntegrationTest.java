@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:template_service_test;DB_CLOSE_DELAY=-1",
@@ -59,6 +60,27 @@ class QuestionnaireTemplateServiceIntegrationTest {
         List<QuestionnaireTemplateDto> templates = questionnaireTemplateService.listTemplates();
         assertThat(templates).isNotEmpty();
         assertThat(templates.get(0).getVersionNo()).isEqualTo(published.getVersionNo());
+    }
+
+    @Test
+    void canDeleteWorkingSnapshotButNotPublishedTemplate() {
+        User admin = userRepository.save(User.builder()
+                .email("template-admin-delete@test.com")
+                .passwordHash("x")
+                .displayName("Template Admin")
+                .role(UserRole.ADMIN)
+                .build());
+        authenticate(admin.getEmail());
+
+        QuestionnaireTemplateDto working = questionnaireTemplateService.createDraftFromCurrent("To be deleted");
+        questionnaireTemplateService.deleteDraft(working.getId());
+        assertThat(questionnaireTemplateService.listTemplates().stream().map(QuestionnaireTemplateDto::getId))
+                .doesNotContain(working.getId());
+
+        QuestionnaireTemplateDto published = questionnaireTemplateService.bootstrapInitialFromCurrent("Initial");
+        assertThatThrownBy(() -> questionnaireTemplateService.deleteDraft(published.getId()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only working snapshots can be deleted");
     }
 
     private void authenticate(String email) {

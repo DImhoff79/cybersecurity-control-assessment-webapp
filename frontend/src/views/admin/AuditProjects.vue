@@ -57,7 +57,7 @@
                         <thead>
                           <tr>
                             <th style="width: 34px;"></th>
-                            <th>Application</th>
+                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAvailableSort()">Application {{ availableSortIndicator() }}</button></th>
                             <th style="width: 80px;"></th>
                           </tr>
                         </thead>
@@ -97,7 +97,7 @@
                         <thead>
                           <tr>
                             <th style="width: 34px;"></th>
-                            <th>Application</th>
+                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSelectedSort()">Application {{ selectedSortIndicator() }}</button></th>
                             <th style="width: 90px;"></th>
                           </tr>
                         </thead>
@@ -176,18 +176,18 @@
           <table class="table table-striped mb-0">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Framework</th>
-                <th>Year</th>
-                <th>Scoped Apps</th>
-                <th>Audits</th>
-                <th>Completed</th>
-                <th>Created</th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('name')">Name {{ sortIndicator('name') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('frameworkTag')">Framework {{ sortIndicator('frameworkTag') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('scopedApplications')">Scoped Apps {{ sortIndicator('scopedApplications') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('totalAudits')">Audits {{ sortIndicator('totalAudits') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completeAudits')">Completed {{ sortIndicator('completeAudits') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('createdAt')">Created {{ sortIndicator('createdAt') }}</button></th>
                 <th v-if="canManageProjects"></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in projects" :key="p.id">
+              <tr v-for="p in sortedProjects" :key="p.id">
                 <td>{{ p.name }}</td>
                 <td>{{ p.frameworkTag || '-' }}</td>
                 <td>{{ p.year }}</td>
@@ -212,12 +212,15 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
 const applications = ref([])
 const projects = ref([])
 const appSearch = ref('')
 const availableSelection = ref([])
 const selectedSelection = ref([])
+const availableSortDir = ref('asc')
+const selectedSortDir = ref('asc')
 const editingProjectId = ref(null)
 const editForm = reactive({
   name: '',
@@ -245,21 +248,28 @@ const availableApps = computed(() => {
       const hay = `${a.name} ${a.regulatoryScope || ''} ${a.ownerDisplayName || ''} ${a.ownerEmail || ''}`.toLowerCase()
       return hay.includes(term)
     })
-  return rows
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const ordered = rows.slice().sort((a, b) => a.name.localeCompare(b.name))
+  return availableSortDir.value === 'asc' ? ordered : ordered.reverse()
 })
 
 const selectedApplications = computed(() => {
   const selected = new Set(form.applicationIds)
-  return applications.value
+  const ordered = applications.value
     .filter((a) => selected.has(a.id))
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
+  return selectedSortDir.value === 'asc' ? ordered : ordered.reverse()
 })
 
 const selectedPreview = computed(() => selectedApplications.value.slice(0, 5).map((a) => a.name).join(', '))
 const canManageProjects = computed(() => true)
+const { sortedRows: sortedProjects, toggleSort, sortIndicator } = useTableSort(projects, {
+  initialKey: 'createdAt',
+  initialDirection: 'desc',
+  valueGetters: {
+    scopedApplications: (row) => (row.scopedApplications || []).length
+  }
+})
 
 onMounted(load)
 
@@ -381,6 +391,22 @@ async function deleteProject(projectId) {
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function toggleAvailableSort() {
+  availableSortDir.value = availableSortDir.value === 'asc' ? 'desc' : 'asc'
+}
+
+function availableSortIndicator() {
+  return availableSortDir.value === 'asc' ? '↑' : '↓'
+}
+
+function toggleSelectedSort() {
+  selectedSortDir.value = selectedSortDir.value === 'asc' ? 'desc' : 'asc'
+}
+
+function selectedSortIndicator() {
+  return selectedSortDir.value === 'asc' ? '↑' : '↓'
 }
 </script>
 

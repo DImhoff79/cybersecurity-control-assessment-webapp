@@ -1,6 +1,19 @@
 <template>
   <div>
-    <h1 class="h3 mb-3">Question Manager</h1>
+    <h1 v-if="!embedded" class="h3 mb-3">Question Manager</h1>
+    <div v-if="!embedded && cameFromGovernance" class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="small">
+        You are editing questions as part of the questionnaire governance workflow.
+      </div>
+      <div class="d-flex gap-2">
+        <router-link :to="{ name: 'AdminControls', query: { from: 'governance' } }" class="btn btn-outline-primary btn-sm">
+          Go to Controls
+        </router-link>
+        <router-link :to="{ name: 'AdminQuestionnaireTemplates' }" class="btn btn-primary btn-sm">
+          Back to Governance
+        </router-link>
+      </div>
+    </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-body row g-3 align-items-end">
@@ -29,14 +42,14 @@
           <table class="table table-striped table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th style="min-width: 420px;">Question</th>
-                <th>Mapped controls</th>
-                <th>Ask owners</th>
+                <th style="min-width: 420px;"><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('controls')">Mapped controls {{ questionSortIndicator('controls') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('askOwner')">Ask owners {{ questionSortIndicator('askOwner') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="q in filteredQuestions" :key="q.id">
+              <tr v-for="q in sortedQuestions" :key="q.id">
                 <td>
                   <div class="fw-semibold">{{ q.questionText }}</div>
                   <div class="small text-muted" v-if="q.helpText">{{ q.helpText }}</div>
@@ -142,16 +155,16 @@
           <table class="table table-sm align-middle">
             <thead>
               <tr>
-                <th>Control</th>
-                <th>Rationale</th>
-                <th>Weight</th>
-                <th>Effective from</th>
-                <th>Effective to</th>
+                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('controlId')">Control {{ mappingSortIndicator('controlId') }}</button></th>
+                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('mappingRationale')">Rationale {{ mappingSortIndicator('mappingRationale') }}</button></th>
+                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('mappingWeight')">Weight {{ mappingSortIndicator('mappingWeight') }}</button></th>
+                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('effectiveFrom')">Effective from {{ mappingSortIndicator('effectiveFrom') }}</button></th>
+                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('effectiveTo')">Effective to {{ mappingSortIndicator('effectiveTo') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in editForm.controls" :key="`mapping-row-${m.id}`">
+              <tr v-for="m in sortedMappings" :key="`mapping-row-${m.id}`">
                 <td>{{ m.controlId }}</td>
                 <td><input v-model="m.mappingRationale" class="form-control form-control-sm" /></td>
                 <td><input v-model.number="m.mappingWeight" type="number" min="0" max="100" step="0.01" class="form-control form-control-sm" /></td>
@@ -176,10 +189,20 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useTableSort } from '../../composables/useTableSort'
 
+defineProps({
+  embedded: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const route = useRoute()
 const loading = ref(false)
 const search = ref('')
 const askOwnerFilter = ref('ALL')
@@ -202,6 +225,7 @@ const editForm = ref({
 const toast = ref({ show: false, message: '', at: '' })
 let toastTimer = null
 const newMappingControlId = ref(null)
+const cameFromGovernance = computed(() => route.query.from === 'governance')
 
 const isEditOpen = computed({
   get: () => !!editModal.value,
@@ -225,9 +249,21 @@ const filteredQuestions = computed(() => {
   })
 })
 
+const { sortedRows: sortedQuestions, toggleSort: toggleQuestionSort, sortIndicator: questionSortIndicator } = useTableSort(filteredQuestions, {
+  initialKey: 'questionText',
+  valueGetters: {
+    controls: (row) => row.controls?.length || 0
+  }
+})
+
 const availableMappingControls = computed(() => {
   const mapped = new Set((editForm.value.controls || []).map((c) => c.id))
   return allControls.value.filter((c) => !mapped.has(c.id))
+})
+
+const editMappings = computed(() => editForm.value.controls || [])
+const { sortedRows: sortedMappings, toggleSort: toggleMappingSort, sortIndicator: mappingSortIndicator } = useTableSort(editMappings, {
+  initialKey: 'controlId'
 })
 
 load()

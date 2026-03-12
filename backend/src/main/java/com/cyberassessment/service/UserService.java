@@ -58,6 +58,9 @@ public class UserService {
         if (plainPassword == null || plainPassword.isBlank()) {
             throw new IllegalArgumentException("Password is required");
         }
+        if (permissions != null) {
+            throw new IllegalArgumentException("Granular permission updates are not allowed. Permissions follow role defaults.");
+        }
         UserRole effectiveRole = role != null ? role : UserRole.APPLICATION_OWNER;
         ensureRoleAssignmentAllowed(null, effectiveRole);
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
@@ -70,7 +73,7 @@ public class UserService {
                 .passwordHash(passwordEncoder.encode(plainPassword))
                 .displayName(displayName)
                 .role(effectiveRole)
-                .permissions(resolvePermissions(effectiveRole, permissions))
+                .permissions(resolvePermissions(effectiveRole))
                 .build();
         user = userRepository.save(user);
         return toDto(user);
@@ -80,28 +83,21 @@ public class UserService {
     public UserDto update(Long id, String email, String plainPassword, String displayName, UserRole role, Set<UserPermission> permissions) {
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
         ensureRoleAssignmentAllowed(user, role);
-        if (email != null) {
-            String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-            if (normalizedEmail.isBlank()) {
-                throw new IllegalArgumentException("Email cannot be blank");
-            }
-            if (!normalizedEmail.equals(user.getEmail()) && userRepository.existsByEmail(normalizedEmail)) {
-                throw new IllegalArgumentException("User already exists with email: " + normalizedEmail);
-            }
-            user.setEmail(normalizedEmail);
+        if (email != null && !email.trim().equalsIgnoreCase(user.getEmail())) {
+            throw new IllegalArgumentException("Email cannot be edited after user creation");
         }
         if (plainPassword != null && !plainPassword.isBlank()) {
             user.setPasswordHash(passwordEncoder.encode(plainPassword));
         }
-        if (displayName != null) user.setDisplayName(displayName);
-        if (role != null) {
-            user.setRole(role);
-            if (permissions == null) {
-                user.setPermissions(resolvePermissions(role, null));
-            }
+        if (displayName != null && !displayName.equals(user.getDisplayName())) {
+            throw new IllegalArgumentException("Display name cannot be edited after user creation");
         }
         if (permissions != null) {
-            user.setPermissions(resolvePermissions(user.getRole(), permissions));
+            throw new IllegalArgumentException("Granular permission updates are not allowed. Permissions follow role defaults.");
+        }
+        if (role != null) {
+            user.setRole(role);
+            user.setPermissions(resolvePermissions(role));
         }
         user = userRepository.save(user);
         return toDto(user);
@@ -114,11 +110,8 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    private Set<UserPermission> resolvePermissions(UserRole role, Set<UserPermission> permissions) {
-        if (permissions == null || permissions.isEmpty()) {
-            return new HashSet<>(role.defaultPermissions());
-        }
-        return new HashSet<>(permissions);
+    private Set<UserPermission> resolvePermissions(UserRole role) {
+        return new HashSet<>(role.defaultPermissions());
     }
 
     private void ensureRoleAssignmentAllowed(User existingUser, UserRole targetRole) {

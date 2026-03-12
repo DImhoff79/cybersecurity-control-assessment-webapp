@@ -57,7 +57,7 @@ class UserServiceUnitTest {
                         .permissions(Set.of(UserPermission.USER_MANAGEMENT)).build()
         ));
 
-        UserDto created = userService.create("new@test.com", "pw", "New", UserRole.ADMIN, Set.of(UserPermission.USER_MANAGEMENT));
+        UserDto created = userService.create("new@test.com", "pw", "New", UserRole.ADMIN, null);
         assertThat(created.getId()).isEqualTo(7L);
         assertThat(userService.findAll()).hasSize(1);
         assertThat(userService.findById(7L).getEmail()).isEqualTo("new@test.com");
@@ -77,9 +77,42 @@ class UserServiceUnitTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        UserDto updated = userService.update(2L, null, null, "Updated", UserRole.ADMIN, Set.of(UserPermission.USER_MANAGEMENT));
-        assertThat(updated.getDisplayName()).isEqualTo("Updated");
+        UserDto updated = userService.update(2L, null, null, null, UserRole.ADMIN, null);
+        assertThat(updated.getDisplayName()).isEqualTo("Old");
         assertThat(updated.getRole()).isEqualTo(UserRole.ADMIN);
+    }
+
+    @Test
+    void granularPermissionOverridesAreRejected() {
+        when(currentUserService.isAdmin()).thenReturn(true);
+        when(currentUserService.isAuditManager()).thenReturn(true);
+        assertThatThrownBy(() -> userService.create("granular@test.com", "pw", "Granular", UserRole.ADMIN, Set.of(UserPermission.REPORT_VIEW)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Permissions follow role defaults");
+
+        User existing = User.builder().id(8L).email("u8@test.com").displayName("U8")
+                .role(UserRole.APPLICATION_OWNER).permissions(UserRole.APPLICATION_OWNER.defaultPermissions()).build();
+        when(userRepository.findById(8L)).thenReturn(Optional.of(existing));
+        assertThatThrownBy(() -> userService.update(8L, null, null, null, null, Set.of(UserPermission.REPORT_VIEW)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Permissions follow role defaults");
+    }
+
+    @Test
+    void cannotEditIdentityFieldsAfterCreation() {
+        when(currentUserService.isAdmin()).thenReturn(true);
+        when(currentUserService.isAuditManager()).thenReturn(true);
+        User existing = User.builder().id(3L).email("identity@test.com").displayName("Identity")
+                .role(UserRole.APPLICATION_OWNER).permissions(UserRole.APPLICATION_OWNER.defaultPermissions()).build();
+        when(userRepository.findById(3L)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> userService.update(3L, "new-email@test.com", null, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Email cannot be edited");
+
+        assertThatThrownBy(() -> userService.update(3L, null, null, "New Name", null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Display name cannot be edited");
     }
 
     @Test

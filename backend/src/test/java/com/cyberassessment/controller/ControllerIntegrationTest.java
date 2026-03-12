@@ -1,6 +1,7 @@
 package com.cyberassessment.controller;
 
 import com.cyberassessment.dto.ControlDto;
+import com.cyberassessment.dto.QuestionnaireTemplateDto;
 import com.cyberassessment.dto.UserDto;
 import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.repository.ControlRepository;
@@ -45,6 +46,8 @@ class ControllerIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private ControlRepository controlRepository;
+    @Autowired
+    private QuestionnaireTemplateController questionnaireTemplateController;
 
     @Test
     void controlAndUserAndQuestionFlowsWork() {
@@ -118,6 +121,20 @@ class ControllerIntegrationTest {
                 "year", 2030
         ));
         assertThat(projectMissingApps.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void questionnaireWorkingSnapshotDeleteFlowWorks() {
+        authenticateAsAdmin("controller-admin3@test.com");
+
+        QuestionnaireTemplateDto working = questionnaireTemplateController.createDraft(Map.of("notes", "Controller test"));
+        assertThat(working.getId()).isNotNull();
+
+        ResponseEntity<Void> deleted = questionnaireTemplateController.deleteDraft(working.getId());
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        List<QuestionnaireTemplateDto> templates = questionnaireTemplateController.list();
+        assertThat(templates.stream().map(QuestionnaireTemplateDto::getId)).doesNotContain(working.getId());
     }
 
     private void authenticateAsAdmin(String email) {
