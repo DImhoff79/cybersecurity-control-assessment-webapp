@@ -24,6 +24,8 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - Delete working snapshots (`DRAFT`) by admin/audit manager
 - **Audit operations**:
   - Audit projects and kickoff workflows
+  - Audit project scope editing with linked-audit reconciliation (add/remove scoped apps)
+  - Automatic assignment of project-created audits to each scoped application's owner
   - Assign/send/remind/attest
   - Self-service owner response flow
   - Task delegation via My Tasks
@@ -50,7 +52,7 @@ cd backend
 - H2 console: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
 - Local DB URL: `jdbc:h2:file:./data/assessment`
 
-Default users (seeded only when user table is empty):
+Default users (ensured at startup if missing):
 
 - `admin@example.com` / `admin123` (ADMIN)
 - `audit.manager@example.com` / `manager123` (AUDIT_MANAGER)
@@ -112,7 +114,7 @@ npm run dev -- --host
   - `service/CurrentUserService.java`: centralized role/permission checks used by services
 - **Database migration**
   - `resources/db/migration`: Flyway migrations for schema and data changes
-  - Current local evolution includes governance/user-permission migrations through `V18`
+  - Current local evolution includes governance/user-permission/plain-language refresh migrations through `V19`
 
 ## Test Commands
 
