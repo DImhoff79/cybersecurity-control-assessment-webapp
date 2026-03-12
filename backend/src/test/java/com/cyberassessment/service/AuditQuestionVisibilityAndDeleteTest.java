@@ -57,6 +57,7 @@ class AuditQuestionVisibilityAndDeleteTest {
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
 
         Application app = applicationRepository.save(Application.builder()
@@ -131,12 +132,14 @@ class AuditQuestionVisibilityAndDeleteTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-delete@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
 
         Application app = applicationRepository.save(Application.builder()
@@ -155,7 +158,7 @@ class AuditQuestionVisibilityAndDeleteTest {
         authenticate(owner.getEmail());
         assertThatThrownBy(() -> auditService.delete(audit.getId()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Only admins");
+                .hasMessageContaining("Missing permission: AUDIT_MANAGEMENT");
 
         authenticate(admin.getEmail());
         auditService.delete(audit.getId());

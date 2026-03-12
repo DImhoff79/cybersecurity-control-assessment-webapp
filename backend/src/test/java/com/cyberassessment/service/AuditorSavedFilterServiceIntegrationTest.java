@@ -44,6 +44,7 @@ class AuditorSavedFilterServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         authenticate(admin.getEmail());
 

@@ -56,12 +56,14 @@ class AuditServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-audit-service@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
 
         Application app = applicationRepository.save(Application.builder()
@@ -120,18 +122,21 @@ class AuditServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-access@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         User other = userRepository.save(User.builder()
                 .email("other-access@test.com")
                 .passwordHash("x")
                 .displayName("Other")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Access App")
@@ -156,12 +161,14 @@ class AuditServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("owner-submit@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Submit App")
@@ -195,12 +202,14 @@ class AuditServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("bulk-owner@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Bulk App")
@@ -226,18 +235,21 @@ class AuditServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
         User owner = userRepository.save(User.builder()
                 .email("delegate-owner@test.com")
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         User delegate = userRepository.save(User.builder()
                 .email("delegate-user@test.com")
                 .passwordHash("x")
                 .displayName("Delegate")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Delegate App")

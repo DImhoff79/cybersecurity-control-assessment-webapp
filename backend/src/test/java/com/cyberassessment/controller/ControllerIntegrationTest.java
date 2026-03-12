@@ -7,6 +7,7 @@ import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.repository.ControlRepository;
 import com.cyberassessment.repository.UserRepository;
 import com.cyberassessment.entity.User;
+import com.cyberassessment.entity.UserPermission;
 import com.cyberassessment.entity.UserRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +15,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -138,16 +141,26 @@ class ControllerIntegrationTest {
     }
 
     private void authenticateAsAdmin(String email) {
-        if (!userRepository.existsByEmail(email)) {
-            userRepository.save(User.builder()
-                    .email(email)
-                    .passwordHash("x")
-                    .displayName("Controller Admin")
-                    .role(UserRole.ADMIN)
-                    .build());
+        User admin = userRepository.findByEmail(email).orElseGet(() ->
+                userRepository.save(User.builder()
+                        .email(email)
+                        .passwordHash("x")
+                        .displayName("Controller Admin")
+                        .role(UserRole.AUDIT_MANAGER)
+                        .permissions(EnumSet.allOf(UserPermission.class))
+                        .build())
+        );
+        if (admin.getPermissions() == null || admin.getPermissions().isEmpty()) {
+            admin.setPermissions(EnumSet.allOf(UserPermission.class));
+            admin = userRepository.save(admin);
         }
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + admin.getRole().name()));
+        admin.getPermissions().forEach(permission ->
+                authorities.add(new SimpleGrantedAuthority("PERM_" + permission.name()))
+        );
         SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(email, "pw", Collections.emptyList())
+                new UsernamePasswordAuthenticationToken(email, "pw", authorities)
         );
     }
 }

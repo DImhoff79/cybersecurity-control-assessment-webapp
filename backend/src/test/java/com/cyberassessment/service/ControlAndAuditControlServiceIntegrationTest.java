@@ -73,18 +73,21 @@ class ControlAndAuditControlServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Owner")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         User other = userRepository.save(User.builder()
                 .email("other-control@test.com")
                 .passwordHash("x")
                 .displayName("Other")
                 .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
         User admin = userRepository.save(User.builder()
                 .email("admin-control@test.com")
                 .passwordHash("x")
                 .displayName("Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
 
         Application app = applicationRepository.save(Application.builder()

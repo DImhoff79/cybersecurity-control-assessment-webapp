@@ -43,6 +43,7 @@ class AccessRequestServiceIntegrationTest {
                 .passwordHash("x")
                 .displayName("Access Admin")
                 .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
                 .build());
 
         AccessRequestService.SocialAuthResult result = accessRequestService.processSocialSignIn(
