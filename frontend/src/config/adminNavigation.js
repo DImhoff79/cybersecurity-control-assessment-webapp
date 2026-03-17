@@ -40,6 +40,14 @@ export const adminSections = [
     ]
   },
   {
+    key: 'program',
+    label: 'Program',
+    items: [
+      { label: 'Risk Register', to: '/admin/risk-register', permission: 'RISK_MANAGEMENT' },
+      { label: 'Remediation Plans', to: '/admin/remediation-plans', permission: 'REMEDIATION_MANAGEMENT' }
+    ]
+  },
+  {
     key: 'admin',
     label: 'Admin',
     items: [

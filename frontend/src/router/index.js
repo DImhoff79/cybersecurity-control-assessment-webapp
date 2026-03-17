@@ -77,6 +77,18 @@ const router = createRouter({
           meta: { permission: 'COMPLIANCE_MANAGEMENT', section: 'Compliance', pageTitle: 'Compliance Obligations' }
         },
         {
+          path: 'risk-register',
+          name: 'AdminRiskRegister',
+          component: () => import('../views/admin/RiskRegister.vue'),
+          meta: { permission: 'RISK_MANAGEMENT', section: 'Program', pageTitle: 'Risk Register' }
+        },
+        {
+          path: 'remediation-plans',
+          name: 'AdminRemediationPlans',
+          component: () => import('../views/admin/RemediationPlans.vue'),
+          meta: { permission: 'REMEDIATION_MANAGEMENT', section: 'Program', pageTitle: 'Remediation Plans' }
+        },
+        {
           path: 'users',
           name: 'AdminUsers',
           component: () => import('../views/admin/UserManagement.vue'),
