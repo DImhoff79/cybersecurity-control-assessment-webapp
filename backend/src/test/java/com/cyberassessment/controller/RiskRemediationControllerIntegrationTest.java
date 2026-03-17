@@ -91,9 +91,24 @@ class RiskRemediationControllerIntegrationTest {
 
         RemediationPlanDto plan = remediationController.createPlan(Map.of(
                 "riskId", risk.getId(),
-                "title", "Privileged access hardening"
+                "title", "Privileged access hardening",
+                "proposedPlan", "Use dedicated admin accounts and enforce MFA with vault integration.",
+                "timeframeText", "30 days",
+                "compensatingControls", "SIEM alerting and approval workflow for emergency access",
+                "planRationale", "Reduce unauthorized privilege escalation risk."
         ));
         assertThat(plan.getId()).isNotNull();
+        assertThat(plan.getApprovalStatus().name()).isEqualTo("DRAFT");
+
+        RemediationPlanDto submitted = remediationController.submitForApproval(plan.getId());
+        assertThat(submitted.getApprovalStatus().name()).isEqualTo("SUBMITTED");
+        authenticateAsAdmin("risk-remediation-admin@test.com");
+        RemediationPlanDto approved = remediationController.decideApproval(plan.getId(), Map.of(
+                "approved", true,
+                "notes", "Approved for implementation"
+        ));
+        assertThat(approved.getApprovalStatus().name()).isEqualTo("APPROVED");
+        authenticateAsManager("risk-remediation-controller@test.com");
 
         RemediationPlanDto progressed = remediationController.updatePlan(plan.getId(), Map.of(
                 "status", "IN_PROGRESS"
@@ -118,13 +133,21 @@ class RiskRemediationControllerIntegrationTest {
     }
 
     private User authenticateAsManager(String email) {
+        return authenticateAs(email, UserRole.AUDIT_MANAGER, EnumSet.allOf(UserPermission.class), "RiskRemediation Manager");
+    }
+
+    private User authenticateAsAdmin(String email) {
+        return authenticateAs(email, UserRole.ADMIN, EnumSet.allOf(UserPermission.class), "RiskRemediation Admin");
+    }
+
+    private User authenticateAs(String email, UserRole role, EnumSet<UserPermission> permissions, String displayName) {
         User user = userRepository.findByEmail(email).orElseGet(() ->
                 userRepository.save(User.builder()
                         .email(email)
                         .passwordHash("x")
-                        .displayName("RiskRemediation Manager")
-                        .role(UserRole.AUDIT_MANAGER)
-                        .permissions(EnumSet.allOf(UserPermission.class))
+                        .displayName(displayName)
+                        .role(role)
+                        .permissions(permissions)
                         .build())
         );
 

@@ -20,103 +20,103 @@ const router = createRouter({
           path: 'applications',
           name: 'AdminApplications',
           component: () => import('../views/admin/Applications.vue'),
-          meta: { permission: 'APPLICATION_MANAGEMENT', section: 'Admin', pageTitle: 'Applications' }
+          meta: { permission: 'APPLICATION_MANAGEMENT', section: 'Admin Ops', pageTitle: 'Applications' }
         },
         {
           path: 'audit-projects',
           name: 'AdminAuditProjects',
           component: () => import('../views/admin/AuditProjects.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Plan', pageTitle: 'Audit Projects' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Audit Projects' }
         },
         {
           path: 'audits',
           name: 'AdminAudits',
           component: () => import('../views/admin/KickoffAudit.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Execute', pageTitle: 'Audits' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Audits' }
         },
         {
           path: 'operations',
           name: 'AdminOperations',
           component: () => import('../views/admin/OperationsQueue.vue'),
-          meta: { permission: 'REPORT_VIEW', section: 'Execute', pageTitle: 'Operations Queue' }
+          meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Operations Queue' }
         },
         {
           path: 'findings',
           name: 'AdminFindings',
           component: () => import('../views/admin/Findings.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Resolve', pageTitle: 'Findings' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Findings' }
         },
         {
           path: 'control-exceptions',
           name: 'AdminControlExceptions',
           component: () => import('../views/admin/ControlExceptions.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Resolve', pageTitle: 'Control Exceptions' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Control Exceptions' }
         },
         {
           path: 'reports',
           name: 'AdminReports',
           component: () => import('../views/admin/Reports.vue'),
-          meta: { permission: 'REPORT_VIEW', section: 'Monitor', pageTitle: 'Reports' }
+          meta: { permission: 'REPORT_VIEW', section: 'Reporting', pageTitle: 'Reports' }
         },
         {
           path: 'policies',
           name: 'AdminPolicies',
           component: () => import('../views/admin/Policies.vue'),
-          meta: { permission: 'POLICY_MANAGEMENT', section: 'Compliance', pageTitle: 'Policies' }
+          meta: { permission: 'POLICY_MANAGEMENT', section: 'Governance & Compliance', pageTitle: 'Policies' }
         },
         {
           path: 'policy-attestations',
           name: 'AdminPolicyAttestations',
           component: () => import('../views/admin/PolicyAttestations.vue'),
-          meta: { permission: 'REPORT_VIEW', section: 'Monitor', pageTitle: 'Policy Attestations' }
+          meta: { permission: 'REPORT_VIEW', section: 'Governance & Compliance', pageTitle: 'Policy Attestations' }
         },
         {
           path: 'compliance-obligations',
           name: 'AdminComplianceObligations',
           component: () => import('../views/admin/ComplianceObligations.vue'),
-          meta: { permission: 'COMPLIANCE_MANAGEMENT', section: 'Compliance', pageTitle: 'Compliance Obligations' }
+          meta: { permission: 'COMPLIANCE_MANAGEMENT', section: 'Governance & Compliance', pageTitle: 'Compliance Obligations' }
         },
         {
           path: 'risk-register',
           name: 'AdminRiskRegister',
           component: () => import('../views/admin/RiskRegister.vue'),
-          meta: { permission: 'RISK_MANAGEMENT', section: 'Program', pageTitle: 'Risk Register' }
+          meta: { permission: 'RISK_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Risk Register' }
         },
         {
           path: 'remediation-plans',
           name: 'AdminRemediationPlans',
           component: () => import('../views/admin/RemediationPlans.vue'),
-          meta: { permission: 'REMEDIATION_MANAGEMENT', section: 'Program', pageTitle: 'Remediation Plans' }
+          meta: { permission: 'REMEDIATION_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Remediation Plans' }
         },
         {
           path: 'users',
           name: 'AdminUsers',
           component: () => import('../views/admin/UserManagement.vue'),
-          meta: { permission: 'USER_MANAGEMENT', section: 'Admin', pageTitle: 'Users' }
+          meta: { permission: 'USER_MANAGEMENT', section: 'Admin Ops', pageTitle: 'Users' }
         },
         {
           path: 'questionnaire',
           name: 'AdminQuestionnaireHub',
           component: () => import('../views/admin/QuestionnaireHub.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Plan', pageTitle: 'Questionnaire' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Questionnaire' }
         },
         {
           path: 'questionnaire-templates',
           name: 'AdminQuestionnaireTemplates',
           component: () => import('../views/admin/QuestionnaireTemplates.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', roles: ['ADMIN', 'AUDIT_MANAGER'], section: 'Plan', pageTitle: 'Questionnaire Governance' }
+          meta: { permission: 'AUDIT_MANAGEMENT', roles: ['ADMIN', 'AUDIT_MANAGER'], section: 'Admin Ops', pageTitle: 'Questionnaire Governance' }
         },
         {
           path: 'questionnaire-builder',
           name: 'AdminQuestionnaireBuilder',
           component: () => import('../views/admin/QuestionnaireBuilder.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Plan', pageTitle: 'Questionnaire Builder' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Questionnaire Builder' }
         },
         {
           path: 'audits/:auditId',
           name: 'AuditDetail',
           component: () => import('../views/audits/Assessment.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Execute', pageTitle: 'Audit Workspace' }
+          meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Audit Workspace' }
         }
       ]
     },
@@ -154,8 +154,11 @@ router.beforeEach(async (to, from, next) => {
   }
   if (to.path === '/admin') {
     if (!authStore.canAccessAdmin) return next('/my-audits')
-    if (authStore.hasPermission('REPORT_VIEW')) return next('/admin/operations')
     if (authStore.hasPermission('AUDIT_MANAGEMENT')) return next('/admin/audit-projects')
+    if (authStore.hasPermission('REPORT_VIEW')) return next('/admin/operations')
+    if (authStore.hasPermission('POLICY_MANAGEMENT')) return next('/admin/policies')
+    if (authStore.hasPermission('REMEDIATION_MANAGEMENT')) return next('/admin/remediation-plans')
+    if (authStore.hasPermission('COMPLIANCE_MANAGEMENT')) return next('/admin/compliance-obligations')
     if (authStore.hasPermission('APPLICATION_MANAGEMENT')) return next('/admin/applications')
     if (authStore.hasPermission('USER_MANAGEMENT')) return next('/admin/users')
     return next('/my-audits')

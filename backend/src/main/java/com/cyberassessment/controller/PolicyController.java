@@ -24,13 +24,13 @@ public class PolicyController {
     private final PolicyService policyService;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PERM_POLICY_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<PolicyDto> list() {
         return policyService.list();
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAuthority('PERM_POLICY_MANAGEMENT')")
     public ResponseEntity<PolicyDto> create(@RequestBody Map<String, Object> body) {
         String code = body.containsKey("code") ? (String) body.get("code") : null;
         String name = body.containsKey("name") ? (String) body.get("name") : null;
@@ -52,7 +52,7 @@ public class PolicyController {
     }
 
     @PutMapping("/{policyId}")
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAuthority('PERM_POLICY_MANAGEMENT')")
     public PolicyDto update(@PathVariable Long policyId, @RequestBody Map<String, Object> body) {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
@@ -67,7 +67,7 @@ public class PolicyController {
     }
 
     @PostMapping("/{policyId}/versions")
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAuthority('PERM_POLICY_MANAGEMENT')")
     public PolicyVersionDto createVersion(@PathVariable Long policyId, @RequestBody Map<String, Object> body) {
         String title = body.containsKey("title") ? (String) body.get("title") : null;
         String bodyMarkdown = body.containsKey("bodyMarkdown") ? (String) body.get("bodyMarkdown") : null;
@@ -75,7 +75,7 @@ public class PolicyController {
     }
 
     @PutMapping("/{policyId}/versions/{versionId}")
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAuthority('PERM_POLICY_MANAGEMENT')")
     public PolicyVersionDto updateVersion(
             @PathVariable Long policyId,
             @PathVariable Long versionId,
@@ -87,7 +87,7 @@ public class PolicyController {
     }
 
     @PostMapping("/{policyId}/publish")
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAuthority('PERM_POLICY_MANAGEMENT')")
     public PolicyDto publish(@PathVariable Long policyId, @RequestBody Map<String, Object> body) {
         if (!body.containsKey("policyVersionId") || body.get("policyVersionId") == null) {
             throw new IllegalArgumentException("policyVersionId is required");
@@ -101,7 +101,7 @@ public class PolicyController {
     }
 
     @GetMapping("/acknowledgements")
-    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PERM_POLICY_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<PolicyAcknowledgementDto> acknowledgements(@RequestParam(required = false) Long policyId) {
         return policyService.listAcknowledgements(policyId);
     }
@@ -117,19 +117,19 @@ public class PolicyController {
     }
 
     @GetMapping("/{policyId}/csf-mappings")
-    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PERM_POLICY_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<NistCsfFunction> getCsfMappings(@PathVariable Long policyId) {
         return policyService.getCsfMappings(policyId);
     }
 
     @PutMapping("/{policyId}/csf-mappings")
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAuthority('PERM_POLICY_MANAGEMENT')")
     public List<NistCsfFunction> updateCsfMappings(@PathVariable Long policyId, @RequestBody Map<String, Object> body) {
         return policyService.updateCsfMappings(policyId, parseStringList(body.get("csfFunctions")));
     }
 
     @GetMapping("/{policyId}/revision-history")
-    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PERM_POLICY_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<PolicyRevisionEventDto> revisionHistory(@PathVariable Long policyId) {
         return policyService.getRevisionHistory(policyId);
     }

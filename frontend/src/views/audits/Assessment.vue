@@ -6,7 +6,8 @@
           <div>
             <h1 class="h3 mb-1">{{ audit?.applicationName }} - {{ audit?.year }}</h1>
             <p v-if="audit" class="text-muted assessment-meta mb-2">
-              <span class="badge text-bg-light border me-2">{{ statusLabel(audit.status) }}</span>
+              <span class="badge text-bg-light border me-2">{{ auditStatusLabel(audit.status) }}</span>
+              <span class="badge text-bg-light border me-2">Stage: {{ auditStageLabel(audit.status) }}</span>
               Assigned to {{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }} | Due {{ formatDate(audit.dueAt) }}
             </p>
           </div>
@@ -282,6 +283,7 @@ import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess, toastWarning } from '../../services/toast'
+import { auditStageLabel, auditStatusLabel } from '../../utils/auditStatus'
 
 const route = useRoute()
 const auditId = Number(route.params.auditId)
@@ -603,23 +605,6 @@ async function openControlDetails(controlId) {
     detailsModal.value = res.data
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to load control details')
-  }
-}
-
-function statusLabel(status) {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'Completed - pending admin review'
-    case 'COMPLETE':
-      return 'Validated complete'
-    case 'ATTESTED':
-      return 'Attested'
-    case 'IN_PROGRESS':
-      return 'In progress'
-    case 'DRAFT':
-      return 'Draft'
-    default:
-      return status || '-'
   }
 }
 

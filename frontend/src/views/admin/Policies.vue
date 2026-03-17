@@ -14,6 +14,9 @@
     <div class="small text-muted mb-3">
       Use Add Policy for brand-new policies. Edit updates working drafts; publish sends attestations to application owners.
     </div>
+    <div class="small text-muted mb-3">
+      Lifecycle: <strong>Draft</strong> for authoring, then <strong>Publish Draft</strong> to move into active attestation.
+    </div>
 
     <div class="card shadow-sm">
       <div class="card-body">
@@ -38,6 +41,7 @@
 
             <div class="policy-meta-row">
               <span>Published Version: <strong>{{ policy.publishedVersionId || '-' }}</strong></span>
+              <span>Draft Ready: <strong>{{ latestDraftVersion(policy) ? 'Yes' : 'No' }}</strong></span>
               <span>Next Review: <strong>{{ formatDate(policy.nextReviewAt) }}</strong></span>
               <span>Revisions: <strong>{{ (policy.revisionHistory || []).length }}</strong></span>
             </div>
@@ -49,6 +53,7 @@
               <button
                 class="btn btn-outline-primary btn-sm"
                 :disabled="!latestDraftVersion(policy)"
+                :title="!latestDraftVersion(policy) ? 'Create a new revision to publish changes.' : ''"
                 @click="publishPolicy(policy)"
               >
                 Publish Draft

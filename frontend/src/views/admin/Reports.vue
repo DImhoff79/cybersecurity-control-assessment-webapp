@@ -17,6 +17,20 @@
     </div>
     <div class="card shadow-sm mb-3">
       <div class="card-body">
+        <h2 class="h5 mb-2">Manager Drilldowns</h2>
+        <p class="small text-muted mb-3">
+          Jump directly from KPI context into the operational workspace.
+        </p>
+        <div class="d-flex gap-2 flex-wrap">
+          <router-link to="/admin/operations" class="btn btn-outline-primary btn-sm">Open Operations Queue</router-link>
+          <router-link to="/admin/risk-register" class="btn btn-outline-primary btn-sm">Open Risk Register</router-link>
+          <router-link to="/admin/remediation-plans" class="btn btn-outline-primary btn-sm">Open Remediation Plans</router-link>
+          <router-link to="/admin/policy-attestations" class="btn btn-outline-primary btn-sm">Open Policy Attestations</router-link>
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
         <h2 class="h5 mb-3">Scheduled Exports</h2>
         <form class="row g-2 mb-3" @submit.prevent="createSchedule">
           <div class="col-md-3">
@@ -82,6 +96,20 @@
             <div class="card-body">
               <div class="text-muted small">{{ card.label }}</div>
               <div class="display-6 fw-semibold">{{ card.value }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Manager Signals</h2>
+          <div class="row g-2">
+            <div v-for="signal in managerSignals" :key="signal.label" class="col-md-4">
+              <div class="border rounded p-2 h-100">
+                <div class="small text-muted">{{ signal.label }}</div>
+                <div class="fw-semibold">{{ signal.value }}</div>
+                <div class="small" :class="signal.toneClass">{{ signal.tone }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -234,6 +262,38 @@ const cards = computed(() => {
     { label: 'Open Risks', value: riskKpis.value.openRisks ?? 0 },
     { label: 'High Risks', value: riskKpis.value.highRisks ?? 0 },
     { label: 'Overdue Remediation Actions', value: riskKpis.value.overdueRemediationActions ?? 0 }
+  ]
+})
+
+const managerSignals = computed(() => {
+  const s = summary.value || {}
+  const submitted = s.submittedAudits ?? 0
+  const open = s.openAudits ?? 0
+  const overdue = s.overdueAudits ?? 0
+  const highRisks = riskKpis.value.highRisks ?? 0
+  const overdueRemediation = riskKpis.value.overdueRemediationActions ?? 0
+  const pendingAttestations = complianceKpis.value.pendingAttestations ?? 0
+  return [
+    {
+      label: 'Audit Throughput',
+      value: `${submitted} submitted / ${open} open`,
+      tone: overdue > 0 ? `${overdue} overdue audits need escalation` : 'No overdue audits',
+      toneClass: overdue > 0 ? 'text-danger' : 'text-success'
+    },
+    {
+      label: 'Risk Exposure',
+      value: `${highRisks} high residual risk items`,
+      tone: highRisks > 0 ? 'Track risk treatment plans weekly' : 'No high residual risks',
+      toneClass: highRisks > 0 ? 'text-danger' : 'text-success'
+    },
+    {
+      label: 'Remediation Execution',
+      value: `${overdueRemediation} overdue remediation actions`,
+      tone: pendingAttestations > 0
+        ? `${pendingAttestations} policy attestations pending`
+        : 'No pending policy attestations',
+      toneClass: overdueRemediation > 0 || pendingAttestations > 0 ? 'text-warning' : 'text-success'
+    }
   ]
 })
 

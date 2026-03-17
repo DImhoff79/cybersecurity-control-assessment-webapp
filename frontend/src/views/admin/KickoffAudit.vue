@@ -49,6 +49,7 @@
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('projectName')">Project {{ sortIndicator('projectName') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Stage {{ sortIndicator('status') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('assignedTo')">Assigned to {{ sortIndicator('assignedTo') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
                   <th></th>
@@ -64,6 +65,7 @@
                       {{ formatAuditStatus(a.status) }}
                     </span>
                   </td>
+                  <td><span class="badge text-bg-light border">{{ auditStageLabel(a.status) }}</span></td>
                   <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
                   <td>{{ formatDate(a.dueAt) }}</td>
                   <td class="audit-actions-cell">
@@ -126,6 +128,7 @@ import { computed, ref, reactive, onMounted } from 'vue'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from '../../utils/auditStatus'
 
 const applications = ref([])
 const projects = ref([])
@@ -266,20 +269,7 @@ async function bulkAssign(sendNow) {
 }
 
 function formatAuditStatus(status) {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'Completed - pending admin review'
-    case 'ATTESTED':
-      return 'Attested - pending final completion'
-    case 'COMPLETE':
-      return 'Validated complete'
-    case 'IN_PROGRESS':
-      return 'In progress'
-    case 'DRAFT':
-      return 'Draft'
-    default:
-      return status || '-'
-  }
+  return auditStatusLabel(status)
 }
 
 function formatDate(value) {
@@ -288,20 +278,7 @@ function formatDate(value) {
 }
 
 function statusBadgeClass(status) {
-  switch (status) {
-    case 'COMPLETE':
-      return 'text-bg-success'
-    case 'ATTESTED':
-      return 'text-bg-primary'
-    case 'SUBMITTED':
-      return 'text-bg-info'
-    case 'IN_PROGRESS':
-      return 'text-bg-warning'
-    case 'DRAFT':
-      return 'text-bg-secondary'
-    default:
-      return 'text-bg-secondary'
-  }
+  return auditStatusBadgeClass(status)
 }
 
 function visibleAuditsForApp(appId) {

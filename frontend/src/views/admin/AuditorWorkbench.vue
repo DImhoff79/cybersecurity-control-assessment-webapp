@@ -109,6 +109,7 @@
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('projectName')">Project {{ auditSortIndicator('projectName') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('year')">Year {{ auditSortIndicator('year') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('status')">Status {{ auditSortIndicator('status') }}</button></th>
+                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('status')">Stage {{ auditSortIndicator('status') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('assignedToEmail')">Assigned {{ auditSortIndicator('assignedToEmail') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('frameworks')">Frameworks {{ auditSortIndicator('frameworks') }}</button></th>
                   <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('dueAt')">Due {{ auditSortIndicator('dueAt') }}</button></th>
@@ -121,7 +122,8 @@
                   <td>{{ a.applicationName }}</td>
                   <td>{{ a.projectName || '-' }}</td>
                   <td>{{ a.year }}</td>
-                  <td><span class="badge status-badge" :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                  <td><span class="badge status-badge" :class="statusBadge(a.status)">{{ auditStatusLabel(a.status) }}</span></td>
+                  <td><span class="badge text-bg-light border">{{ auditStageLabel(a.status) }}</span></td>
                   <td>{{ a.assignedToEmail || '-' }}</td>
                   <td>{{ a.frameworks || '-' }}</td>
                   <td>{{ formatDate(a.dueAt) }}</td>
@@ -147,7 +149,7 @@
                   </td>
                 </tr>
                 <tr v-if="!sortedAudits.length">
-                  <td colspan="9" class="text-muted text-center py-3">No audits match current filters.</td>
+                  <td colspan="10" class="text-muted text-center py-3">No audits match current filters.</td>
                 </tr>
               </tbody>
             </table>
@@ -333,6 +335,7 @@ import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
 import { useAuthStore } from '../../stores/auth'
+import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from '../../utils/auditStatus'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -498,18 +501,7 @@ function formatDateTime(value) {
 }
 
 function statusBadge(status) {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'text-bg-info'
-    case 'ATTESTED':
-      return 'text-bg-primary'
-    case 'IN_PROGRESS':
-      return 'text-bg-warning'
-    case 'COMPLETE':
-      return 'text-bg-success'
-    default:
-      return 'text-bg-secondary'
-  }
+  return auditStatusBadgeClass(status)
 }
 
 const frameworkOptions = computed(() => {

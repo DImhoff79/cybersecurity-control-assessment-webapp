@@ -56,11 +56,18 @@ describe('Reports', () => {
   })
 
   it('loads summary and downloads csv/pdf exports', async () => {
-    const wrapper = mount(Reports)
+    const wrapper = mount(Reports, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Applications')
     expect(wrapper.text()).toContain('By Year')
+    expect(wrapper.text()).toContain('Manager Drilldowns')
 
     const exportBtn = wrapper.findAll('button').find((b) => b.text().includes('Export Audits CSV'))
     await exportBtn.trigger('click')
@@ -107,7 +114,13 @@ describe('Reports', () => {
       return Promise.resolve({ data: {} })
     })
 
-    const wrapper = mount(Reports)
+    const wrapper = mount(Reports, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
     await flushPromises()
 
     const yearBtn = wrapper.findAll('button').find((b) => b.text().includes('Year'))

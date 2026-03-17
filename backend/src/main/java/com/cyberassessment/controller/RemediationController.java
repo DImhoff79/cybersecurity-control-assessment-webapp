@@ -33,19 +33,58 @@ public class RemediationController {
                 ? ((Number) body.get("riskId")).longValue()
                 : null;
         String title = body.containsKey("title") ? (String) body.get("title") : null;
+        String proposedPlan = body.containsKey("proposedPlan") ? (String) body.get("proposedPlan") : null;
+        String timeframeText = body.containsKey("timeframeText") ? (String) body.get("timeframeText") : null;
+        String compensatingControls = body.containsKey("compensatingControls") ? (String) body.get("compensatingControls") : null;
+        String planRationale = body.containsKey("planRationale") ? (String) body.get("planRationale") : null;
         Instant targetCompleteAt = parseInstant(body.get("targetCompleteAt"));
-        return remediationService.createPlan(riskId, title, targetCompleteAt);
+        return remediationService.createPlan(
+                riskId,
+                title,
+                proposedPlan,
+                timeframeText,
+                compensatingControls,
+                planRationale,
+                targetCompleteAt
+        );
     }
 
     @PutMapping("/{planId}")
     @PreAuthorize("hasAuthority('PERM_REMEDIATION_MANAGEMENT')")
     public RemediationPlanDto updatePlan(@PathVariable Long planId, @RequestBody Map<String, Object> body) {
         String title = body.containsKey("title") ? (String) body.get("title") : null;
+        String proposedPlan = body.containsKey("proposedPlan") ? (String) body.get("proposedPlan") : null;
+        String timeframeText = body.containsKey("timeframeText") ? (String) body.get("timeframeText") : null;
+        String compensatingControls = body.containsKey("compensatingControls") ? (String) body.get("compensatingControls") : null;
+        String planRationale = body.containsKey("planRationale") ? (String) body.get("planRationale") : null;
         RemediationPlanStatus status = body.containsKey("status") && body.get("status") instanceof String s
                 ? RemediationPlanStatus.valueOf(s)
                 : null;
         Instant targetCompleteAt = parseInstant(body.get("targetCompleteAt"));
-        return remediationService.updatePlan(planId, title, status, targetCompleteAt);
+        return remediationService.updatePlan(
+                planId,
+                title,
+                proposedPlan,
+                timeframeText,
+                compensatingControls,
+                planRationale,
+                status,
+                targetCompleteAt
+        );
+    }
+
+    @PostMapping("/{planId}/submit-approval")
+    @PreAuthorize("hasAuthority('PERM_REMEDIATION_MANAGEMENT')")
+    public RemediationPlanDto submitForApproval(@PathVariable Long planId) {
+        return remediationService.submitForApproval(planId);
+    }
+
+    @PostMapping("/{planId}/approval-decision")
+    @PreAuthorize("hasAnyRole('ADMIN','AUDIT_MANAGER')")
+    public RemediationPlanDto decideApproval(@PathVariable Long planId, @RequestBody Map<String, Object> body) {
+        boolean approved = body.containsKey("approved") && Boolean.TRUE.equals(body.get("approved"));
+        String notes = body.containsKey("notes") ? (String) body.get("notes") : null;
+        return remediationService.decideApproval(planId, approved, notes);
     }
 
     @GetMapping("/{planId}/actions")

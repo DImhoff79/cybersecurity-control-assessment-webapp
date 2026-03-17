@@ -20,7 +20,7 @@ public class RiskController {
     private final RiskService riskService;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('PERM_RISK_MANAGEMENT','PERM_REPORT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PERM_RISK_MANAGEMENT','PERM_REMEDIATION_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<RiskRegisterItemDto> list() {
         return riskService.list();
     }
@@ -72,7 +72,7 @@ public class RiskController {
     }
 
     @GetMapping("/{riskId}/controls")
-    @PreAuthorize("hasAnyAuthority('PERM_RISK_MANAGEMENT','PERM_REPORT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PERM_RISK_MANAGEMENT','PERM_REMEDIATION_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<RiskControlLinkDto> controls(@PathVariable Long riskId) {
         return riskService.controls(riskId);
     }

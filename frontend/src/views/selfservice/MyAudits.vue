@@ -20,6 +20,7 @@
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('projectName')">Project {{ sortIndicator('projectName') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Stage {{ sortIndicator('status') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completionPct')">Completion {{ sortIndicator('completionPct') }}</button></th>
                 <th></th>
               </tr>
@@ -30,10 +31,11 @@
                 <td>{{ a.year }}</td>
                 <td>{{ a.projectName || '-' }}</td>
                 <td>
-                  <span class="badge status-badge" :class="statusBadgeClass(a.status)">
-                    {{ statusLabel(a.status) }}
+                  <span class="badge status-badge" :class="auditStatusBadgeClass(a.status)">
+                    {{ auditStatusLabel(a.status) }}
                   </span>
                 </td>
+                <td><span class="badge text-bg-light border">{{ auditStageLabel(a.status) }}</span></td>
                 <td>
                   <div class="d-flex align-items-center gap-2">
                     <div class="progress flex-grow-1" style="height: 8px; min-width: 120px;">
@@ -71,6 +73,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../../services/api'
 import { useTableSort } from '../../composables/useTableSort'
+import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from '../../utils/auditStatus'
 
 const items = ref([])
 const loading = ref(true)
@@ -87,43 +90,9 @@ onMounted(async () => {
   }
 })
 
-function statusLabel(status) {
-  switch (status) {
-    case 'SUBMITTED':
-      return 'Completed - pending admin review'
-    case 'COMPLETE':
-      return 'Validated complete'
-    case 'ATTESTED':
-      return 'Attested by audit team'
-    case 'IN_PROGRESS':
-      return 'In progress'
-    case 'DRAFT':
-      return 'Draft'
-    default:
-      return status || '-'
-  }
-}
-
 function actionLabel(audit) {
   if (audit.status === 'SUBMITTED' || audit.status === 'ATTESTED' || audit.status === 'COMPLETE') return 'View submission'
   return (audit.completionPct || 0) > 0 ? 'Resume audit' : 'Start audit'
-}
-
-function statusBadgeClass(status) {
-  switch (status) {
-    case 'COMPLETE':
-      return 'text-bg-success'
-    case 'ATTESTED':
-      return 'text-bg-primary'
-    case 'SUBMITTED':
-      return 'text-bg-info'
-    case 'IN_PROGRESS':
-      return 'text-bg-warning'
-    case 'DRAFT':
-      return 'text-bg-secondary'
-    default:
-      return 'text-bg-secondary'
-  }
 }
 </script>
 
@@ -133,8 +102,8 @@ function statusBadgeClass(status) {
   min-width: 220px;
 }
 
-.my-audits-table th:nth-child(5),
-.my-audits-table td:nth-child(5) {
+.my-audits-table th:nth-child(6),
+.my-audits-table td:nth-child(6) {
   min-width: 220px;
 }
 

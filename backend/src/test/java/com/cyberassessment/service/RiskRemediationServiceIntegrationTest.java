@@ -144,9 +144,19 @@ class RiskRemediationServiceIntegrationTest {
         RemediationPlanDto plan = remediationService.createPlan(
                 risk.getId(),
                 "Privilege hardening plan",
+                "Remove shared credentials and enforce MFA-backed admin sessions.",
+                "Phase 1 in 2 weeks, full rollout in 45 days",
+                "Enhanced monitoring and daily credential rotation while rollout is in progress",
+                "This reduces the attack window for credential abuse and limits blast radius.",
                 Instant.now().plusSeconds(86400 * 21)
         );
         assertThat(plan.getStatus()).isEqualTo(RemediationPlanStatus.DRAFT);
+        assertThat(plan.getApprovalStatus()).isEqualTo(RemediationPlanApprovalStatus.DRAFT);
+
+        RemediationPlanDto submitted = remediationService.submitForApproval(plan.getId());
+        assertThat(submitted.getApprovalStatus()).isEqualTo(RemediationPlanApprovalStatus.SUBMITTED);
+        RemediationPlanDto approved = remediationService.decideApproval(plan.getId(), true, "Looks good");
+        assertThat(approved.getApprovalStatus()).isEqualTo(RemediationPlanApprovalStatus.APPROVED);
 
         RemediationActionDto action = remediationService.createAction(
                 plan.getId(),
@@ -177,6 +187,10 @@ class RiskRemediationServiceIntegrationTest {
         RemediationPlanDto progressed = remediationService.updatePlan(
                 plan.getId(),
                 "Privilege hardening plan",
+                null,
+                null,
+                null,
+                null,
                 RemediationPlanStatus.IN_PROGRESS,
                 Instant.now().plusSeconds(86400 * 14)
         );

@@ -38,6 +38,7 @@ describe('MyAudits', () => {
     expect(api.get).toHaveBeenCalledWith('/api/my-audits')
     expect(wrapper.text()).toContain('100%')
     expect(wrapper.text()).toContain('Resume audit')
+    expect(wrapper.text()).toContain('Fieldwork')
   })
 
   it('sorts rows when year header is clicked', async () => {
