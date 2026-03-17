@@ -10,6 +10,7 @@
         <nav class="workspace-nav">
           <router-link to="/my-audits" class="workspace-nav-item">My Audits</router-link>
           <router-link to="/my-tasks" class="workspace-nav-item">My Tasks</router-link>
+          <router-link to="/my-policies" class="workspace-nav-item">My Policies</router-link>
           <router-link to="/profile" class="workspace-nav-item">Profile</router-link>
           <router-link v-if="authStore.canAccessAdmin" to="/admin" class="workspace-nav-item">Admin Workspace</router-link>
         </nav>

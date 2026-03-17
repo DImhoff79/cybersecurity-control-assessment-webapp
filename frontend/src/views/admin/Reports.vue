@@ -193,6 +193,7 @@ const summary = ref(null)
 const byYear = ref([])
 const trends = ref([])
 const byProject = ref([])
+const complianceKpis = ref({})
 const schedules = ref([])
 const scheduleForm = ref({
   name: '',
@@ -224,24 +225,30 @@ const cards = computed(() => {
     { label: 'Overdue Audits', value: s.overdueAudits ?? 0 },
     { label: 'Submitted', value: s.submittedAudits ?? 0 },
     { label: 'Attested', value: s.attestedAudits ?? 0 },
-    { label: 'Completed', value: s.completedAudits ?? 0 }
+    { label: 'Completed', value: s.completedAudits ?? 0 },
+    { label: 'Policies', value: complianceKpis.value.totalPolicies ?? 0 },
+    { label: 'Req Control Coverage %', value: `${complianceKpis.value.controlCoveragePct ?? 0}%` },
+    { label: 'Req Policy Coverage %', value: `${complianceKpis.value.policyCoveragePct ?? 0}%` },
+    { label: 'Pending Attestations', value: complianceKpis.value.pendingAttestations ?? 0 }
   ]
 })
 
 onMounted(async () => {
   try {
-    const [res, byYearRes, trendsRes, byProjectRes, schedulesRes] = await Promise.all([
+    const [res, byYearRes, trendsRes, byProjectRes, schedulesRes, complianceRes] = await Promise.all([
       api.get('/api/reports/summary'),
       api.get('/api/reports/by-year'),
       api.get('/api/reports/trends'),
       api.get('/api/reports/by-project'),
-      api.get('/api/reports/schedules')
+      api.get('/api/reports/schedules'),
+      api.get('/api/reports/compliance-kpis')
     ])
     summary.value = res.data || {}
     byYear.value = byYearRes.data || []
     trends.value = trendsRes.data || []
     byProject.value = byProjectRes.data || []
     schedules.value = schedulesRes.data || []
+    complianceKpis.value = complianceRes.data || {}
   } finally {
     loading.value = false
   }

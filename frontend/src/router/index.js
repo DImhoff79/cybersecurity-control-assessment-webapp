@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/', redirect: '/my-audits' },
     { path: '/my-audits', name: 'MyAudits', component: () => import('../views/selfservice/MyAudits.vue') },
     { path: '/my-tasks', name: 'MyTasks', component: () => import('../views/selfservice/MyTasks.vue') },
+    { path: '/my-policies', name: 'MyPolicies', component: () => import('../views/selfservice/MyPolicies.vue') },
     { path: '/audits/:auditId/respond', name: 'AuditRespond', component: () => import('../views/selfservice/AuditRespond.vue') },
     {
       path: '/admin',
@@ -56,6 +57,24 @@ const router = createRouter({
           name: 'AdminReports',
           component: () => import('../views/admin/Reports.vue'),
           meta: { permission: 'REPORT_VIEW', section: 'Monitor', pageTitle: 'Reports' }
+        },
+        {
+          path: 'policies',
+          name: 'AdminPolicies',
+          component: () => import('../views/admin/Policies.vue'),
+          meta: { permission: 'POLICY_MANAGEMENT', section: 'Compliance', pageTitle: 'Policies' }
+        },
+        {
+          path: 'policy-attestations',
+          name: 'AdminPolicyAttestations',
+          component: () => import('../views/admin/PolicyAttestations.vue'),
+          meta: { permission: 'REPORT_VIEW', section: 'Monitor', pageTitle: 'Policy Attestations' }
+        },
+        {
+          path: 'compliance-obligations',
+          name: 'AdminComplianceObligations',
+          component: () => import('../views/admin/ComplianceObligations.vue'),
+          meta: { permission: 'COMPLIANCE_MANAGEMENT', section: 'Compliance', pageTitle: 'Compliance Obligations' }
         },
         {
           path: 'users',

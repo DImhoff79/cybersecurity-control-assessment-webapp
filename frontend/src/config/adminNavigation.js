@@ -27,7 +27,16 @@ export const adminSections = [
     key: 'monitor',
     label: 'Monitor',
     items: [
-      { label: 'Reports', to: '/admin/reports', permission: 'REPORT_VIEW' }
+      { label: 'Reports', to: '/admin/reports', permission: 'REPORT_VIEW' },
+      { label: 'Policy Attestations', to: '/admin/policy-attestations', permission: 'REPORT_VIEW' }
+    ]
+  },
+  {
+    key: 'compliance',
+    label: 'Compliance',
+    items: [
+      { label: 'Policies', to: '/admin/policies', permission: 'POLICY_MANAGEMENT' },
+      { label: 'Obligations', to: '/admin/compliance-obligations', permission: 'COMPLIANCE_MANAGEMENT' }
     ]
   },
   {
