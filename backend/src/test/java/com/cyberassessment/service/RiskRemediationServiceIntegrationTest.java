@@ -84,6 +84,7 @@ class RiskRemediationServiceIntegrationTest {
                 5,
                 owner.getId(),
                 app.getId(),
+                null,
                 Instant.now().plusSeconds(86400 * 30)
         );
         assertThat(created.getId()).isNotNull();
@@ -136,6 +137,7 @@ class RiskRemediationServiceIntegrationTest {
                 4,
                 owner.getId(),
                 null,
+                "Third-party shared infrastructure",
                 Instant.now().plusSeconds(86400 * 60)
         );
 

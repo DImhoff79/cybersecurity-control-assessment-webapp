@@ -63,11 +63,13 @@ class RiskRemediationControllerIntegrationTest {
                 "businessImpact", "Potential control breakdown",
                 "likelihoodScore", 4,
                 "impactScore", 5,
-                "ownerUserId", owner.getId()
+                "ownerUserId", owner.getId(),
+                "otherApplicationText", "Shared identity platform"
         ));
         assertThat(risk.getId()).isNotNull();
         assertThat(risk.getInherentRiskScore()).isEqualTo(20);
         assertThat(risk.getResidualRiskScore()).isNull();
+        assertThat(risk.getOtherApplicationText()).isEqualTo("Shared identity platform");
 
         RiskRegisterItemDto updated = riskController.update(risk.getId(), Map.of(
                 "status", "MONITORING",

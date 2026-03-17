@@ -48,6 +48,23 @@
               <option v-for="u in users" :key="u.id" :value="u.id">{{ u.email }}</option>
             </select>
           </div>
+          <div class="col-md-4">
+            <div class="small fw-semibold text-secondary mb-1">Application attribution</div>
+            <select v-model="form.attributionSelection" class="form-select form-select-sm">
+              <option value="">Select application</option>
+              <option v-for="app in applications" :key="app.id" :value="String(app.id)">{{ app.name }}</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div v-if="form.attributionSelection === 'OTHER'" class="col-md-4">
+            <div class="small fw-semibold text-secondary mb-1">Other attribution details</div>
+            <input
+              v-model="form.otherApplicationText"
+              class="form-control form-control-sm"
+              placeholder="Describe the system, shared service, or business area"
+              required
+            />
+          </div>
           <div class="col-md-2 d-flex align-items-end">
             <button type="submit" class="btn btn-primary btn-sm w-100">Create</button>
           </div>
@@ -70,6 +87,7 @@
                 <th>Status</th>
                 <th>Inherent</th>
                 <th>Residual (Manual)</th>
+                <th>Application</th>
                 <th>Owner</th>
                 <th style="min-width: 220px;">Actions</th>
               </tr>
@@ -80,6 +98,7 @@
                 <td><span class="badge text-bg-secondary">{{ row.status }}</span></td>
                 <td>{{ row.inherentRiskScore }}</td>
                 <td>{{ row.residualRiskScore ?? '-' }}</td>
+                <td>{{ row.applicationName || row.otherApplicationText || '-' }}</td>
                 <td>{{ row.ownerEmail || '-' }}</td>
                 <td>
                   <div class="input-group input-group-sm">
@@ -108,12 +127,15 @@ import { toastError, toastSuccess } from '../../services/toast'
 
 const items = ref([])
 const users = ref([])
+const applications = ref([])
 const kpis = ref({})
 const form = ref({
   title: '',
   likelihoodScore: 3,
   impactScore: 3,
-  ownerUserId: null
+  ownerUserId: null,
+  attributionSelection: '',
+  otherApplicationText: ''
 })
 
 onMounted(async () => {
@@ -121,20 +143,43 @@ onMounted(async () => {
 })
 
 async function load() {
-  const [riskRes, usersRes, kpiRes] = await Promise.all([
+  const [riskRes, usersRes, appsRes, kpiRes] = await Promise.all([
     api.get('/api/risks'),
     api.get('/api/users'),
+    api.get('/api/applications'),
     api.get('/api/reports/risk-kpis')
   ])
   items.value = (riskRes.data || []).map((row) => ({ ...row, _nextStatus: row.status }))
   users.value = usersRes.data || []
+  applications.value = appsRes.data || []
   kpis.value = kpiRes.data || {}
 }
 
 async function createRisk() {
+  const selected = form.value.attributionSelection
+  const useOther = selected === 'OTHER'
+  const otherText = useOther ? (form.value.otherApplicationText || '').trim() : ''
+  if (!selected) {
+    toastError('Select an application or choose Other')
+    return
+  }
+  if (useOther && !otherText) {
+    toastError('Provide details when selecting Other')
+    return
+  }
   try {
-    await api.post('/api/risks', form.value)
+    const applicationId = !useOther ? Number(selected) : null
+    await api.post('/api/risks', {
+      title: form.value.title,
+      likelihoodScore: form.value.likelihoodScore,
+      impactScore: form.value.impactScore,
+      ownerUserId: form.value.ownerUserId,
+      applicationId,
+      otherApplicationText: useOther ? otherText : null
+    })
     form.value.title = ''
+    form.value.attributionSelection = ''
+    form.value.otherApplicationText = ''
     await load()
     toastSuccess('Risk item created.')
   } catch (e) {

@@ -37,8 +37,19 @@ public class RiskController {
                 ? ((Number) body.get("ownerUserId")).longValue() : null;
         Long applicationId = body.containsKey("applicationId") && body.get("applicationId") != null
                 ? ((Number) body.get("applicationId")).longValue() : null;
+        String otherApplicationText = body.containsKey("otherApplicationText") ? (String) body.get("otherApplicationText") : null;
         Instant targetCloseAt = parseInstant(body.get("targetCloseAt"));
-        return riskService.create(title, description, businessImpact, likelihoodScore, impactScore, ownerUserId, applicationId, targetCloseAt);
+        return riskService.create(
+                title,
+                description,
+                businessImpact,
+                likelihoodScore,
+                impactScore,
+                ownerUserId,
+                applicationId,
+                otherApplicationText,
+                targetCloseAt
+        );
     }
 
     @PutMapping("/{riskId}")

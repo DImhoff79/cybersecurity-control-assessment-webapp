@@ -45,6 +45,7 @@ public class RiskService {
                 .ownerEmail(row.getOwner() != null ? row.getOwner().getEmail() : null)
                 .applicationId(row.getApplication() != null ? row.getApplication().getId() : null)
                 .applicationName(row.getApplication() != null ? row.getApplication().getName() : null)
+                .otherApplicationText(row.getOtherApplicationText())
                 .targetCloseAt(row.getTargetCloseAt())
                 .closedAt(row.getClosedAt())
                 .createdAt(row.getCreatedAt())
@@ -79,6 +80,7 @@ public class RiskService {
             Integer impactScore,
             Long ownerUserId,
             Long applicationId,
+            String otherApplicationText,
             Instant targetCloseAt
     ) {
         if (title == null || title.isBlank()) throw new IllegalArgumentException("Risk title is required");
@@ -88,6 +90,8 @@ public class RiskService {
                 .orElseThrow(() -> new IllegalArgumentException("Owner user not found: " + ownerUserId));
         Application app = applicationId == null ? null : applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Application not found: " + applicationId));
+        String normalizedOtherApplicationText = normalizeOtherApplicationText(otherApplicationText);
+        validateAttribution(app, normalizedOtherApplicationText);
         User actor = currentUserService.getCurrentUser().orElse(null);
         RiskRegisterItem row = riskRegisterItemRepository.save(RiskRegisterItem.builder()
                 .title(title.trim())
@@ -99,6 +103,7 @@ public class RiskService {
                 .residualRiskScore(null)
                 .owner(owner)
                 .application(app)
+                .otherApplicationText(normalizedOtherApplicationText)
                 .status(RiskStatus.OPEN)
                 .targetCloseAt(targetCloseAt)
                 .createdBy(actor)
@@ -208,5 +213,17 @@ public class RiskService {
         if (value == null) throw new IllegalArgumentException(field + " is required");
         if (value < 1 || value > 5) throw new IllegalArgumentException(field + " must be between 1 and 5");
         return value;
+    }
+
+    private String normalizeOtherApplicationText(String value) {
+        if (value == null) return null;
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private void validateAttribution(Application application, String otherApplicationText) {
+        if (application == null && otherApplicationText == null) {
+            throw new IllegalArgumentException("Select an application or choose Other and provide details");
+        }
     }
 }

@@ -26,6 +26,7 @@ public class RiskRegisterItemDto {
     private String ownerEmail;
     private Long applicationId;
     private String applicationName;
+    private String otherApplicationText;
     private Instant targetCloseAt;
     private Instant closedAt;
     private Instant createdAt;

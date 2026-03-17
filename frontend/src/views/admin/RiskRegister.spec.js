@@ -20,7 +20,7 @@ describe('RiskRegister', () => {
           data: [{ id: 1, title: 'Privileged access risk', inherentRiskScore: 20, residualRiskScore: 8, status: 'OPEN' }]
         })
       }
-      if (url === '/api/applications') return Promise.resolve({ data: [] })
+      if (url === '/api/applications') return Promise.resolve({ data: [{ id: 7, name: 'Payments Platform' }] })
       if (url === '/api/users') return Promise.resolve({ data: [] })
       if (url === '/api/reports/risk-kpis') return Promise.resolve({ data: { openRisks: 1, highRisks: 1, overdueRemediationActions: 0 } })
       return Promise.resolve({ data: [] })
@@ -36,13 +36,20 @@ describe('RiskRegister', () => {
     expect(wrapper.text()).toContain('Risk title')
     expect(wrapper.text()).toContain('Likelihood (1-5)')
     expect(wrapper.text()).toContain('Impact (1-5)')
+    expect(wrapper.text()).toContain('Application attribution')
 
     expect(wrapper.text()).toContain('Privileged access risk')
     expect(api.get).toHaveBeenCalledWith('/api/risks')
 
-    const createButton = wrapper.find('form button.btn-primary')
-    await createButton.trigger('submit')
+    const attributionSelect = wrapper.findAll('form select')[1]
+    await attributionSelect.setValue('OTHER')
     await flushPromises()
-    expect(api.post).toHaveBeenCalled()
+    await wrapper.find('input[placeholder*="Describe the system"]').setValue('Shared identity service')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.post).toHaveBeenCalledWith('/api/risks', expect.objectContaining({
+      otherApplicationText: 'Shared identity service',
+      applicationId: null
+    }))
   })
 })

@@ -47,6 +47,9 @@ public class RiskRegisterItem {
     @JoinColumn(name = "application_id")
     private Application application;
 
+    @Column(name = "other_application_text", length = 500)
+    private String otherApplicationText;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
