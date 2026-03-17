@@ -5,12 +5,14 @@ import com.cyberassessment.dto.AuditTrendPointDto;
 import com.cyberassessment.dto.AuditProjectSummaryDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.dto.AuditorSavedFilterDto;
+import com.cyberassessment.dto.ComplianceKpiDto;
 import com.cyberassessment.dto.ReportScheduleDto;
 import com.cyberassessment.dto.ReportScheduleUpsertRequest;
 import com.cyberassessment.dto.ReportSummaryDto;
 import com.cyberassessment.service.AuditorSavedFilterService;
 import com.cyberassessment.service.ReportService;
 import com.cyberassessment.service.ReportScheduleService;
+import com.cyberassessment.service.ComplianceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,6 +38,7 @@ public class ReportController {
     private final ReportService reportService;
     private final AuditorSavedFilterService auditorSavedFilterService;
     private final ReportScheduleService reportScheduleService;
+    private final ComplianceService complianceService;
 
     @GetMapping("/summary")
     @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
@@ -128,6 +131,12 @@ public class ReportController {
     @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public List<ReportScheduleDto> schedules() {
         return reportScheduleService.list();
+    }
+
+    @GetMapping("/compliance-kpis")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
+    public ComplianceKpiDto complianceKpis() {
+        return complianceService.complianceKpis();
     }
 
     @PostMapping("/schedules")
