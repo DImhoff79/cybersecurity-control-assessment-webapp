@@ -17,12 +17,15 @@ public enum UserRole {
                     UserPermission.AUDIT_MANAGEMENT,
                     UserPermission.REPORT_VIEW,
                     UserPermission.POLICY_MANAGEMENT,
-                    UserPermission.COMPLIANCE_MANAGEMENT
+                    UserPermission.COMPLIANCE_MANAGEMENT,
+                    UserPermission.RISK_MANAGEMENT,
+                    UserPermission.REMEDIATION_MANAGEMENT
             );
             case AUDITOR -> EnumSet.of(
                     UserPermission.AUDIT_EXECUTION,
                     UserPermission.REPORT_VIEW,
-                    UserPermission.COMPLIANCE_MANAGEMENT
+                    UserPermission.COMPLIANCE_MANAGEMENT,
+                    UserPermission.REMEDIATION_MANAGEMENT
             );
             case APPLICATION_OWNER -> EnumSet.of(
                     UserPermission.APPLICATION_MANAGEMENT,

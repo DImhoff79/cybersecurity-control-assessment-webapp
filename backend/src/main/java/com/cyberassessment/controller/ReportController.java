@@ -6,6 +6,7 @@ import com.cyberassessment.dto.AuditProjectSummaryDto;
 import com.cyberassessment.dto.AuditorDashboardDto;
 import com.cyberassessment.dto.AuditorSavedFilterDto;
 import com.cyberassessment.dto.ComplianceKpiDto;
+import com.cyberassessment.dto.RiskKpiDto;
 import com.cyberassessment.dto.ReportScheduleDto;
 import com.cyberassessment.dto.ReportScheduleUpsertRequest;
 import com.cyberassessment.dto.ReportSummaryDto;
@@ -13,6 +14,7 @@ import com.cyberassessment.service.AuditorSavedFilterService;
 import com.cyberassessment.service.ReportService;
 import com.cyberassessment.service.ReportScheduleService;
 import com.cyberassessment.service.ComplianceService;
+import com.cyberassessment.service.RiskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -39,6 +41,7 @@ public class ReportController {
     private final AuditorSavedFilterService auditorSavedFilterService;
     private final ReportScheduleService reportScheduleService;
     private final ComplianceService complianceService;
+    private final RiskService riskService;
 
     @GetMapping("/summary")
     @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
@@ -137,6 +140,12 @@ public class ReportController {
     @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
     public ComplianceKpiDto complianceKpis() {
         return complianceService.complianceKpis();
+    }
+
+    @GetMapping("/risk-kpis")
+    @PreAuthorize("hasAuthority('PERM_REPORT_VIEW')")
+    public RiskKpiDto riskKpis() {
+        return riskService.kpis();
     }
 
     @PostMapping("/schedules")
