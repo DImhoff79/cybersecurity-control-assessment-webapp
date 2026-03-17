@@ -20,6 +20,7 @@ public class PolicyAcknowledgementDto {
     private Long policyVersionId;
     private Integer policyVersionNumber;
     private String policyVersionTitle;
+    private String policyVersionBodyMarkdown;
     private Long userId;
     private String userEmail;
     private PolicyAcknowledgementStatus status;

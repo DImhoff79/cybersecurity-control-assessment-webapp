@@ -67,6 +67,7 @@ class RiskRemediationControllerIntegrationTest {
         ));
         assertThat(risk.getId()).isNotNull();
         assertThat(risk.getInherentRiskScore()).isEqualTo(20);
+        assertThat(risk.getResidualRiskScore()).isNull();
 
         RiskRegisterItemDto updated = riskController.update(risk.getId(), Map.of(
                 "status", "MONITORING",

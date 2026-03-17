@@ -88,6 +88,7 @@ class RiskRemediationServiceIntegrationTest {
         );
         assertThat(created.getId()).isNotNull();
         assertThat(created.getInherentRiskScore()).isEqualTo(20);
+        assertThat(created.getResidualRiskScore()).isNull();
         assertThat(created.getStatus()).isEqualTo(RiskStatus.OPEN);
 
         RiskRegisterItemDto updated = riskService.update(

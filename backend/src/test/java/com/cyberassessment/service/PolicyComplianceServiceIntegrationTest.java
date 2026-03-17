@@ -65,14 +65,20 @@ class PolicyComplianceServiceIntegrationTest {
                 "Baseline access control requirements.",
                 manager.getId(),
                 "Access Control v1",
-                "## Policy\n\nInitial draft"
+                "## Policy\n\nInitial draft",
+                List.of("PROTECT", "DETECT")
         );
         assertThat(policy.getVersions()).hasSize(1);
+        assertThat(policy.getCsfFunctions()).containsExactlyInAnyOrder(NistCsfFunction.PROTECT, NistCsfFunction.DETECT);
 
         PolicyVersionDto v2 = policyService.createVersion(policy.getId(), "Access Control v2", "## Policy\n\nUpdated content");
+        PolicyVersionDto editedV2 = policyService.updateVersion(policy.getId(), v2.getId(), "Access Control v2 - edited", "<h2>Updated Policy</h2><p>Body</p>");
+        assertThat(editedV2.getTitle()).isEqualTo("Access Control v2 - edited");
+        assertThat(editedV2.getBodyMarkdown()).contains("<h2>Updated Policy</h2>");
         PolicyDto published = policyService.publish(policy.getId(), v2.getId(), Instant.now().plusSeconds(3600));
         assertThat(published.getStatus()).isEqualTo(PolicyStatus.ACTIVE);
         assertThat(published.getPublishedVersionId()).isEqualTo(v2.getId());
+        assertThat(policyService.getRevisionHistory(policy.getId())).isNotEmpty();
 
         authenticate(owner.getEmail());
         List<PolicyAcknowledgementDto> mine = policyService.myAcknowledgements();
@@ -106,7 +112,7 @@ class PolicyComplianceServiceIntegrationTest {
                 .permissions(UserRole.AUDIT_MANAGER.defaultPermissions())
                 .build());
         authenticate(manager.getEmail());
-        PolicyDto policy = policyService.create("POL-200", "SOX Program Policy", null, manager.getId(), null, "## SOX");
+        PolicyDto policy = policyService.create("POL-200", "SOX Program Policy", null, manager.getId(), null, "## SOX", List.of("GOVERN"));
         PolicyRequirementMappingDto policyReq = complianceService.mapPolicyToRequirement(policy.getId(), requirement.getId(), null);
 
         assertThat(reqControl.getCoveragePct()).isEqualTo(95);

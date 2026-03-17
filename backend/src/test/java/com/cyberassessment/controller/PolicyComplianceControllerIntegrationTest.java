@@ -2,9 +2,11 @@ package com.cyberassessment.controller;
 
 import com.cyberassessment.dto.ComplianceRequirementDto;
 import com.cyberassessment.dto.PolicyDto;
+import com.cyberassessment.dto.PolicyRevisionEventDto;
 import com.cyberassessment.dto.PolicyRequirementMappingDto;
 import com.cyberassessment.dto.RequirementControlMappingDto;
 import com.cyberassessment.entity.ControlFramework;
+import com.cyberassessment.entity.NistCsfFunction;
 import com.cyberassessment.entity.User;
 import com.cyberassessment.entity.UserPermission;
 import com.cyberassessment.entity.UserRole;
@@ -52,10 +54,13 @@ class PolicyComplianceControllerIntegrationTest {
         PolicyDto policy = policyController.create(Map.of(
                 "code", "POL-CTRL-1",
                 "name", "Controller Policy",
-                "description", "Controller-driven policy"
+                "description", "Controller-driven policy",
+                "csfFunctions", List.of("GOVERN", "PROTECT"),
+                "initialBodyMarkdown", "## Controller Policy Body"
         )).getBody();
         assertThat(policy).isNotNull();
         assertThat(policy.getCode()).isEqualTo("POL-CTRL-1");
+        assertThat(policy.getCsfFunctions()).containsExactlyInAnyOrder(NistCsfFunction.GOVERN, NistCsfFunction.PROTECT);
 
         var version = policyController.createVersion(policy.getId(), Map.of(
                 "title", "Controller Policy v2",
@@ -63,10 +68,20 @@ class PolicyComplianceControllerIntegrationTest {
         ));
         assertThat(version.getVersionNumber()).isGreaterThanOrEqualTo(2);
 
+        var edited = policyController.updateVersion(policy.getId(), version.getId(), Map.of(
+                "title", "Controller Policy v2 - Edited",
+                "bodyMarkdown", "<h2>Controller Body Edited</h2>"
+        ));
+        assertThat(edited.getTitle()).isEqualTo("Controller Policy v2 - Edited");
+        assertThat(edited.getBodyMarkdown()).contains("Edited");
+
         PolicyDto published = policyController.publish(policy.getId(), Map.of(
                 "policyVersionId", version.getId()
         ));
         assertThat(published.getPublishedVersionId()).isEqualTo(version.getId());
+        assertThat(policyController.getCsfMappings(policy.getId())).containsExactlyInAnyOrder(NistCsfFunction.GOVERN, NistCsfFunction.PROTECT);
+        List<PolicyRevisionEventDto> revisionHistory = policyController.revisionHistory(policy.getId());
+        assertThat(revisionHistory).isNotEmpty();
 
         var regulation = complianceController.createRegulation(Map.of(
                 "code", "PCI",

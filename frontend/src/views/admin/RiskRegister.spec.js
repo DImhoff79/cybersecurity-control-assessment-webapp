@@ -33,6 +33,10 @@ describe('RiskRegister', () => {
     const wrapper = mount(RiskRegister)
     await flushPromises()
 
+    expect(wrapper.text()).toContain('Risk title')
+    expect(wrapper.text()).toContain('Likelihood (1-5)')
+    expect(wrapper.text()).toContain('Impact (1-5)')
+
     expect(wrapper.text()).toContain('Privileged access risk')
     expect(api.get).toHaveBeenCalledWith('/api/risks')
 

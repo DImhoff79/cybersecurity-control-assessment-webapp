@@ -96,7 +96,7 @@ public class RiskService {
                 .likelihoodScore(likelihood)
                 .impactScore(impact)
                 .inherentRiskScore(likelihood * impact)
-                .residualRiskScore(likelihood * impact)
+                .residualRiskScore(null)
                 .owner(owner)
                 .application(app)
                 .status(RiskStatus.OPEN)
@@ -185,7 +185,12 @@ public class RiskService {
     @Transactional(readOnly = true)
     public RiskKpiDto kpis() {
         long openRisks = riskRegisterItemRepository.countByStatusIn(List.of(RiskStatus.OPEN, RiskStatus.MONITORING));
-        long highRisks = riskRegisterItemRepository.countByResidualRiskScoreGreaterThanEqual(12);
+        long highRisks = riskRegisterItemRepository.findAllByOrderByUpdatedAtDesc().stream()
+                .filter(risk -> {
+                    Integer score = risk.getResidualRiskScore() != null ? risk.getResidualRiskScore() : risk.getInherentRiskScore();
+                    return score != null && score >= 12;
+                })
+                .count();
         long overdueRemediationActions = remediationActionRepository.countByStatusAndDueAtBefore(
                 RemediationActionStatus.TODO,
                 Instant.now()

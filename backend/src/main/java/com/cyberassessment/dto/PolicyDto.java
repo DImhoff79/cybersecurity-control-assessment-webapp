@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
+import com.cyberassessment.entity.NistCsfFunction;
 
 @Data
 @NoArgsConstructor
@@ -26,5 +27,7 @@ public class PolicyDto {
     private Long publishedVersionId;
     private Instant createdAt;
     private Instant updatedAt;
+    private List<NistCsfFunction> csfFunctions;
     private List<PolicyVersionDto> versions;
+    private List<PolicyRevisionEventDto> revisionHistory;
 }

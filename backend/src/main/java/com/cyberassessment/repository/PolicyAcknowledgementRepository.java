@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface PolicyAcknowledgementRepository extends JpaRepository<PolicyAcknowledgement, Long> {
     List<PolicyAcknowledgement> findByUserIdOrderByAssignedAtDesc(Long userId);
     List<PolicyAcknowledgement> findByPolicyIdOrderByAssignedAtDesc(Long policyId);
+    void deleteByPolicyId(Long policyId);
     Optional<PolicyAcknowledgement> findByIdAndUserId(Long id, Long userId);
     long countByStatus(PolicyAcknowledgementStatus status);
     long countByStatusAndDueAtBefore(PolicyAcknowledgementStatus status, Instant dueAt);

@@ -7,7 +7,7 @@
       </div>
     </div>
     <div class="small text-muted mb-3">
-      Use inherent and residual scoring to prioritize remediation planning.
+      Log a risk, score how likely and severe it is, assign an owner, then track it from OPEN to CLOSED.
     </div>
 
     <div class="row g-3 mb-3">
@@ -30,24 +30,31 @@
         <h2 class="h5 mb-3">Create Risk</h2>
         <form class="row g-2" @submit.prevent="createRisk">
           <div class="col-md-4">
+            <div class="small fw-semibold text-secondary mb-1">Risk title</div>
             <input v-model="form.title" class="form-control form-control-sm" placeholder="Risk title" required />
           </div>
           <div class="col-md-2">
-            <input v-model.number="form.likelihoodScore" type="number" min="1" max="5" class="form-control form-control-sm" placeholder="Likelihood (1-5)" required />
+            <div class="small fw-semibold text-secondary mb-1">Likelihood (1-5)</div>
+            <input v-model.number="form.likelihoodScore" type="number" min="1" max="5" class="form-control form-control-sm" placeholder="1 low - 5 very likely" required />
           </div>
           <div class="col-md-2">
-            <input v-model.number="form.impactScore" type="number" min="1" max="5" class="form-control form-control-sm" placeholder="Impact (1-5)" required />
+            <div class="small fw-semibold text-secondary mb-1">Impact (1-5)</div>
+            <input v-model.number="form.impactScore" type="number" min="1" max="5" class="form-control form-control-sm" placeholder="1 low - 5 severe" required />
           </div>
           <div class="col-md-2">
+            <div class="small fw-semibold text-secondary mb-1">Owner</div>
             <select v-model="form.ownerUserId" class="form-select form-select-sm">
-              <option :value="null">Owner</option>
+              <option :value="null">Unassigned</option>
               <option v-for="u in users" :key="u.id" :value="u.id">{{ u.email }}</option>
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-2 d-flex align-items-end">
             <button type="submit" class="btn btn-primary btn-sm w-100">Create</button>
           </div>
         </form>
+        <div class="small text-muted mt-2">
+          Inherent score = Likelihood x Impact before controls. Residual is manual after mitigation work and may be blank initially.
+        </div>
       </div>
     </div>
 
@@ -62,7 +69,7 @@
                 <th>Title</th>
                 <th>Status</th>
                 <th>Inherent</th>
-                <th>Residual</th>
+                <th>Residual (Manual)</th>
                 <th>Owner</th>
                 <th style="min-width: 220px;">Actions</th>
               </tr>
@@ -72,7 +79,7 @@
                 <td>{{ row.title }}</td>
                 <td><span class="badge text-bg-secondary">{{ row.status }}</span></td>
                 <td>{{ row.inherentRiskScore }}</td>
-                <td>{{ row.residualRiskScore }}</td>
+                <td>{{ row.residualRiskScore ?? '-' }}</td>
                 <td>{{ row.ownerEmail || '-' }}</td>
                 <td>
                   <div class="input-group input-group-sm">

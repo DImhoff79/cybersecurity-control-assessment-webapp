@@ -10,4 +10,5 @@ public interface PolicyVersionRepository extends JpaRepository<PolicyVersion, Lo
     List<PolicyVersion> findByPolicyIdOrderByVersionNumberDesc(Long policyId);
     long countByPolicyId(Long policyId);
     List<PolicyVersion> findByPolicyIdAndStatus(Long policyId, PolicyVersionStatus status);
+    void deleteByPolicyId(Long policyId);
 }
