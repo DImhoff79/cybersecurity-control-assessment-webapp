@@ -15,6 +15,7 @@ vi.mock('../../services/api', () => ({
 
 describe('RemediationPlans', () => {
   beforeEach(() => {
+    window.history.pushState({}, '', '/admin/remediation-plans')
     setActivePinia(createPinia())
     const authStore = useAuthStore()
     authStore.user = { id: 1, role: 'ADMIN', permissions: ['REMEDIATION_MANAGEMENT'] }
@@ -46,6 +47,8 @@ describe('RemediationPlans', () => {
     expect(wrapper.text()).toContain('Privileged access remediation')
     expect(api.get).toHaveBeenCalledWith('/api/remediation-plans')
     expect(wrapper.text()).toContain('Approval')
+    expect(wrapper.text()).toContain('Execution Board')
+    expect(wrapper.text()).toContain('Approved / Active')
 
     const buttons = wrapper.findAll('button').filter((b) => b.text().includes('Create'))
     await buttons[0].trigger('click')
@@ -83,5 +86,14 @@ describe('RemediationPlans', () => {
 
     expect(wrapper.text()).toContain('Approve')
     expect(wrapper.text()).toContain('Reject')
+  })
+
+  it('prefills remediation handoff context from query params', async () => {
+    window.history.pushState({}, '', '/admin/remediation-plans?findingId=100&findingTitle=Gap%20found&riskId=1&riskTitle=Risk%201')
+    const wrapper = mount(RemediationPlans)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Handoff from finding #100')
+    expect(wrapper.find('input[placeholder="Plan title"]').element.value).toContain('Remediation for finding #100')
   })
 })

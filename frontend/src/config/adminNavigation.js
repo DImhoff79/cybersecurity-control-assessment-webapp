@@ -4,7 +4,7 @@ export const adminSections = [
     label: 'Audit Program',
     items: [
       { label: 'Operations Queue', to: '/admin/operations', permission: 'REPORT_VIEW' },
-      { label: 'Audit Projects', to: '/admin/audit-projects', permission: 'AUDIT_MANAGEMENT' },
+      { label: 'Audit Projects', to: '/admin/audit-projects', permission: 'REPORT_VIEW' },
       { label: 'Audits', to: '/admin/audits', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Questionnaire', to: '/admin/questionnaire', permission: 'AUDIT_MANAGEMENT' }
     ]

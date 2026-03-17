@@ -268,6 +268,25 @@
     <section class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Existing projects</h2>
+        <div class="row g-2 mb-3">
+          <div class="col-md-3" v-for="card in projectCards" :key="card.label">
+            <div class="border rounded p-2 h-100">
+              <div class="small text-muted">{{ card.label }}</div>
+              <div class="fw-semibold">{{ card.value }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <label class="form-label small mb-1">Project view</label>
+            <select v-model="projectViewFilter" class="form-select form-select-sm">
+              <option value="all">All projects</option>
+              <option value="active">Active projects</option>
+              <option value="live-audits">Projects with live audits</option>
+              <option value="overdue-audits">Projects with overdue audits</option>
+            </select>
+          </div>
+        </div>
         <div class="table-responsive">
           <table class="table table-striped mb-0">
             <thead>
@@ -278,6 +297,7 @@
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('scopedApplications')">Scoped Apps {{ sortIndicator('scopedApplications') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('totalAudits')">Audits {{ sortIndicator('totalAudits') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completeAudits')">Completed {{ sortIndicator('completeAudits') }}</button></th>
+                <th>Stage Snapshot</th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('createdAt')">Created {{ sortIndicator('createdAt') }}</button></th>
                 <th v-if="canManageProjects"></th>
               </tr>
@@ -293,6 +313,13 @@
                 <td>{{ (p.scopedApplications || []).length }}</td>
                 <td>{{ p.totalAudits || 0 }}</td>
                 <td>{{ p.completeAudits || 0 }}</td>
+                <td class="small">
+                  <span class="badge text-bg-light border me-1 mb-1">Planning {{ stageCounts(p).planning }}</span>
+                  <span class="badge text-bg-warning me-1 mb-1">Fieldwork {{ stageCounts(p).fieldwork }}</span>
+                  <span class="badge text-bg-info me-1 mb-1">Manager Review {{ stageCounts(p).managerReview }}</span>
+                  <span class="badge text-bg-primary me-1 mb-1">Final Validation {{ stageCounts(p).finalValidation }}</span>
+                  <span class="badge text-bg-success me-1 mb-1">Closed {{ stageCounts(p).closed }}</span>
+                </td>
                 <td>{{ formatDate(p.createdAt) }}</td>
                 <td v-if="canManageProjects" class="text-nowrap">
                   <button class="btn btn-outline-primary btn-sm me-2" @click="startEdit(p)">Edit</button>
@@ -312,6 +339,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+import { useAuthStore } from '../../stores/auth'
 
 const applications = ref([])
 const projects = ref([])
@@ -342,6 +370,8 @@ const form = reactive({
   notes: '',
   applicationIds: []
 })
+const projectViewFilter = ref('active')
+const authStore = useAuthStore()
 
 const availableApps = computed(() => {
   const term = appSearch.value.trim().toLowerCase()
@@ -390,13 +420,45 @@ const editSelectedApplications = computed(() => {
 })
 
 const selectedPreview = computed(() => selectedApplications.value.slice(0, 5).map((a) => a.name).join(', '))
-const canManageProjects = computed(() => true)
-const { sortedRows: sortedProjects, toggleSort, sortIndicator } = useTableSort(projects, {
+const canManageProjects = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
+
+const filteredProjects = computed(() => {
+  if (projectViewFilter.value === 'all') return projects.value
+  if (projectViewFilter.value === 'active') {
+    return projects.value.filter((p) => !p.status || p.status === 'ACTIVE')
+  }
+  if (projectViewFilter.value === 'live-audits') {
+    return projects.value.filter((p) => stageCounts(p).fieldwork + stageCounts(p).managerReview + stageCounts(p).finalValidation > 0)
+  }
+  if (projectViewFilter.value === 'overdue-audits') {
+    const now = Date.now()
+    return projects.value.filter((p) =>
+      (p.audits || []).some((a) => a.dueAt && a.status !== 'COMPLETE' && new Date(a.dueAt).getTime() < now)
+    )
+  }
+  return projects.value
+})
+
+const { sortedRows: sortedProjects, toggleSort, sortIndicator } = useTableSort(filteredProjects, {
   initialKey: 'createdAt',
   initialDirection: 'desc',
   valueGetters: {
     scopedApplications: (row) => (row.scopedApplications || []).length
   }
+})
+
+const projectCards = computed(() => {
+  const rows = projects.value || []
+  const allAudits = rows.flatMap((p) => p.audits || [])
+  const liveAudits = allAudits.filter((a) => ['IN_PROGRESS', 'SUBMITTED', 'ATTESTED'].includes(a.status)).length
+  const openAudits = allAudits.filter((a) => a.status !== 'COMPLETE').length
+  const overdueAudits = allAudits.filter((a) => a.status !== 'COMPLETE' && a.dueAt && new Date(a.dueAt).getTime() < Date.now()).length
+  return [
+    { label: 'Projects', value: rows.length },
+    { label: 'Open Audits', value: openAudits },
+    { label: 'Live Audits', value: liveAudits },
+    { label: 'Overdue Audits', value: overdueAudits }
+  ]
 })
 
 onMounted(load)
@@ -558,6 +620,24 @@ async function deleteProject(projectId) {
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function stageCounts(project) {
+  const counts = {
+    planning: 0,
+    fieldwork: 0,
+    managerReview: 0,
+    finalValidation: 0,
+    closed: 0
+  }
+  ;(project?.audits || []).forEach((audit) => {
+    if (audit.status === 'DRAFT') counts.planning += 1
+    else if (audit.status === 'IN_PROGRESS') counts.fieldwork += 1
+    else if (audit.status === 'SUBMITTED') counts.managerReview += 1
+    else if (audit.status === 'ATTESTED') counts.finalValidation += 1
+    else if (audit.status === 'COMPLETE') counts.closed += 1
+  })
+  return counts
 }
 
 function toggleAvailableSort() {

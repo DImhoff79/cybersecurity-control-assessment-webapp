@@ -68,6 +68,7 @@ describe('Reports', () => {
     expect(wrapper.text()).toContain('Applications')
     expect(wrapper.text()).toContain('By Year')
     expect(wrapper.text()).toContain('Manager Drilldowns')
+    expect(wrapper.text()).toContain('Executive Deltas & SLA Alerts')
 
     const exportBtn = wrapper.findAll('button').find((b) => b.text().includes('Export Audits CSV'))
     await exportBtn.trigger('click')

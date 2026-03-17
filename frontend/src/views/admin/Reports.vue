@@ -116,6 +116,47 @@
       </div>
       <div class="card shadow-sm mb-3">
         <div class="card-body">
+          <h2 class="h5 mb-3">Executive Deltas & SLA Alerts</h2>
+          <div class="row g-2 mb-3">
+            <div v-for="delta in executiveDeltas" :key="delta.label" class="col-md-4">
+              <div class="border rounded p-2 h-100">
+                <div class="small text-muted">{{ delta.label }}</div>
+                <div class="fw-semibold">{{ delta.value }}</div>
+                <div class="small" :class="delta.toneClass">{{ delta.tone }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <h3 class="h6 mb-2">Top Hotspot Projects</h3>
+              <div v-if="!projectHotspots.length" class="small text-muted">No project hotspots identified.</div>
+              <div v-for="hotspot in projectHotspots" :key="hotspot.projectId" class="border rounded p-2 mb-2">
+                <div class="fw-semibold">{{ hotspot.projectName }}</div>
+                <div class="small text-muted">
+                  Open audits: {{ hotspot.openAudits }} | Overdue audits: {{ hotspot.overdueAudits }}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h3 class="h6 mb-2">SLA Breach Indicators</h3>
+              <div class="border rounded p-2 mb-2">
+                <div class="small text-muted">Audit SLA Breaches</div>
+                <div class="fw-semibold">{{ summary?.overdueAudits ?? 0 }} overdue audits</div>
+              </div>
+              <div class="border rounded p-2 mb-2">
+                <div class="small text-muted">Remediation SLA Breaches</div>
+                <div class="fw-semibold">{{ riskKpis?.overdueRemediationActions ?? 0 }} overdue actions</div>
+              </div>
+              <div class="border rounded p-2">
+                <div class="small text-muted">Policy Attestation SLA Breaches</div>
+                <div class="fw-semibold">{{ complianceKpis?.pendingAttestations ?? 0 }} pending attestations</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
           <h2 class="h5 mb-3">Trend Charts</h2>
           <div class="small text-muted mb-2">Completion, open, and overdue trends by audit year.</div>
           <div class="trend-chart-wrap">
@@ -295,6 +336,47 @@ const managerSignals = computed(() => {
       toneClass: overdueRemediation > 0 || pendingAttestations > 0 ? 'text-warning' : 'text-success'
     }
   ]
+})
+
+const executiveDeltas = computed(() => {
+  const ordered = (trends.value || []).slice().sort((a, b) => a.year - b.year)
+  const current = ordered[ordered.length - 1] || {}
+  const previous = ordered[ordered.length - 2] || {}
+  const openDelta = (current.open || 0) - (previous.open || 0)
+  const overdueDelta = (current.overdue || 0) - (previous.overdue || 0)
+  const completeDelta = (current.complete || 0) - (previous.complete || 0)
+  return [
+    {
+      label: 'Open Audit Delta',
+      value: `${openDelta >= 0 ? '+' : ''}${openDelta}`,
+      tone: openDelta > 0 ? 'Open audit workload increasing' : 'Open audit workload stable/improving',
+      toneClass: openDelta > 0 ? 'text-danger' : 'text-success'
+    },
+    {
+      label: 'Overdue Audit Delta',
+      value: `${overdueDelta >= 0 ? '+' : ''}${overdueDelta}`,
+      tone: overdueDelta > 0 ? 'Overdue trend worsening' : 'Overdue trend stable/improving',
+      toneClass: overdueDelta > 0 ? 'text-danger' : 'text-success'
+    },
+    {
+      label: 'Completion Delta',
+      value: `${completeDelta >= 0 ? '+' : ''}${completeDelta}`,
+      tone: completeDelta < 0 ? 'Completions slowing' : 'Completion throughput healthy',
+      toneClass: completeDelta < 0 ? 'text-warning' : 'text-success'
+    }
+  ]
+})
+
+const projectHotspots = computed(() => {
+  return (byProject.value || [])
+    .map((row) => ({
+      projectId: row.projectId,
+      projectName: row.projectName,
+      openAudits: row.openAudits || 0,
+      overdueAudits: Math.max(0, (row.openAudits || 0) - (row.submittedAudits || 0) - (row.attestedAudits || 0))
+    }))
+    .sort((a, b) => (b.openAudits + b.overdueAudits) - (a.openAudits + a.overdueAudits))
+    .slice(0, 3)
 })
 
 onMounted(async () => {

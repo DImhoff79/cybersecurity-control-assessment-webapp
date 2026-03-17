@@ -1,7 +1,9 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import AuditProjects from './AuditProjects.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 vi.mock('../../services/api', () => ({
   default: {
@@ -14,6 +16,9 @@ vi.mock('../../services/api', () => ({
 
 describe('AuditProjects', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
+    const authStore = useAuthStore()
+    authStore.user = { id: 1, role: 'AUDIT_MANAGER', permissions: ['AUDIT_MANAGEMENT', 'REPORT_VIEW'] }
     vi.clearAllMocks()
     api.get.mockImplementation((url) => {
       if (url === '/api/applications') {
@@ -41,6 +46,8 @@ describe('AuditProjects', () => {
 
     expect(wrapper.text()).toContain('Existing projects')
     expect(wrapper.text()).toContain('PCI 2026')
+    expect(wrapper.text()).toContain('Live Audits')
+    expect(wrapper.text()).toContain('Stage Snapshot')
     expect(wrapper.text()).toContain('Available applications')
     expect(wrapper.text()).toContain('In this project')
 

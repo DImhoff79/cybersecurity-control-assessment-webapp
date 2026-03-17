@@ -19,13 +19,13 @@ public class AuditProjectController {
     private final AuditProjectService auditProjectService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<AuditProjectDto> list() {
         return auditProjectService.list();
     }
 
     @GetMapping("/{projectId}")
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
     public ResponseEntity<?> get(@PathVariable Long projectId) {
         try {
             return ResponseEntity.ok(auditProjectService.get(projectId));

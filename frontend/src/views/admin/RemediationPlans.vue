@@ -9,6 +9,17 @@
     <div class="small text-muted mb-3">
       Attach remediation plans to specific risks and assign accountable owners for each action. Approval decisions are made by Admins or Audit Managers.
     </div>
+    <div v-if="handoff.findingId || handoff.riskId" class="alert alert-info py-2 mb-3 d-flex justify-content-between align-items-center gap-2">
+      <div class="small">
+        <span v-if="handoff.findingId">
+          Handoff from finding #{{ handoff.findingId }}{{ handoff.findingTitle ? `: ${handoff.findingTitle}` : '' }}.
+        </span>
+        <span v-if="handoff.riskId" class="ms-1">
+          Linked risk #{{ handoff.riskId }}{{ handoff.riskTitle ? `: ${handoff.riskTitle}` : '' }}.
+        </span>
+      </div>
+      <button type="button" class="btn btn-outline-primary btn-sm" @click="clearHandoff">Clear Context</button>
+    </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-body">
@@ -73,9 +84,9 @@
               <tr v-for="plan in plans" :key="plan.id">
                 <td>{{ plan.title }}</td>
                 <td>{{ plan.riskTitle || '-' }}</td>
-                <td><span class="badge text-bg-secondary">{{ plan.status }}</span></td>
+                <td><span class="badge text-bg-secondary">{{ formatPlanStatus(plan.status) }}</span></td>
                 <td>
-                  <span class="badge" :class="approvalBadgeClass(plan.approvalStatus)">{{ plan.approvalStatus || 'DRAFT' }}</span>
+                  <span class="badge" :class="approvalBadgeClass(plan.approvalStatus)">{{ formatApprovalStatus(plan.approvalStatus) }}</span>
                 </td>
                 <td>{{ formatDate(plan.targetCompleteAt) }}</td>
                 <td>
@@ -123,6 +134,47 @@
       </div>
     </div>
 
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+          <h2 class="h5 mb-0">Execution Board</h2>
+          <div class="d-flex gap-2 flex-wrap">
+            <select v-model="boardFilter.ownerUserId" class="form-select form-select-sm">
+              <option value="">All accountable owners</option>
+              <option value="none">Unassigned</option>
+              <option v-for="owner in riskOwnerOptions" :key="owner.userId" :value="String(owner.userId)">
+                {{ owner.label }}
+              </option>
+            </select>
+            <select v-model="boardFilter.executionState" class="form-select form-select-sm">
+              <option value="all">All execution states</option>
+              <option value="active">Active only</option>
+              <option value="blocked">Blocked only</option>
+              <option value="complete">Complete only</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-xl-3 col-md-6" v-for="lane in boardLanes" :key="lane.key">
+            <div class="board-lane border rounded p-2 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="fw-semibold">{{ lane.label }}</div>
+                <span class="badge text-bg-light border">{{ lane.items.length }}</span>
+              </div>
+              <div v-if="!lane.items.length" class="small text-muted">No plans in this lane.</div>
+              <div v-for="plan in lane.items" :key="`lane-${plan.id}`" class="border rounded p-2 mb-2 bg-white">
+                <div class="fw-semibold">{{ plan.title }}</div>
+                <div class="small text-muted">Risk: {{ plan.riskTitle || '-' }}</div>
+                <div class="small text-muted">Accountable: {{ riskOwnerLabel(plan) }}</div>
+                <div class="small text-muted">Execution: {{ formatPlanStatus(plan.status) }}</div>
+                <button type="button" class="btn btn-outline-primary btn-sm mt-2 w-100" @click="selectPlan(plan)">Open Plan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="selectedPlan" class="modal-backdrop-custom" @click.self="closePlanModal">
       <div class="card shadow-sm modal-card-lg">
         <div class="card-body">
@@ -135,7 +187,7 @@
           </div>
         <h2 class="h5 mb-3">Actions - {{ selectedPlan.title }}</h2>
         <div class="small text-muted mb-3">
-          Approval: <strong>{{ selectedPlan.approvalStatus || 'DRAFT' }}</strong>
+          Approval: <strong>{{ formatApprovalStatus(selectedPlan.approvalStatus) }}</strong>
           <span v-if="selectedPlan.approvedByEmail"> by {{ selectedPlan.approvedByEmail }}</span>
         </div>
         <div class="row g-2 mb-3">
@@ -233,6 +285,12 @@ const selectedPlan = ref(null)
 const actions = ref([])
 const authStore = useAuthStore()
 const canApprovePlans = computed(() => authStore.user?.role === 'ADMIN' || authStore.user?.role === 'AUDIT_MANAGER')
+const handoff = ref({
+  findingId: null,
+  findingTitle: '',
+  riskId: null,
+  riskTitle: ''
+})
 
 const planForm = ref({
   riskId: null,
@@ -248,9 +306,14 @@ const actionForm = ref({
   ownerUserId: null,
   dueAt: ''
 })
+const boardFilter = ref({
+  ownerUserId: '',
+  executionState: 'all'
+})
 
 onMounted(async () => {
   await loadAll()
+  initializeHandoffFromQuery()
 })
 
 async function loadAll() {
@@ -415,6 +478,111 @@ function approvalBadgeClass(status) {
   if (status === 'REJECTED') return 'text-bg-danger'
   return 'text-bg-secondary'
 }
+
+function formatPlanStatus(status) {
+  if (status === 'IN_PROGRESS') return 'In progress'
+  if (status === 'DRAFT') return 'Draft'
+  if (status === 'BLOCKED') return 'Blocked'
+  if (status === 'COMPLETE') return 'Complete'
+  return status || '-'
+}
+
+function formatApprovalStatus(status) {
+  if (!status || status === 'DRAFT') return 'Draft'
+  if (status === 'SUBMITTED') return 'Submitted'
+  if (status === 'APPROVED') return 'Approved'
+  if (status === 'REJECTED') return 'Rejected'
+  return status
+}
+
+const riskOwnerMap = computed(() => {
+  const map = new Map()
+  ;(risks.value || []).forEach((risk) => {
+    map.set(risk.id, {
+      userId: risk.ownerUserId || null,
+      label: risk.ownerEmail || 'Unassigned'
+    })
+  })
+  return map
+})
+
+const riskOwnerOptions = computed(() => {
+  const byUserId = new Map()
+  ;(risks.value || []).forEach((risk) => {
+    if (!risk.ownerUserId) return
+    byUserId.set(risk.ownerUserId, {
+      userId: risk.ownerUserId,
+      label: risk.ownerEmail || `User ${risk.ownerUserId}`
+    })
+  })
+  return Array.from(byUserId.values()).sort((a, b) => a.label.localeCompare(b.label))
+})
+
+const boardLanes = computed(() => {
+  const lanes = [
+    { key: 'draft', label: 'Draft', match: (plan) => (plan.approvalStatus || 'DRAFT') === 'DRAFT', items: [] },
+    { key: 'submitted', label: 'Submitted', match: (plan) => plan.approvalStatus === 'SUBMITTED', items: [] },
+    { key: 'approved-active', label: 'Approved / Active', match: (plan) => plan.approvalStatus === 'APPROVED' && plan.status !== 'COMPLETE', items: [] },
+    { key: 'closed-or-rejected', label: 'Closed / Rejected', match: (plan) => plan.status === 'COMPLETE' || plan.approvalStatus === 'REJECTED', items: [] }
+  ]
+
+  filteredPlansForBoard().forEach((plan) => {
+    const lane = lanes.find((candidate) => candidate.match(plan))
+    if (lane) lane.items.push(plan)
+  })
+  return lanes
+})
+
+function initializeHandoffFromQuery() {
+  const params = new URLSearchParams(window.location.search || '')
+  const findingId = params.get('findingId')
+  const riskId = params.get('riskId')
+  if (!findingId && !riskId) return
+
+  handoff.value.findingId = findingId ? Number(findingId) : null
+  handoff.value.findingTitle = params.get('findingTitle') || ''
+  handoff.value.riskId = riskId ? Number(riskId) : null
+  handoff.value.riskTitle = params.get('riskTitle') || ''
+
+  if (handoff.value.riskId) {
+    planForm.value.riskId = handoff.value.riskId
+  }
+  if (!planForm.value.title) {
+    if (handoff.value.findingId && handoff.value.findingTitle) {
+      planForm.value.title = `Remediation for finding #${handoff.value.findingId}: ${handoff.value.findingTitle}`
+    } else if (handoff.value.findingId) {
+      planForm.value.title = `Remediation for finding #${handoff.value.findingId}`
+    } else if (handoff.value.riskTitle) {
+      planForm.value.title = `Remediation for risk: ${handoff.value.riskTitle}`
+    }
+  }
+  if (!planForm.value.proposedPlan && handoff.value.findingId) {
+    planForm.value.proposedPlan = `Address root cause from finding #${handoff.value.findingId} with owner-accountable corrective actions.`
+  }
+}
+
+function clearHandoff() {
+  handoff.value = { findingId: null, findingTitle: '', riskId: null, riskTitle: '' }
+}
+
+function riskOwnerLabel(plan) {
+  const owner = riskOwnerMap.value.get(plan.riskId)
+  return owner?.label || 'Unassigned'
+}
+
+function filteredPlansForBoard() {
+  return (plans.value || []).filter((plan) => {
+    const owner = riskOwnerMap.value.get(plan.riskId)
+    const selectedOwner = boardFilter.value.ownerUserId
+    if (selectedOwner === 'none' && owner?.userId) return false
+    if (selectedOwner && selectedOwner !== 'none' && String(owner?.userId || '') !== selectedOwner) return false
+
+    if (boardFilter.value.executionState === 'active' && (plan.status === 'COMPLETE' || plan.status === 'BLOCKED')) return false
+    if (boardFilter.value.executionState === 'blocked' && plan.status !== 'BLOCKED') return false
+    if (boardFilter.value.executionState === 'complete' && plan.status !== 'COMPLETE') return false
+    return true
+  })
+}
 </script>
 
 <style scoped>
@@ -432,5 +600,9 @@ function approvalBadgeClass(status) {
   width: min(1100px, 100%);
   max-height: calc(100vh - 2rem);
   overflow: auto;
+}
+
+.board-lane {
+  background: #f8fafc;
 }
 </style>

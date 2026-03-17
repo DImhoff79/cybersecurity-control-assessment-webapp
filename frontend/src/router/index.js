@@ -26,7 +26,7 @@ const router = createRouter({
           path: 'audit-projects',
           name: 'AdminAuditProjects',
           component: () => import('../views/admin/AuditProjects.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Audit Projects' }
+          meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Audit Projects' }
         },
         {
           path: 'audits',

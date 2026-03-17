@@ -9,6 +9,12 @@
     <div class="small text-muted mb-3">
       Log a risk, score how likely and severe it is, assign an owner, then track it from OPEN to CLOSED.
     </div>
+    <div v-if="handoff.findingId" class="alert alert-info py-2 mb-3 d-flex justify-content-between align-items-center gap-2">
+      <div class="small">
+        Handoff context from finding #{{ handoff.findingId }}: <strong>{{ handoff.findingTitle || 'Untitled finding' }}</strong>
+      </div>
+      <button type="button" class="btn btn-outline-primary btn-sm" @click="clearHandoff">Clear Context</button>
+    </div>
 
     <div class="row g-3 mb-3">
       <div class="col-md-3">
@@ -32,6 +38,10 @@
           <div class="col-md-4">
             <div class="small fw-semibold text-secondary mb-1">Risk title</div>
             <input v-model="form.title" class="form-control form-control-sm" placeholder="Risk title" required />
+          </div>
+          <div class="col-md-6">
+            <div class="small fw-semibold text-secondary mb-1">Risk context / evidence</div>
+            <input v-model="form.description" class="form-control form-control-sm" placeholder="Optional details to preserve finding context" />
           </div>
           <div class="col-md-2">
             <div class="small fw-semibold text-secondary mb-1">Likelihood (1-5)</div>
@@ -95,13 +105,13 @@
             <tbody>
               <tr v-for="row in items" :key="row.id">
                 <td>{{ row.title }}</td>
-                <td><span class="badge text-bg-secondary">{{ row.status }}</span></td>
+                <td><span class="badge text-bg-secondary">{{ formatRiskStatus(row.status) }}</span></td>
                 <td>{{ row.inherentRiskScore }}</td>
                 <td>{{ row.residualRiskScore ?? '-' }}</td>
                 <td>{{ row.applicationName || row.otherApplicationText || '-' }}</td>
                 <td>{{ row.ownerEmail || '-' }}</td>
                 <td>
-                  <div class="input-group input-group-sm">
+                  <div class="input-group input-group-sm mb-1">
                     <select v-model="row._nextStatus" class="form-select form-select-sm">
                       <option value="OPEN">OPEN</option>
                       <option value="MONITORING">MONITORING</option>
@@ -110,6 +120,12 @@
                     </select>
                     <button class="btn btn-outline-secondary" @click="updateStatus(row)">Update</button>
                   </div>
+                  <router-link
+                    :to="remediationLinkForRisk(row)"
+                    class="btn btn-outline-primary btn-sm w-100"
+                  >
+                    Open Remediation Plans
+                  </router-link>
                 </td>
               </tr>
             </tbody>
@@ -129,8 +145,15 @@ const items = ref([])
 const users = ref([])
 const applications = ref([])
 const kpis = ref({})
+const handoff = ref({
+  findingId: null,
+  findingTitle: '',
+  applicationName: '',
+  auditId: null
+})
 const form = ref({
   title: '',
+  description: '',
   likelihoodScore: 3,
   impactScore: 3,
   ownerUserId: null,
@@ -139,6 +162,7 @@ const form = ref({
 })
 
 onMounted(async () => {
+  initializeHandoffFromQuery()
   await load()
 })
 
@@ -171,6 +195,7 @@ async function createRisk() {
     const applicationId = !useOther ? Number(selected) : null
     await api.post('/api/risks', {
       title: form.value.title,
+      description: form.value.description || null,
       likelihoodScore: form.value.likelihoodScore,
       impactScore: form.value.impactScore,
       ownerUserId: form.value.ownerUserId,
@@ -178,6 +203,7 @@ async function createRisk() {
       otherApplicationText: useOther ? otherText : null
     })
     form.value.title = ''
+    form.value.description = ''
     form.value.attributionSelection = ''
     form.value.otherApplicationText = ''
     await load()
@@ -195,5 +221,47 @@ async function updateStatus(row) {
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to update risk')
   }
+}
+
+function initializeHandoffFromQuery() {
+  const params = new URLSearchParams(window.location.search || '')
+  const findingId = params.get('findingId')
+  if (!findingId) return
+  handoff.value.findingId = Number(findingId)
+  handoff.value.findingTitle = params.get('findingTitle') || ''
+  handoff.value.applicationName = params.get('applicationName') || ''
+  handoff.value.auditId = params.get('auditId') ? Number(params.get('auditId')) : null
+
+  if (!form.value.title) {
+    form.value.title = handoff.value.findingTitle
+      ? `Risk from finding #${handoff.value.findingId}: ${handoff.value.findingTitle}`
+      : `Risk from finding #${handoff.value.findingId}`
+  }
+  if (!form.value.description) {
+    form.value.description = `Escalated from finding #${handoff.value.findingId}.`
+  }
+  if (handoff.value.applicationName && !form.value.attributionSelection) {
+    form.value.attributionSelection = 'OTHER'
+    form.value.otherApplicationText = `${handoff.value.applicationName} (from finding handoff)`
+  }
+}
+
+function clearHandoff() {
+  handoff.value = { findingId: null, findingTitle: '', applicationName: '', auditId: null }
+}
+
+function remediationLinkForRisk(row) {
+  const params = new URLSearchParams()
+  params.set('riskId', String(row.id))
+  if (row.title) params.set('riskTitle', row.title)
+  return `/admin/remediation-plans?${params.toString()}`
+}
+
+function formatRiskStatus(status) {
+  if (status === 'OPEN') return 'Open'
+  if (status === 'MONITORING') return 'Monitoring'
+  if (status === 'MITIGATED') return 'Mitigated'
+  if (status === 'CLOSED') return 'Closed'
+  return status || '-'
 }
 </script>

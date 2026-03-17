@@ -2,12 +2,16 @@
   <div>
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
       <div>
-        <h1 class="h3 mb-1">Issue Management - Findings</h1>
+        <h1 class="h3 mb-1">Findings</h1>
         <p class="text-muted mb-0">
           Track control gaps, assign owners, and manage remediation due dates.
         </p>
       </div>
-      <router-link to="/admin/control-exceptions" class="btn btn-outline-secondary btn-sm">Go to Exceptions</router-link>
+      <div class="d-flex gap-2 flex-wrap">
+        <router-link to="/admin/risk-register" class="btn btn-outline-primary btn-sm">Go to Risk Register</router-link>
+        <router-link to="/admin/remediation-plans" class="btn btn-outline-primary btn-sm">Go to Remediation Plans</router-link>
+        <router-link to="/admin/control-exceptions" class="btn btn-outline-secondary btn-sm">Go to Exceptions</router-link>
+      </div>
     </div>
 
     <div class="card shadow-sm mb-3">
@@ -48,6 +52,7 @@
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('slaState')">SLA {{ sortIndicator('slaState') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
+                <th>Handoff</th>
                 <th></th>
               </tr>
             </thead>
@@ -62,13 +67,21 @@
                   <span class="badge" :class="severityClass(finding.severity)">{{ finding.severity }}</span>
                 </td>
                 <td>
-                  <span class="badge" :class="statusClass(finding.status)">{{ finding.status }}</span>
+                  <span class="badge" :class="statusClass(finding.status)">{{ formatFindingStatus(finding.status) }}</span>
                 </td>
                 <td>
                   <span class="badge" :class="slaClass(finding.slaState)">{{ finding.slaState || '-' }}</span>
                 </td>
                 <td>{{ finding.ownerDisplayName || finding.ownerEmail || '-' }}</td>
                 <td>{{ formatDate(finding.dueAt) }}</td>
+                <td class="text-nowrap">
+                  <router-link :to="riskRegisterLink(finding)" class="btn btn-outline-primary btn-sm me-2">
+                    Open in Risk Register
+                  </router-link>
+                  <router-link :to="remediationLink(finding)" class="btn btn-outline-primary btn-sm">
+                    Open in Remediation
+                  </router-link>
+                </td>
                 <td class="text-nowrap">
                   <button class="btn btn-secondary btn-sm" @click="openModal(finding)">Edit</button>
                 </td>
@@ -321,5 +334,31 @@ function slaClass(state) {
     case 'RESOLVED': return 'text-bg-primary'
     default: return 'text-bg-secondary'
   }
+}
+
+function formatFindingStatus(status) {
+  if (status === 'IN_PROGRESS') return 'In progress'
+  if (status === 'ACCEPTED_RISK') return 'Accepted risk'
+  if (status === 'RESOLVED') return 'Resolved'
+  if (status === 'OPEN') return 'Open'
+  return status || '-'
+}
+
+function riskRegisterLink(finding) {
+  const params = new URLSearchParams()
+  params.set('findingId', String(finding.id))
+  if (finding.title) params.set('findingTitle', finding.title)
+  if (finding.applicationName) params.set('applicationName', finding.applicationName)
+  if (finding.auditId) params.set('auditId', String(finding.auditId))
+  return `/admin/risk-register?${params.toString()}`
+}
+
+function remediationLink(finding) {
+  const params = new URLSearchParams()
+  params.set('findingId', String(finding.id))
+  if (finding.title) params.set('findingTitle', finding.title)
+  if (finding.applicationName) params.set('applicationName', finding.applicationName)
+  if (finding.auditId) params.set('auditId', String(finding.auditId))
+  return `/admin/remediation-plans?${params.toString()}`
 }
 </script>

@@ -52,6 +52,7 @@ describe('Findings', () => {
     const wrapper = mount(Findings, {
       global: {
         stubs: {
+          RouterLink: { template: '<a><slot /></a>' },
           BsModal: {
             props: ['modelValue', 'title'],
             emits: ['update:modelValue'],
@@ -62,8 +63,10 @@ describe('Findings', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Issue Management - Findings')
+    expect(wrapper.text()).toContain('Findings')
     expect(wrapper.text()).toContain('Gap found')
+    expect(wrapper.text()).toContain('Open in Risk Register')
+    expect(wrapper.text()).toContain('Open in Remediation')
     expect(api.get).toHaveBeenCalledWith('/api/findings', { params: {} })
 
     const addBtn = wrapper.findAll('button').find((b) => b.text() === 'Add finding')

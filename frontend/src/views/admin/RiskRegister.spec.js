@@ -13,6 +13,7 @@ vi.mock('../../services/api', () => ({
 
 describe('RiskRegister', () => {
   beforeEach(() => {
+    window.history.pushState({}, '', '/admin/risk-register')
     vi.clearAllMocks()
     api.get.mockImplementation((url) => {
       if (url === '/api/risks') {
@@ -30,7 +31,13 @@ describe('RiskRegister', () => {
   })
 
   it('loads risk register and can create a risk item', async () => {
-    const wrapper = mount(RiskRegister)
+    const wrapper = mount(RiskRegister, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
     await flushPromises()
 
     expect(wrapper.text()).toContain('Risk title')
@@ -51,5 +58,22 @@ describe('RiskRegister', () => {
       otherApplicationText: 'Shared identity service',
       applicationId: null
     }))
+  })
+
+  it('prefills handoff context from finding query params', async () => {
+    window.history.pushState({}, '', '/admin/risk-register?findingId=100&findingTitle=Gap%20found&applicationName=App%20One')
+    const wrapper = mount(RiskRegister, {
+      global: {
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Handoff context from finding #100')
+    expect(wrapper.find('input[placeholder="Risk title"]').element.value).toContain('Risk from finding #100')
+    expect(wrapper.find('input[placeholder="Optional details to preserve finding context"]').element.value)
+      .toContain('Escalated from finding #100')
   })
 })
