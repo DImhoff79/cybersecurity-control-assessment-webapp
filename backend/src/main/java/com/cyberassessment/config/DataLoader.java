@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@Order(10)
 @RequiredArgsConstructor
 @Slf4j
 public class DataLoader implements ApplicationRunner {
@@ -67,6 +69,10 @@ public class DataLoader implements ApplicationRunner {
 
         if (!seedTestPolicies) {
             log.info("Skipping sample policy seeding (app.seed.test-policies=false)");
+            return;
+        }
+        if (!seedLocalUsers) {
+            log.info("Skipping sample policy seeding (app.auth.seed-local-users=false; demo policies require demo user accounts)");
             return;
         }
         if (refreshTestPolicies) {

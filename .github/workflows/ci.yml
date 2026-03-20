@@ -18,6 +18,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # mvn verify runs unit/integration tests plus JaCoCo coverage rules (see backend/pom.xml).
       - name: Backend tests with coverage gate
         run: .\mvnw.cmd verify
         working-directory: backend
@@ -48,6 +49,7 @@ jobs:
       - name: Frontend build
         run: npm run build
         working-directory: frontend
+      # npm run test:coverage runs the full Vitest suite with coverage thresholds (vite.config / vitest).
       - name: Frontend tests with coverage gate
         run: npm run test:coverage
         working-directory: frontend

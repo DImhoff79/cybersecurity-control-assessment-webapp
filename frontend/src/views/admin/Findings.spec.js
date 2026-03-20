@@ -1,5 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import Findings from './Findings.vue'
 import api from '../../services/api'
 
@@ -48,9 +49,22 @@ describe('Findings', () => {
     api.put.mockResolvedValue({ data: {} })
   })
 
-  it('loads findings and creates a new finding', async () => {
-    const wrapper = mount(Findings, {
+  async function mountFindings(path = '/admin/findings') {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/admin/findings', name: 'AdminFindings', component: { template: '<div />' } },
+        { path: '/admin/issue-program', name: 'AdminIssueProgram', component: { template: '<div />' } },
+        { path: '/admin/risk-register', name: 'AdminRiskRegister', component: { template: '<div />' } },
+        { path: '/admin/remediation-plans', name: 'AdminRemediationPlans', component: { template: '<div />' } },
+        { path: '/admin/control-exceptions', name: 'AdminControlExceptions', component: { template: '<div />' } }
+      ]
+    })
+    await router.push(path)
+    await router.isReady()
+    return mount(Findings, {
       global: {
+        plugins: [router],
         stubs: {
           RouterLink: { template: '<a><slot /></a>' },
           BsModal: {
@@ -61,6 +75,10 @@ describe('Findings', () => {
         }
       }
     })
+  }
+
+  it('loads findings and creates a new finding', async () => {
+    const wrapper = await mountFindings()
     await flushPromises()
 
     expect(wrapper.text()).toContain('Findings')
@@ -93,5 +111,11 @@ describe('Findings', () => {
       auditControlId: 55,
       title: 'New finding from test'
     }))
+  })
+
+  it('applies auditId from route query to findings request', async () => {
+    await mountFindings('/admin/findings?auditId=1')
+    await flushPromises()
+    expect(api.get).toHaveBeenCalledWith('/api/findings', { params: { auditId: 1 } })
   })
 })

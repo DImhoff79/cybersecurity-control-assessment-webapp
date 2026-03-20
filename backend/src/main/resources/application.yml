@@ -74,6 +74,7 @@ app:
     allow-basic: ${APP_AUTH_ALLOW_BASIC:true}
     seed-local-users: ${APP_AUTH_SEED_LOCAL_USERS:true}
   seed:
+    demo-dataset: ${APP_SEED_DEMO_DATASET:true}
     test-policies: ${APP_SEED_TEST_POLICIES:true}
     test-policies-refresh: ${APP_SEED_TEST_POLICIES_REFRESH:true}
   cors-allowed-origins: http://localhost:5173,http://localhost:3000

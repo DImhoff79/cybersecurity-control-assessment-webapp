@@ -15,6 +15,17 @@
       </div>
       <button type="button" class="btn btn-outline-primary btn-sm" @click="clearHandoff">Clear Context</button>
     </div>
+    <div
+      v-if="applicationFilterId"
+      class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center gap-2 flex-wrap"
+    >
+      <div class="small">
+        Showing risks for application
+        <strong>{{ applicationFilterName || `#${applicationFilterId}` }}</strong>
+        ({{ displayItems.length }} of {{ items.length }}).
+      </div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" @click="clearApplicationFilter">Clear application filter</button>
+    </div>
 
     <div class="row g-3 mb-3">
       <div class="col-md-3">
@@ -88,7 +99,7 @@
     <div class="card shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Risk Items</h2>
-        <p v-if="!items.length" class="text-muted mb-0">No risks tracked yet.</p>
+        <p v-if="!displayItems.length" class="text-muted mb-0">No risks tracked yet.</p>
         <div v-else class="table-responsive">
           <table class="table table-striped align-middle mb-0">
             <thead>
@@ -103,7 +114,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in items" :key="row.id">
+              <tr v-for="row in displayItems" :key="row.id">
                 <td>{{ row.title }}</td>
                 <td><span class="badge text-bg-secondary">{{ formatRiskStatus(row.status) }}</span></td>
                 <td>{{ row.inherentRiskScore }}</td>
@@ -137,9 +148,16 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+
+const route = useRoute()
+const router = useRouter()
+
+const applicationFilterId = ref(null)
+const applicationFilterName = ref('')
 
 const items = ref([])
 const users = ref([])
@@ -161,10 +179,42 @@ const form = ref({
   otherApplicationText: ''
 })
 
+const displayItems = computed(() => {
+  if (!applicationFilterId.value) return items.value
+  return items.value.filter((row) => row.applicationId === applicationFilterId.value)
+})
+
+function syncApplicationFilterFromRoute() {
+  const raw = route.query.applicationId
+  if (raw != null && raw !== '') {
+    const n = Number(raw)
+    applicationFilterId.value = Number.isNaN(n) ? null : n
+  } else {
+    applicationFilterId.value = null
+  }
+  const name = route.query.applicationName
+  applicationFilterName.value = typeof name === 'string' && name ? name : ''
+}
+
+function clearApplicationFilter() {
+  const q = { ...route.query }
+  delete q.applicationId
+  delete q.applicationName
+  router.replace({ path: route.path, query: q })
+}
+
 onMounted(async () => {
+  syncApplicationFilterFromRoute()
   initializeHandoffFromQuery()
   await load()
 })
+
+watch(
+  () => route.query.applicationId,
+  () => {
+    syncApplicationFilterFromRoute()
+  }
+)
 
 async function load() {
   const [riskRes, usersRes, appsRes, kpiRes] = await Promise.all([
@@ -224,13 +274,12 @@ async function updateStatus(row) {
 }
 
 function initializeHandoffFromQuery() {
-  const params = new URLSearchParams(window.location.search || '')
-  const findingId = params.get('findingId')
-  if (!findingId) return
+  const findingId = route.query.findingId
+  if (findingId == null || findingId === '') return
   handoff.value.findingId = Number(findingId)
-  handoff.value.findingTitle = params.get('findingTitle') || ''
-  handoff.value.applicationName = params.get('applicationName') || ''
-  handoff.value.auditId = params.get('auditId') ? Number(params.get('auditId')) : null
+  handoff.value.findingTitle = String(route.query.findingTitle || '')
+  handoff.value.applicationName = String(route.query.applicationName || '')
+  handoff.value.auditId = route.query.auditId ? Number(route.query.auditId) : null
 
   if (!form.value.title) {
     form.value.title = handoff.value.findingTitle

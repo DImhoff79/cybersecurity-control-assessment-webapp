@@ -1,5 +1,10 @@
 # Phase 3 Automation and Integration Readiness
 
+## In-product program depth (delivered incrementally)
+
+- **Issue Program Hub** (`/admin/issue-program`, `AUDIT_MANAGEMENT`): audit-scoped roll-up of findings, control exceptions, and (when permitted) application-filtered risks and remediation plans, with shareable `?auditId=` URLs and deep links to Findings, Exceptions, Risk Register (`?applicationId=` / `applicationName`), and Remediation Plans.
+- **Finding ↔ control exception linkage**: optional `finding_id` on `control_exceptions` (Flyway `V30`); API accepts `findingId` on create; list supports `findingId`; `FindingDto.linkedExceptionCount` drives Findings UI links to filtered Exceptions (`?auditId=` + `findingId`).
+
 ## Objective
 Prepare the platform for enterprise-scale automation with external evidence connectors, continuous control monitoring, and configurable workflow orchestration.
 

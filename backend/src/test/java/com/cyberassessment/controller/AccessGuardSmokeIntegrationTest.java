@@ -37,6 +37,10 @@ class AccessGuardSmokeIntegrationTest {
     private RiskController riskController;
     @Autowired
     private RemediationController remediationController;
+    @Autowired
+    private FindingController findingController;
+    @Autowired
+    private ControlExceptionController controlExceptionController;
 
     @Test
     void auditorPersonaCanReadProgramButCannotManagePolicyOrApproveRemediation() {
@@ -63,6 +67,9 @@ class AccessGuardSmokeIntegrationTest {
                 "approved", true,
                 "notes", "Should fail"
         ))).isInstanceOf(AccessDeniedException.class);
+
+        assertThatThrownBy(() -> findingController.list(null)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> controlExceptionController.list(null, null)).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
@@ -86,6 +93,22 @@ class AccessGuardSmokeIntegrationTest {
         } catch (Exception ignored) {
             // Expected in this smoke test when planId does not exist; we only care about guard behavior.
         }
+    }
+
+    @Test
+    void auditManagerCanListFindingsAndControlExceptions() {
+        authenticate(
+                UserRole.AUDIT_MANAGER,
+                Set.of(
+                        UserPermission.REPORT_VIEW,
+                        UserPermission.AUDIT_MANAGEMENT,
+                        UserPermission.RISK_MANAGEMENT,
+                        UserPermission.REMEDIATION_MANAGEMENT
+                )
+        );
+
+        assertThatCode(() -> findingController.list(null)).doesNotThrowAnyException();
+        assertThatCode(() -> controlExceptionController.list(null, null)).doesNotThrowAnyException();
     }
 
     private void authenticate(UserRole role, Set<UserPermission> permissions) {

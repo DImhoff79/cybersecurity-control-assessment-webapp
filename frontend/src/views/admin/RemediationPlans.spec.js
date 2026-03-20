@@ -1,5 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import RemediationPlans from './RemediationPlans.vue'
 import api from '../../services/api'
@@ -15,7 +16,6 @@ vi.mock('../../services/api', () => ({
 
 describe('RemediationPlans', () => {
   beforeEach(() => {
-    window.history.pushState({}, '', '/admin/remediation-plans')
     setActivePinia(createPinia())
     const authStore = useAuthStore()
     authStore.user = { id: 1, role: 'ADMIN', permissions: ['REMEDIATION_MANAGEMENT'] }
@@ -32,7 +32,7 @@ describe('RemediationPlans', () => {
           }]
         })
       }
-      if (url === '/api/risks') return Promise.resolve({ data: [{ id: 1, title: 'Risk 1' }] })
+      if (url === '/api/risks') return Promise.resolve({ data: [{ id: 1, title: 'Risk 1', applicationId: 100 }] })
       if (url === '/api/users') return Promise.resolve({ data: [{ id: 2, email: 'owner@example.com' }] })
       return Promise.resolve({ data: [] })
     })
@@ -40,8 +40,25 @@ describe('RemediationPlans', () => {
     api.put.mockResolvedValue({ data: {} })
   })
 
+  async function mountRemediation(path = '/admin/remediation-plans') {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/admin/remediation-plans', name: 'AdminRemediationPlans', component: { template: '<div />' } }]
+    })
+    await router.push(path)
+    await router.isReady()
+    return mount(RemediationPlans, {
+      global: {
+        plugins: [router],
+        stubs: {
+          RouterLink: { template: '<a><slot /></a>' }
+        }
+      }
+    })
+  }
+
   it('loads remediation plans and can create plan/action', async () => {
-    const wrapper = mount(RemediationPlans)
+    const wrapper = await mountRemediation()
     await flushPromises()
 
     expect(wrapper.text()).toContain('Privileged access remediation')
@@ -76,12 +93,12 @@ describe('RemediationPlans', () => {
           }]
         })
       }
-      if (url === '/api/risks') return Promise.resolve({ data: [{ id: 1, title: 'Risk 1' }] })
+      if (url === '/api/risks') return Promise.resolve({ data: [{ id: 1, title: 'Risk 1', applicationId: 1 }] })
       if (url === '/api/users') return Promise.resolve({ data: [{ id: 2, email: 'owner@example.com' }] })
       return Promise.resolve({ data: [] })
     })
 
-    const wrapper = mount(RemediationPlans)
+    const wrapper = await mountRemediation()
     await flushPromises()
 
     expect(wrapper.text()).toContain('Approve')
@@ -89,11 +106,40 @@ describe('RemediationPlans', () => {
   })
 
   it('prefills remediation handoff context from query params', async () => {
-    window.history.pushState({}, '', '/admin/remediation-plans?findingId=100&findingTitle=Gap%20found&riskId=1&riskTitle=Risk%201')
-    const wrapper = mount(RemediationPlans)
+    const path =
+      '/admin/remediation-plans?findingId=100&findingTitle=Gap%20found&riskId=1&riskTitle=Risk%201'
+    const wrapper = await mountRemediation(path)
     await flushPromises()
 
     expect(wrapper.text()).toContain('Handoff from finding #100')
     expect(wrapper.find('input[placeholder="Plan title"]').element.value).toContain('Remediation for finding #100')
+  })
+
+  it('filters plans when applicationId matches risk application', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/remediation-plans') {
+        return Promise.resolve({
+          data: [
+            { id: 1, title: 'In scope', status: 'IN_PROGRESS', riskId: 10, approvalStatus: 'APPROVED' },
+            { id: 2, title: 'Out of scope', status: 'IN_PROGRESS', riskId: 99, approvalStatus: 'APPROVED' }
+          ]
+        })
+      }
+      if (url === '/api/risks') {
+        return Promise.resolve({
+          data: [
+            { id: 10, title: 'R10', applicationId: 5 },
+            { id: 99, title: 'R99', applicationId: 500 }
+          ]
+        })
+      }
+      if (url === '/api/users') return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: [] })
+    })
+    const wrapper = await mountRemediation('/admin/remediation-plans?applicationId=5')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('In scope')
+    expect(wrapper.text()).not.toContain('Out of scope')
   })
 })

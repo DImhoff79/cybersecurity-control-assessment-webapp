@@ -17,4 +17,6 @@ app:
     mode: sso
     allow-basic: false
     seed-local-users: false
+  seed:
+    demo-dataset: false
   evidence-storage-mode: ${EVIDENCE_STORAGE_MODE:db}

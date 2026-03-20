@@ -22,6 +22,7 @@ export const adminSections = [
     key: 'risk',
     label: 'Risk & Remediation',
     items: [
+      { label: 'Issue Program Hub', to: '/admin/issue-program', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Findings', to: '/admin/findings', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Control Exceptions', to: '/admin/control-exceptions', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Risk Register', to: '/admin/risk-register', permission: 'RISK_MANAGEMENT' },

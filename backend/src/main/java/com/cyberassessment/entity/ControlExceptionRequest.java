@@ -27,6 +27,10 @@ public class ControlExceptionRequest {
     private AuditControl auditControl;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "finding_id")
+    private Finding finding;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requested_by_user_id", nullable = false)
     private User requestedBy;
 

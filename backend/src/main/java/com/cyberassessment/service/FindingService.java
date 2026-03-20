@@ -5,6 +5,7 @@ import com.cyberassessment.dto.FindingUpsertRequest;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditRepository;
+import com.cyberassessment.repository.ControlExceptionRepository;
 import com.cyberassessment.repository.FindingRepository;
 import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class FindingService {
     private final FindingRepository findingRepository;
     private final AuditRepository auditRepository;
     private final AuditControlRepository auditControlRepository;
+    private final ControlExceptionRepository controlExceptionRepository;
     private final UserRepository userRepository;
     private final AuditActivityLogService auditActivityLogService;
 
@@ -29,7 +33,10 @@ public class FindingService {
         List<Finding> findings = auditId != null
                 ? findingRepository.findByAuditIdOrderByDueAtAscCreatedAtDesc(auditId)
                 : findingRepository.findAllByOrderByDueAtAscCreatedAtDesc();
-        return findings.stream().map(FindingService::toDto).toList();
+        Map<Long, Long> exceptionCounts = exceptionCountsByFindingId(findings.stream().map(Finding::getId).toList());
+        return findings.stream()
+                .map(f -> toDto(f, safeInt(exceptionCounts.getOrDefault(f.getId(), 0L))))
+                .toList();
     }
 
     @Transactional
@@ -60,7 +67,7 @@ public class FindingService {
                 .build();
         finding = findingRepository.save(finding);
         auditActivityLogService.log(audit, AuditActivityType.FINDING_CREATED, "Finding created: " + finding.getTitle());
-        return toDto(finding);
+        return toDto(finding, 0);
     }
 
     @Transactional
@@ -107,7 +114,7 @@ public class FindingService {
                 ? AuditActivityType.FINDING_RESOLVED
                 : AuditActivityType.FINDING_UPDATED;
         auditActivityLogService.log(finding.getAudit(), activityType, "Finding updated: " + finding.getTitle());
-        return toDto(finding);
+        return toDto(finding, safeInt(controlExceptionRepository.countByFinding_Id(finding.getId())));
     }
 
     private AuditControl resolveAuditControl(Long auditControlId, Audit audit) {
@@ -130,7 +137,22 @@ public class FindingService {
                 .orElseThrow(() -> new IllegalArgumentException("Owner user not found: " + ownerUserId));
     }
 
-    public static FindingDto toDto(Finding finding) {
+    private Map<Long, Long> exceptionCountsByFindingId(List<Long> findingIds) {
+        if (findingIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : controlExceptionRepository.countGroupedByFindingId(findingIds)) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    private static int safeInt(long value) {
+        return (int) Math.min(value, Integer.MAX_VALUE);
+    }
+
+    public FindingDto toDto(Finding finding, int linkedExceptionCount) {
         Audit audit = finding.getAudit();
         AuditControl auditControl = finding.getAuditControl();
         User owner = finding.getOwner();
@@ -156,6 +178,7 @@ public class FindingService {
                 .slaState(computeSlaState(finding))
                 .createdAt(finding.getCreatedAt())
                 .updatedAt(finding.getUpdatedAt())
+                .linkedExceptionCount(linkedExceptionCount)
                 .build();
     }
 

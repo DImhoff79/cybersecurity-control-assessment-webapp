@@ -20,6 +20,17 @@
       </div>
       <button type="button" class="btn btn-outline-primary btn-sm" @click="clearHandoff">Clear Context</button>
     </div>
+    <div
+      v-if="applicationFilterId"
+      class="alert alert-secondary py-2 mb-3 d-flex justify-content-between align-items-center gap-2 flex-wrap"
+    >
+      <div class="small">
+        Showing plans linked to risks for
+        <strong>{{ applicationFilterName || `application #${applicationFilterId}` }}</strong>
+        ({{ plansForApplication.length }} of {{ plans.length }}).
+      </div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" @click="clearApplicationFilter">Clear application filter</button>
+    </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-body">
@@ -67,7 +78,7 @@
     <div class="card shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Plans</h2>
-        <p v-if="!plans.length" class="text-muted mb-0">No remediation plans yet.</p>
+        <p v-if="!plansForApplication.length" class="text-muted mb-0">No remediation plans yet.</p>
         <div v-else class="table-responsive">
           <table class="table table-striped align-middle mb-0">
             <thead>
@@ -81,7 +92,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="plan in plans" :key="plan.id">
+              <tr v-for="plan in plansForApplication" :key="plan.id">
                 <td>{{ plan.title }}</td>
                 <td>{{ plan.riskTitle || '-' }}</td>
                 <td><span class="badge text-bg-secondary">{{ formatPlanStatus(plan.status) }}</span></td>
@@ -273,10 +284,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useAuthStore } from '../../stores/auth'
+
+const route = useRoute()
+const router = useRouter()
+const applicationFilterId = ref(null)
+const applicationFilterName = ref('')
 
 const risks = ref([])
 const users = ref([])
@@ -311,10 +328,45 @@ const boardFilter = ref({
   executionState: 'all'
 })
 
+const plansForApplication = computed(() => {
+  if (!applicationFilterId.value) return plans.value
+  const allowed = new Set(
+    (risks.value || []).filter((r) => r.applicationId === applicationFilterId.value).map((r) => r.id)
+  )
+  return (plans.value || []).filter((p) => p.riskId && allowed.has(p.riskId))
+})
+
+function syncApplicationFilterFromRoute() {
+  const raw = route.query.applicationId
+  if (raw != null && raw !== '') {
+    const n = Number(raw)
+    applicationFilterId.value = Number.isNaN(n) ? null : n
+  } else {
+    applicationFilterId.value = null
+  }
+  const name = route.query.applicationName
+  applicationFilterName.value = typeof name === 'string' && name ? name : ''
+}
+
+function clearApplicationFilter() {
+  const q = { ...route.query }
+  delete q.applicationId
+  delete q.applicationName
+  router.replace({ path: route.path, query: q })
+}
+
 onMounted(async () => {
   await loadAll()
+  syncApplicationFilterFromRoute()
   initializeHandoffFromQuery()
 })
+
+watch(
+  () => route.query.applicationId,
+  () => {
+    syncApplicationFilterFromRoute()
+  }
+)
 
 async function loadAll() {
   const [plansRes, risksRes, usersRes] = await Promise.allSettled([
@@ -534,15 +586,14 @@ const boardLanes = computed(() => {
 })
 
 function initializeHandoffFromQuery() {
-  const params = new URLSearchParams(window.location.search || '')
-  const findingId = params.get('findingId')
-  const riskId = params.get('riskId')
-  if (!findingId && !riskId) return
+  const findingId = route.query.findingId
+  const riskId = route.query.riskId
+  if ((findingId == null || findingId === '') && (riskId == null || riskId === '')) return
 
-  handoff.value.findingId = findingId ? Number(findingId) : null
-  handoff.value.findingTitle = params.get('findingTitle') || ''
-  handoff.value.riskId = riskId ? Number(riskId) : null
-  handoff.value.riskTitle = params.get('riskTitle') || ''
+  handoff.value.findingId = findingId != null && findingId !== '' ? Number(findingId) : null
+  handoff.value.findingTitle = String(route.query.findingTitle || '')
+  handoff.value.riskId = riskId != null && riskId !== '' ? Number(riskId) : null
+  handoff.value.riskTitle = String(route.query.riskTitle || '')
 
   if (handoff.value.riskId) {
     planForm.value.riskId = handoff.value.riskId
@@ -571,7 +622,7 @@ function riskOwnerLabel(plan) {
 }
 
 function filteredPlansForBoard() {
-  return (plans.value || []).filter((plan) => {
+  return (plansForApplication.value || []).filter((plan) => {
     const owner = riskOwnerMap.value.get(plan.riskId)
     const selectedOwner = boardFilter.value.ownerUserId
     if (selectedOwner === 'none' && owner?.userId) return false

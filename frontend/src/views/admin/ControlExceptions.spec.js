@@ -1,5 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import ControlExceptions from './ControlExceptions.vue'
 import api from '../../services/api'
 
@@ -45,8 +46,33 @@ describe('ControlExceptions', () => {
     api.post.mockResolvedValue({ data: {} })
   })
 
+  async function mountExceptions(path = '/admin/control-exceptions') {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/admin/control-exceptions', name: 'AdminControlExceptions', component: { template: '<div />' } },
+        { path: '/admin/issue-program', name: 'AdminIssueProgram', component: { template: '<div />' } },
+        { path: '/admin/findings', name: 'AdminFindings', component: { template: '<div />' } }
+      ]
+    })
+    await router.push(path)
+    await router.isReady()
+    return mount(ControlExceptions, {
+      global: {
+        plugins: [router],
+        stubs: {
+          BsModal: {
+            props: ['modelValue', 'title'],
+            emits: ['update:modelValue'],
+            template: '<div><slot /><slot name="footer" /></div>'
+          }
+        }
+      }
+    })
+  }
+
   it('loads exceptions and approves a request', async () => {
-    const wrapper = mount(ControlExceptions)
+    const wrapper = await mountExceptions()
     await flushPromises()
 
     expect(wrapper.text()).toContain('Issue Management - Control Exceptions')
@@ -60,5 +86,11 @@ describe('ControlExceptions', () => {
       decisionNotes: 'Looks good',
       expiresAt: null
     })
+  })
+
+  it('applies auditId from route query to exceptions request', async () => {
+    await mountExceptions('/admin/control-exceptions?auditId=2')
+    await flushPromises()
+    expect(api.get).toHaveBeenCalledWith('/api/admin/control-exceptions', { params: { auditId: 2 } })
   })
 })

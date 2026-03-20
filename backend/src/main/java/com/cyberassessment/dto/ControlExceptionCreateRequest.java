@@ -14,6 +14,8 @@ import java.time.Instant;
 public class ControlExceptionCreateRequest {
     private Long auditId;
     private Long auditControlId;
+    /** Optional: tie the exception to an existing finding in the same audit. */
+    private Long findingId;
     private String reason;
     private String compensatingControl;
     private Instant expiresAt;

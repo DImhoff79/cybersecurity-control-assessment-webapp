@@ -35,4 +35,7 @@ public class FindingDto {
     private String slaState;
     private Instant createdAt;
     private Instant updatedAt;
+    /** Number of control exception requests linked to this finding. */
+    @Builder.Default
+    private int linkedExceptionCount = 0;
 }

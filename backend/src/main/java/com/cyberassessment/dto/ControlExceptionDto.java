@@ -18,6 +18,8 @@ public class ControlExceptionDto {
     private Integer auditYear;
     private String applicationName;
     private Long auditControlId;
+    private Long findingId;
+    private String findingTitle;
     private String controlId;
     private String controlName;
     private ControlExceptionStatus status;

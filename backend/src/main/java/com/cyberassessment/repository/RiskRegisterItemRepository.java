@@ -8,6 +8,9 @@ import java.util.List;
 
 public interface RiskRegisterItemRepository extends JpaRepository<RiskRegisterItem, Long> {
     List<RiskRegisterItem> findAllByOrderByUpdatedAtDesc();
+
+    long countByTitleStartingWith(String prefix);
+
     long countByStatusIn(List<RiskStatus> statuses);
     long countByResidualRiskScoreGreaterThanEqual(Integer minResidualRiskScore);
 }

@@ -7,7 +7,10 @@
           Manage temporary exceptions with compensating controls, approvals, and expiration.
         </p>
       </div>
-      <router-link to="/admin/findings" class="btn btn-outline-secondary btn-sm">Go to Findings</router-link>
+      <div class="d-flex gap-2 flex-wrap">
+        <router-link :to="issueHubLink" class="btn btn-outline-secondary btn-sm">Issue program hub</router-link>
+        <router-link to="/admin/findings" class="btn btn-outline-secondary btn-sm">Go to Findings</router-link>
+      </div>
     </div>
 
     <div class="card shadow-sm mb-3">
@@ -43,6 +46,7 @@
               <tr>
                 <th>Application</th>
                 <th>Control</th>
+                <th>Linked finding</th>
                 <th>Status</th>
                 <th>SLA</th>
                 <th>Requested by</th>
@@ -55,6 +59,13 @@
               <tr v-for="item in exceptions" :key="item.id">
                 <td>{{ item.applicationName }} ({{ item.auditYear }})</td>
                 <td>{{ item.controlId ? `${item.controlId} - ${item.controlName}` : 'General exception' }}</td>
+                <td class="small">
+                  <span v-if="item.findingId" class="text-wrap d-inline-block" style="max-width: 14rem">
+                    <span class="text-muted">#{{ item.findingId }}</span>
+                    <span v-if="item.findingTitle"> — {{ item.findingTitle }}</span>
+                  </span>
+                  <span v-else class="text-muted">—</span>
+                </td>
                 <td><span class="badge" :class="statusClass(item.status)">{{ item.status }}</span></td>
                 <td><span class="badge" :class="slaClass(item.slaState)">{{ item.slaState || '-' }}</span></td>
                 <td>{{ item.requestedByDisplayName || item.requestedByEmail || '-' }}</td>
@@ -91,7 +102,7 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">Audit</label>
-            <select v-model="form.auditId" class="form-select" required @change="loadAuditControls">
+            <select v-model="form.auditId" class="form-select" required @change="onAuditChangeInModal">
               <option :value="null" disabled>- Select -</option>
               <option v-for="audit in audits" :key="audit.id" :value="audit.id">
                 {{ audit.applicationName }} ({{ audit.year }})
@@ -100,10 +111,20 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Control (optional)</label>
-            <select v-model="form.auditControlId" class="form-select">
+            <select v-model="form.auditControlId" class="form-select" @change="onControlSelectManual">
               <option :value="null">General exception (no control)</option>
               <option v-for="control in auditControls" :key="control.id" :value="control.id">
                 {{ control.controlControlId }} - {{ control.controlName }}
+              </option>
+            </select>
+            <div v-if="form.findingId" class="form-text">Control is taken from the linked finding when it is control-specific.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Linked finding (optional)</label>
+            <select v-model="form.findingId" class="form-select" @change="onFindingLinked">
+              <option :value="null">No finding link</option>
+              <option v-for="f in auditFindings" :key="f.id" :value="f.id">
+                #{{ f.id }} — {{ f.title }}
               </option>
             </select>
           </div>
@@ -130,31 +151,72 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 
+const route = useRoute()
+
 const exceptions = ref([])
 const audits = ref([])
 const auditControls = ref([])
+const auditFindings = ref([])
 const loading = ref(true)
 const loadError = ref('')
 const showModal = ref(false)
 const filters = reactive({
-  auditId: null
+  auditId: null,
+  findingId: null
 })
+
+const issueHubLink = computed(() => {
+  const q = {}
+  if (filters.auditId) q.auditId = String(filters.auditId)
+  if (filters.findingId) q.findingId = String(filters.findingId)
+  if (Object.keys(q).length) return { path: '/admin/issue-program', query: q }
+  return '/admin/issue-program'
+})
+
 const form = reactive({
   auditId: null,
   auditControlId: null,
+  findingId: null,
   reason: '',
   compensatingControl: '',
   expiresAtLocal: ''
 })
 
+function applyFiltersFromRoute() {
+  const rawAudit = route.query.auditId
+  if (rawAudit != null && rawAudit !== '') {
+    const n = Number(rawAudit)
+    filters.auditId = Number.isNaN(n) ? null : n
+  } else {
+    filters.auditId = null
+  }
+  const rawFinding = route.query.findingId
+  if (rawFinding != null && rawFinding !== '') {
+    const n = Number(rawFinding)
+    filters.findingId = Number.isNaN(n) ? null : n
+  } else {
+    filters.findingId = null
+  }
+}
+
 onMounted(async () => {
+  applyFiltersFromRoute()
   await Promise.all([loadAudits(), load()])
 })
+
+watch(
+  () => [route.query.auditId, route.query.findingId],
+  async () => {
+    applyFiltersFromRoute()
+    await load()
+  }
+)
 
 async function loadAudits() {
   try {
@@ -172,6 +234,7 @@ async function load() {
   try {
     const params = {}
     if (filters.auditId) params.auditId = filters.auditId
+    if (filters.findingId) params.findingId = filters.findingId
     const res = await api.get('/api/admin/control-exceptions', { params })
     exceptions.value = res.data || []
   } catch (e) {
@@ -184,17 +247,30 @@ async function load() {
 
 function resetFilters() {
   filters.auditId = null
+  filters.findingId = null
   load()
 }
 
 function openModal() {
-  form.auditId = null
+  form.auditId = filters.auditId ?? null
   form.auditControlId = null
+  form.findingId = filters.findingId ?? null
   form.reason = ''
   form.compensatingControl = ''
   form.expiresAtLocal = ''
   auditControls.value = []
+  auditFindings.value = []
   showModal.value = true
+  if (form.auditId) {
+    loadAuditControls()
+    loadAuditFindings()
+  }
+}
+
+async function onAuditChangeInModal() {
+  form.findingId = null
+  await loadAuditControls()
+  await loadAuditFindings()
 }
 
 async function loadAuditControls() {
@@ -206,8 +282,46 @@ async function loadAuditControls() {
   try {
     const res = await api.get(`/api/audits/${form.auditId}/controls`)
     auditControls.value = res.data || []
+    syncControlFromLinkedFinding()
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to load controls.')
+  }
+}
+
+async function loadAuditFindings() {
+  if (!form.auditId) {
+    auditFindings.value = []
+    return
+  }
+  try {
+    const res = await api.get('/api/findings', { params: { auditId: form.auditId } })
+    auditFindings.value = res.data || []
+    syncControlFromLinkedFinding()
+  } catch (e) {
+    auditFindings.value = []
+    toastError(e.response?.data?.error || 'Failed to load findings for audit.')
+  }
+}
+
+function onFindingLinked() {
+  syncControlFromLinkedFinding()
+}
+
+function onControlSelectManual() {
+  if (form.findingId) {
+    const f = auditFindings.value.find((x) => x.id === form.findingId)
+    if (f?.auditControlId && form.auditControlId !== f.auditControlId) {
+      toastError('Pick a different linked finding or clear the finding link to choose another control.')
+      syncControlFromLinkedFinding()
+    }
+  }
+}
+
+function syncControlFromLinkedFinding() {
+  if (!form.findingId) return
+  const f = auditFindings.value.find((x) => x.id === form.findingId)
+  if (f?.auditControlId) {
+    form.auditControlId = f.auditControlId
   }
 }
 
@@ -216,6 +330,7 @@ async function save() {
     await api.post('/api/admin/control-exceptions', {
       auditId: form.auditId,
       auditControlId: form.auditControlId || null,
+      findingId: form.findingId || null,
       reason: form.reason,
       compensatingControl: form.compensatingControl || null,
       expiresAt: form.expiresAtLocal ? new Date(form.expiresAtLocal).toISOString() : null

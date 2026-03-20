@@ -114,6 +114,59 @@ class FindingAndExceptionServiceIntegrationTest {
 
         List<FindingDto> listed = findingService.list(audit.getId());
         assertThat(listed).extracting(FindingDto::getId).contains(created.getId());
+        assertThat(listed.stream().filter(f -> f.getId().equals(created.getId())).findFirst().orElseThrow().getLinkedExceptionCount())
+                .isZero();
+    }
+
+    @Test
+    void controlExceptionCanLinkToFindingAndUpdatesFindingExceptionCount() {
+        User admin = userRepository.save(User.builder()
+                .email("link-admin@test.com")
+                .passwordHash("x")
+                .displayName("Link Admin")
+                .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("link-owner@test.com")
+                .passwordHash("x")
+                .displayName("Link Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Link Test App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2047);
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+
+        FindingDto finding = findingService.create(FindingUpsertRequest.builder()
+                .auditId(audit.getId())
+                .auditControlId(auditControlId)
+                .title("Needs temporary exception")
+                .severity(FindingSeverity.MEDIUM)
+                .build());
+
+        ControlExceptionDto ex = controlExceptionService.request(ControlExceptionCreateRequest.builder()
+                .auditId(audit.getId())
+                .findingId(finding.getId())
+                .reason("Compensating control while patching")
+                .expiresAt(Instant.now().plusSeconds(86400))
+                .build());
+
+        assertThat(ex.getFindingId()).isEqualTo(finding.getId());
+        assertThat(ex.getFindingTitle()).contains("temporary exception");
+
+        List<FindingDto> afterLink = findingService.list(audit.getId());
+        assertThat(afterLink.stream().filter(f -> f.getId().equals(finding.getId())).findFirst().orElseThrow().getLinkedExceptionCount())
+                .isEqualTo(1);
+
+        List<ControlExceptionDto> forFinding = controlExceptionService.list(audit.getId(), finding.getId());
+        assertThat(forFinding).extracting(ControlExceptionDto::getId).contains(ex.getId());
     }
 
     @Test
@@ -157,7 +210,7 @@ class FindingAndExceptionServiceIntegrationTest {
                 .build());
         assertThat(approved.getStatus()).isEqualTo(ControlExceptionStatus.APPROVED);
 
-        List<ControlExceptionDto> listed = controlExceptionService.list(audit.getId());
+        List<ControlExceptionDto> listed = controlExceptionService.list(audit.getId(), null);
         ControlExceptionDto expired = listed.stream()
                 .filter(it -> it.getId().equals(requested.getId()))
                 .findFirst()

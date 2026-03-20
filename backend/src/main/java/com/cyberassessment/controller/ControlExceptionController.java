@@ -20,8 +20,10 @@ public class ControlExceptionController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
-    public List<ControlExceptionDto> list(@RequestParam(required = false) Long auditId) {
-        return controlExceptionService.list(auditId);
+    public List<ControlExceptionDto> list(
+            @RequestParam(required = false) Long auditId,
+            @RequestParam(required = false) Long findingId) {
+        return controlExceptionService.list(auditId, findingId);
     }
 
     @PostMapping

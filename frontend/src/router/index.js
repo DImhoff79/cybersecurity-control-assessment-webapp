@@ -41,6 +41,12 @@ const router = createRouter({
           meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Operations Queue' }
         },
         {
+          path: 'issue-program',
+          name: 'AdminIssueProgram',
+          component: () => import('../views/admin/IssueProgramHub.vue'),
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Issue Program Hub' }
+        },
+        {
           path: 'findings',
           name: 'AdminFindings',
           component: () => import('../views/admin/Findings.vue'),

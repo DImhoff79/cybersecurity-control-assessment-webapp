@@ -53,17 +53,20 @@ class DefaultUsersIntegrationTest {
     }
 
     @Test
-    void missingDefaultOwnerIsRecreatedOnStartupRunner() throws Exception {
-        User owner = userRepository.findByEmail("owner@example.com").orElse(null);
-        assertThat(owner).isNotNull();
-        userRepository.delete(owner);
-        assertThat(userRepository.findByEmail("owner@example.com")).isEmpty();
+    void missingDefaultAuditorIsRecreatedOnStartupRunner() throws Exception {
+        // Use auditor (not owner): sample policies reference owner@example.com as policy owner,
+        // so deleting the owner row violates FK_POLICIES_OWNER_USER.
+        User auditor = userRepository.findByEmail("auditor@example.com").orElse(null);
+        assertThat(auditor).isNotNull();
+        userRepository.delete(auditor);
+        userRepository.flush();
+        assertThat(userRepository.findByEmail("auditor@example.com")).isEmpty();
 
         dataLoader.run(new DefaultApplicationArguments(new String[0]));
 
-        User recreatedOwner = userRepository.findByEmail("owner@example.com").orElse(null);
-        assertThat(recreatedOwner).isNotNull();
-        assertThat(recreatedOwner.getRole()).isEqualTo(UserRole.APPLICATION_OWNER);
-        assertThat(passwordEncoder.matches("owner123", recreatedOwner.getPasswordHash())).isTrue();
+        User recreated = userRepository.findByEmail("auditor@example.com").orElse(null);
+        assertThat(recreated).isNotNull();
+        assertThat(recreated.getRole()).isEqualTo(UserRole.AUDITOR);
+        assertThat(passwordEncoder.matches("auditor123", recreated.getPasswordHash())).isTrue();
     }
 }

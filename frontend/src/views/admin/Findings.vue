@@ -8,6 +8,7 @@
         </p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
+        <router-link :to="issueHubLink" class="btn btn-outline-secondary btn-sm">Issue program hub</router-link>
         <router-link to="/admin/risk-register" class="btn btn-outline-primary btn-sm">Go to Risk Register</router-link>
         <router-link to="/admin/remediation-plans" class="btn btn-outline-primary btn-sm">Go to Remediation Plans</router-link>
         <router-link to="/admin/control-exceptions" class="btn btn-outline-secondary btn-sm">Go to Exceptions</router-link>
@@ -52,6 +53,7 @@
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('slaState')">SLA {{ sortIndicator('slaState') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
                 <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
+                <th>Exceptions</th>
                 <th>Handoff</th>
                 <th></th>
               </tr>
@@ -74,6 +76,23 @@
                 </td>
                 <td>{{ finding.ownerDisplayName || finding.ownerEmail || '-' }}</td>
                 <td>{{ formatDate(finding.dueAt) }}</td>
+                <td class="text-nowrap small">
+                  <router-link
+                    v-if="finding.auditId"
+                    class="btn btn-outline-secondary btn-sm"
+                    :to="{
+                      path: '/admin/control-exceptions',
+                      query: {
+                        auditId: String(finding.auditId),
+                        findingId: String(finding.id)
+                      }
+                    }"
+                  >
+                    <span v-if="(finding.linkedExceptionCount ?? 0) > 0">{{ finding.linkedExceptionCount }} linked</span>
+                    <span v-else>Link / request</span>
+                  </router-link>
+                  <span v-else class="text-muted">—</span>
+                </td>
                 <td class="text-nowrap">
                   <router-link :to="riskRegisterLink(finding)" class="btn btn-outline-primary btn-sm me-2">
                     Open in Risk Register
@@ -163,11 +182,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+
+const route = useRoute()
 
 const findings = ref([])
 const audits = ref([])
@@ -180,6 +202,14 @@ const editing = ref(null)
 const filters = reactive({
   auditId: null
 })
+
+const issueHubLink = computed(() => {
+  if (filters.auditId) {
+    return { path: '/admin/issue-program', query: { auditId: String(filters.auditId) } }
+  }
+  return '/admin/issue-program'
+})
+
 const form = reactive({
   auditId: null,
   auditControlId: null,
@@ -199,9 +229,28 @@ const { sortedRows, toggleSort, sortIndicator } = useTableSort(sortableRows, {
   }
 })
 
+function applyAuditIdFromRoute() {
+  const raw = route.query.auditId
+  if (raw != null && raw !== '') {
+    const n = Number(raw)
+    filters.auditId = Number.isNaN(n) ? null : n
+  } else {
+    filters.auditId = null
+  }
+}
+
 onMounted(async () => {
+  applyAuditIdFromRoute()
   await Promise.all([loadLookupData(), load()])
 })
+
+watch(
+  () => route.query.auditId,
+  async () => {
+    applyAuditIdFromRoute()
+    await load()
+  }
+)
 
 async function loadLookupData() {
   try {

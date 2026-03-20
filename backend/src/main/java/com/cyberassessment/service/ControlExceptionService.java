@@ -7,6 +7,7 @@ import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditRepository;
 import com.cyberassessment.repository.ControlExceptionRepository;
+import com.cyberassessment.repository.FindingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +22,23 @@ public class ControlExceptionService {
     private final ControlExceptionRepository controlExceptionRepository;
     private final AuditRepository auditRepository;
     private final AuditControlRepository auditControlRepository;
+    private final FindingRepository findingRepository;
     private final CurrentUserService currentUserService;
     private final AuditActivityLogService auditActivityLogService;
 
     @Transactional
-    public List<ControlExceptionDto> list(Long auditId) {
+    public List<ControlExceptionDto> list(Long auditId, Long findingId) {
         expireElapsedApprovals();
-        List<ControlExceptionRequest> items = auditId != null
-                ? controlExceptionRepository.findByAuditIdOrderByRequestedAtDesc(auditId)
-                : controlExceptionRepository.findAllByOrderByRequestedAtDesc();
+        List<ControlExceptionRequest> items;
+        if (findingId != null && auditId != null) {
+            items = controlExceptionRepository.findByAuditIdAndFinding_IdOrderByRequestedAtDesc(auditId, findingId);
+        } else if (findingId != null) {
+            items = controlExceptionRepository.findByFinding_IdOrderByRequestedAtDesc(findingId);
+        } else if (auditId != null) {
+            items = controlExceptionRepository.findByAuditIdOrderByRequestedAtDesc(auditId);
+        } else {
+            items = controlExceptionRepository.findAllByOrderByRequestedAtDesc();
+        }
         return items.stream().map(ControlExceptionService::toDto).toList();
     }
 
@@ -43,11 +52,13 @@ public class ControlExceptionService {
         }
         Audit audit = auditRepository.findById(request.getAuditId())
                 .orElseThrow(() -> new IllegalArgumentException("Audit not found: " + request.getAuditId()));
-        AuditControl auditControl = resolveAuditControl(request.getAuditControlId(), audit);
+        Finding finding = resolveFindingForException(request.getFindingId(), audit);
+        AuditControl auditControl = resolveAuditControlForException(request.getAuditControlId(), audit, finding);
 
         ControlExceptionRequest row = ControlExceptionRequest.builder()
                 .audit(audit)
                 .auditControl(auditControl)
+                .finding(finding)
                 .requestedBy(currentUserService.getCurrentUserOrThrow())
                 .reason(request.getReason().trim())
                 .compensatingControl(request.getCompensatingControl())
@@ -109,6 +120,32 @@ public class ControlExceptionService {
         controlExceptionRepository.saveAll(expired);
     }
 
+    private Finding resolveFindingForException(Long findingId, Audit audit) {
+        if (findingId == null) {
+            return null;
+        }
+        Finding finding = findingRepository.findById(findingId)
+                .orElseThrow(() -> new IllegalArgumentException("Finding not found: " + findingId));
+        if (!finding.getAudit().getId().equals(audit.getId())) {
+            throw new IllegalArgumentException("Finding does not belong to the selected audit");
+        }
+        return finding;
+    }
+
+    private AuditControl resolveAuditControlForException(Long requestedAuditControlId, Audit audit, Finding finding) {
+        if (finding != null && finding.getAuditControl() != null) {
+            AuditControl fromFinding = finding.getAuditControl();
+            if (!fromFinding.getAudit().getId().equals(audit.getId())) {
+                throw new IllegalArgumentException("Finding control is inconsistent with audit");
+            }
+            if (requestedAuditControlId != null && !fromFinding.getId().equals(requestedAuditControlId)) {
+                throw new IllegalArgumentException("Control selection must match the linked finding's control");
+            }
+            return fromFinding;
+        }
+        return resolveAuditControl(requestedAuditControlId, audit);
+    }
+
     private AuditControl resolveAuditControl(Long auditControlId, Audit audit) {
         if (auditControlId == null) {
             return null;
@@ -123,6 +160,7 @@ public class ControlExceptionService {
 
     public static ControlExceptionDto toDto(ControlExceptionRequest row) {
         AuditControl auditControl = row.getAuditControl();
+        Finding finding = row.getFinding();
         User requestedBy = row.getRequestedBy();
         User decidedBy = row.getDecidedBy();
         return ControlExceptionDto.builder()
@@ -131,6 +169,8 @@ public class ControlExceptionService {
                 .auditYear(row.getAudit().getYear())
                 .applicationName(row.getAudit().getApplication() != null ? row.getAudit().getApplication().getName() : null)
                 .auditControlId(auditControl != null ? auditControl.getId() : null)
+                .findingId(finding != null ? finding.getId() : null)
+                .findingTitle(finding != null ? finding.getTitle() : null)
                 .controlId(auditControl != null ? auditControl.getControl().getControlId() : null)
                 .controlName(auditControl != null ? auditControl.getControl().getName() : null)
                 .status(row.getStatus())

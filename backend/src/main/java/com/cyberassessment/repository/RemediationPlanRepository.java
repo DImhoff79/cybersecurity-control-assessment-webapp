@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RemediationPlanRepository extends JpaRepository<RemediationPlan, Long> {
     long countByStatus(RemediationPlanStatus status);
+
+    long countByTitleStartingWith(String prefix);
 }
