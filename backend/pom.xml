@@ -20,7 +20,7 @@
     <properties>
         <java.version>17</java.version>
         <lombok.version>1.18.42</lombok.version>
-        <jacoco.version>0.8.12</jacoco.version>
+        <jacoco.version>0.8.14</jacoco.version>
     </properties>
 
     <dependencies>
