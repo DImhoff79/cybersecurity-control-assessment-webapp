@@ -23,7 +23,7 @@ jobs:
         run: .\mvnw.cmd verify
         working-directory: backend
       - name: Upload backend coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-jacoco-report
           path: backend/target/site/jacoco
@@ -54,7 +54,7 @@ jobs:
         run: npm run test:coverage
         working-directory: frontend
       - name: Upload frontend coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage-report
           path: frontend/coverage
@@ -62,7 +62,7 @@ jobs:
         run: |
           if (!(Test-Path "frontend/coverage/index.html")) { throw "Missing frontend coverage report" }
       - name: Upload ops runbook artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ops-runbook
           path: docs/ops-runbook.md
