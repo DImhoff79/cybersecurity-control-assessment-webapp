@@ -39,6 +39,13 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - CSV/PDF exports
   - Auditor workbench and review queue
 - **Sortable table headings** across major admin/self-service tables.
+- **GRC / program management (Phase 2+)**:
+  - Compliance obligations and requirement ↔ control mappings
+  - Policies, versions, attestations, and regulatory scope
+  - Risk register, risk ↔ control/finding links, remediation plans and actions
+  - Findings workflow and control exception requests (including linkage to findings)
+  - In-app notifications and scheduled report delivery hooks
+  - Idempotent **demo dataset** seeder for local UI walkthroughs (toggle via config; off in `prod`)
 
 ## Prerequisites
 
@@ -99,7 +106,9 @@ npm run dev -- --host
   - `composables/useNotificationsMenu.js`: shared notifications menu loading/read interactions
 - **Primary views**
   - `views/admin/UserManagement.vue`: role-driven user administration
+  - `views/admin/Applications.vue`: application inventory CRUD
   - `views/admin/QuestionnaireHub.vue`: questionnaire entry point for builder + governance
+  - `views/admin/OperationsQueue.vue`: triage + submitted reviews shell
   - `views/admin/QuestionnaireBuilder.vue`: controls + questions maintenance
   - `views/admin/QuestionnaireTemplates.vue`: governance workflow and working snapshot lifecycle
   - `views/admin/KickoffAudit.vue`, `AuditProjects.vue`: audit operations and project scoping
@@ -124,7 +133,7 @@ npm run dev -- --host
   - `service/CurrentUserService.java`: centralized role/permission checks used by services
 - **Database migration**
   - `resources/db/migration`: Flyway migrations for schema and data changes
-  - Current local evolution includes governance, activity, and production-readiness migrations through `V24`
+  - Current schema evolution includes governance, GRC, audit automation, and related migrations through **`V30`** (run automatically on startup when Flyway is enabled)
 
 ## Test Commands
 
@@ -133,6 +142,7 @@ npm run dev -- --host
 ```bash
 cd frontend
 npm run test:unit
+npm run test:coverage   # same gate as CI (thresholds in vitest.config.js)
 npm run build
 ```
 
@@ -141,6 +151,8 @@ npm run build
 ```bash
 cd backend
 ./mvnw test
+# Windows: .\mvnw.cmd test
+# CI parity (tests + JaCoCo rules): ./mvnw verify  (Windows: .\mvnw.cmd verify)
 ```
 
 ## Mail (Optional)
@@ -161,9 +173,43 @@ spring:
 
 ## Production Notes
 
-- Configure a production RDBMS (for example PostgreSQL) via datasource properties.
-- Build and serve frontend assets:
-  - `cd frontend && npm run build`
-  - serve `frontend/dist`
-- Set `app.frontend-base-url` for absolute links used in email/workflow notifications.
+Typical deployment is **Java Spring Boot backend + static Vue `dist/`** in front of a **PostgreSQL** database (no Dockerfiles are required in-repo; use your platform’s process manager or container).
+
+### Database and migrations
+
+- Flyway runs migrations on startup when `spring.flyway.enabled=true` (default).
+- Ensure the database user can create/update schema (first deploy) and that you **back up before upgrades** when moving between application versions.
+- **Never** use the embedded H2 file store for production.
+
+### Backend JAR
+
+```bash
+cd backend
+./mvnw -q -DskipTests package
+# Windows: .\mvnw.cmd -DskipTests package
+# Artifact: backend/target/cybersecurity-assessment-0.0.1-SNAPSHOT.jar
+```
+
+Run with the **`prod`** profile (see `backend/src/main/resources/application-prod.yml`):
+
+- `SPRING_PROFILES_ACTIVE=prod`
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — PostgreSQL JDBC URL and credentials
+- `app.seed.demo-dataset=false` (already default in prod profile) so demo rows are not seeded
+- `app.auth.mode=sso` and `app.auth.allow-basic=false` in prod — configure OAuth2/SSO to match your IdP
+- Optional: `EVIDENCE_STORAGE_MODE`, mail (`spring.mail.*`), `app.frontend-base-url` for absolute links in emails/notifications
+
+### Frontend static assets
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+Serve the contents of `frontend/dist/` from your CDN or reverse proxy and route browser navigation to `index.html` (SPA fallback).
+
+### Operations
+
+- See **`docs/ops-runbook.md`** for CI parity commands, incident triage, and demo-seed toggles.
+- See **`docs/dependency-upgrades.md`** for how to review Dependabot PRs safely.
 - See `docs/scalability.md` for scalability guidance.

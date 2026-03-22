@@ -9,3 +9,5 @@ frontend/coverage/
 *.log
 *.tmp
 *.swp
+test-results/
+tmp-login-check.js

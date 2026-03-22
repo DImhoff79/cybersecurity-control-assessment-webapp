@@ -1,5 +1,23 @@
 # Operations Runbook
 
+## Release smoke checklist (priority order)
+
+Run these **before** tagging or promoting a build; they mirror `.github/workflows/ci.yml`.
+
+1. **Backend (Windows / PowerShell)**  
+   `cd backend` → `.\mvnw.cmd verify`  
+   Confirms unit/integration tests and JaCoCo coverage gates (`backend/pom.xml`).
+
+2. **Frontend**  
+   `cd frontend` → `npm ci` → `npm run build` → `npm run test:coverage`  
+   Confirms production build and Vitest coverage thresholds (`frontend/vitest.config.js`).
+
+3. **Manual full-stack** (local): start backend (`.\mvnw.cmd spring-boot:run`), start frontend (`npm run dev`), log in, open **Admin → Operations Queue** and one **GRC** screen (e.g. **Findings** or **Risk Register**) to confirm API + migrations on your target DB.
+
+4. **Production DB**: ensure Flyway has applied through the latest migration (see `backend/src/main/resources/db/migration/V*.sql`) and **never** point `prod` at the dev H2 file URL.
+
+Artifacts: CI uploads `backend-jacoco-report` and `frontend-coverage-report` for regression triage.
+
 ## CI quality gates
 - Backend pipeline runs `mvn verify` and fails on test or coverage gate failure.
 - Frontend pipeline runs `npm run test:coverage` and fails on test or coverage gate failure.
@@ -8,7 +26,7 @@
 ### Local parity (before push)
 - Backend: `cd backend && ./mvnw test` (or `mvnw.cmd test` on Windows); use `./mvnw verify` for the same JaCoCo rules as CI.
 - Frontend: `cd frontend && npm run test:unit` for a quick run; `npm run test:coverage` matches the CI gate.
-- Dependabot opens weekly PRs for `frontend` (npm), `backend` (Maven), and GitHub Actions (see `.github/dependabot.yml`).
+- Dependabot opens **weekly** PRs for `frontend` (npm) and `backend` (Maven), and **monthly** for GitHub Actions (see `.github/dependabot.yml`). Review guidance: **`docs/dependency-upgrades.md`**.
 
 ## Service health checks
 - Backend health endpoint: `/actuator/health` (authentication required by default).
