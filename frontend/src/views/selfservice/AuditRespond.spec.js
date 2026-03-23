@@ -7,6 +7,12 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { auditId: '1' } })
 }))
 
+vi.mock('../../services/toast', () => ({
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastWarning: vi.fn()
+}))
+
 vi.mock('../../services/api', () => ({
   default: {
     get: vi.fn(),
@@ -60,6 +66,9 @@ describe('AuditRespond', () => {
           ]
         })
       }
+      if (/^\/api\/audit-controls\/\d+\/evidences$/.test(url)) {
+        return Promise.resolve({ data: [] })
+      }
       if (url === '/api/controls?includeQuestions=true') {
         return Promise.resolve({
           data: [
@@ -103,7 +112,7 @@ describe('AuditRespond', () => {
 
     const select = wrapper.find('select.form-select')
     await select.setValue('YES')
-    const submitBtn = wrapper.findAll('button').find((b) => b.text() === 'Submit assessment for review')
+    const submitBtn = wrapper.findAll('button').find((b) => b.text() === 'Submit for review')
     await submitBtn.trigger('click')
     await flushPromises()
 
@@ -150,6 +159,9 @@ describe('AuditRespond', () => {
             { id: 302, controlId: 22, controlControlId: 'IA-2', controlName: 'Identification and Authentication', status: 'NOT_STARTED' }
           ]
         })
+      }
+      if (/^\/api\/audit-controls\/\d+\/evidences$/.test(url)) {
+        return Promise.resolve({ data: [] })
       }
       return Promise.resolve({ data: [] })
     })

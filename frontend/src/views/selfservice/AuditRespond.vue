@@ -1,21 +1,22 @@
 <template>
-  <div>
-    <div class="mb-3">
-      <h1 class="h3 mb-1">{{ audit?.applicationName }} - {{ audit?.year }} Assessment</h1>
-      <p v-if="audit" class="text-muted mb-0">
-        Status: {{ statusLabel(audit.status) }} | Progress: {{ completionPct }}%
-        <span v-if="audit.dueAt"> | Due: {{ new Date(audit.dueAt).toLocaleDateString() }}</span>
+  <div class="respond-page w-100">
+    <header class="respond-header mb-4">
+      <h1 class="respond-page-title mb-2">{{ audit?.applicationName }} — {{ audit?.year }} assessment</h1>
+      <p v-if="audit" class="text-muted mb-2 respond-header__meta">
+        {{ statusLabel(audit.status) }}
+        <span class="mx-1">·</span>
+        Due {{ audit.dueAt ? new Date(audit.dueAt).toLocaleDateString() : '—' }}
       </p>
-    </div>
-    <div class="small text-muted mb-3">
-      Work through each step, save drafts often, and submit once all required responses are complete.
-    </div>
+      <p class="text-muted mb-0">
+        Answer each question, then use <strong>Save draft</strong> anytime. Optional notes and files can be added under each question.
+      </p>
+    </header>
 
-    <div v-if="loading" class="text-muted">Loading...</div>
-    <div v-else-if="totalSteps === 0" class="card shadow-sm">
+    <div v-if="loading" class="text-muted py-4">Loading your assessment…</div>
+    <div v-else-if="totalSteps === 0" class="card shadow-sm border-0">
       <div class="card-body">No questions are configured for this audit. Contact your administrator.</div>
     </div>
-    <div v-else-if="isSubmitted" class="card shadow-sm">
+    <div v-else-if="isSubmitted" class="card shadow-sm border-0">
       <div class="card-body">
         <p class="mb-2 fw-semibold">This assessment was already submitted.</p>
         <p class="text-muted mb-0">It is now waiting for admin review and validation.</p>
@@ -23,15 +24,16 @@
     </div>
 
     <div v-else>
-      <div class="card shadow-sm mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong>Step {{ currentStepNumber }} of {{ totalSteps }}</strong>
-            <span class="small text-muted">{{ completionPct }}% complete</span>
+      <!-- Progress -->
+      <div class="respond-progress card respond-surface--progress mb-4">
+        <div class="card-body px-3 py-3 px-sm-4">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <span class="respond-label-muted">Progress</span>
+            <span class="fw-semibold">{{ completionPct }}% complete</span>
           </div>
-          <div class="progress" style="height: 10px;">
+          <div class="progress respond-progress__bar" style="height: 8px">
             <div
-              class="progress-bar"
+              class="progress-bar bg-primary"
               role="progressbar"
               :style="{ width: `${completionPct}%` }"
               :aria-valuenow="completionPct"
@@ -39,103 +41,184 @@
               aria-valuemax="100"
             />
           </div>
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-2">
+            <span class="text-muted">{{ stepContextLabel }}</span>
+            <span class="text-muted">Step {{ currentStepNumber }} of {{ totalSteps }}</span>
+          </div>
         </div>
       </div>
 
-      <div v-if="currentStage === 'human'" class="card shadow-sm mb-3">
-        <div class="card-body">
-          <p class="small text-muted mb-2">Guided questions in plain language (grouped by topic)</p>
-          <div class="fw-semibold mb-1">{{ currentGuidedSection?.title }}</div>
-          <p class="text-muted small mb-3">{{ currentGuidedSection?.description }}</p>
+      <!-- Guided questions -->
+      <div v-if="currentStage === 'human'" class="card respond-surface--section mb-4">
+        <div class="card-body respond-guided-canvas px-3 py-3 px-sm-4 py-md-4">
+          <div class="respond-topic-intro mb-4">
+            <p class="respond-label-muted mb-1">Current topic</p>
+            <p class="respond-section-heading mb-2">{{ currentGuidedSection?.title }}</p>
+            <p class="text-muted mb-0">{{ currentGuidedSection?.description }}</p>
+          </div>
 
           <div
             v-for="(question, idx) in currentSectionQuestions"
             :key="question.questionId"
-            class="border rounded p-3 mb-3"
+            class="respond-question respond-question-panel"
           >
-            <div class="fw-semibold mb-2">{{ idx + 1 }}. {{ question.questionText }}</div>
-            <p v-if="question.mappings?.length > 1" class="text-muted small mb-2">
-              This answer applies to {{ question.mappings.length }} related controls: {{ mappedControlSummary(question) }}.
-            </p>
-            <p v-else class="text-muted small mb-2">
-              Control: {{ mappedControlSummary(question) }}
-            </p>
-            <p v-if="question.helpText" class="text-muted small mb-3">{{ question.helpText }}</p>
+            <div class="respond-question-panel__head d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <span class="respond-question-panel__label">Question {{ idx + 1 }} of {{ currentSectionQuestions.length }}</span>
+            </div>
+            <div class="d-flex align-items-start gap-2 mb-3">
+              <span class="respond-question__index d-flex align-items-center justify-content-center flex-shrink-0">{{ idx + 1 }}</span>
+              <div class="flex-grow-1 min-w-0">
+                <p class="respond-question-text mb-2">{{ question.questionText }}</p>
+                <p v-if="question.helpText" class="text-muted mb-0">{{ question.helpText }}</p>
+              </div>
+            </div>
 
-            <label class="form-label">Your answer</label>
-            <select v-model="answers[questionKey(question.questionId)]" class="form-select">
+            <p class="text-muted mb-2">
+              <span class="fw-medium">Related controls:</span>
+              {{ mappedControlSummary(question) }}
+            </p>
+
+            <label class="form-label" :for="'answer-' + question.questionId">Your answer</label>
+            <select
+              :id="'answer-' + question.questionId"
+              v-model="answers[questionKey(question.questionId)]"
+              class="form-select mb-0"
+            >
               <option v-for="opt in answerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
+
+            <details class="respond-evidence-details mt-3">
+              <summary class="respond-evidence-summary">
+                <span class="respond-evidence-summary__inner">
+                  <span class="respond-evidence-summary__text">Notes &amp; supporting files</span>
+                  <span class="text-muted fw-normal">(optional)</span>
+                  <span
+                    v-if="uniqueMappings(question).length > 1"
+                    class="badge rounded-pill text-bg-light border respond-evidence-summary__badge"
+                  >
+                    {{ uniqueMappings(question).length }} controls
+                  </span>
+                </span>
+              </summary>
+              <div class="respond-evidence-details__body pt-3">
+                <p class="text-muted mb-3">
+                  Add context or upload documents that help auditors validate your answer. Each control can have its own notes and files.
+                </p>
+                <div v-for="m in uniqueMappings(question)" :key="m.auditControlId" class="mb-3">
+                  <OwnerEvidenceBlock
+                    :audit-control-id="m.auditControlId"
+                    :control-label="`${m.controlControlId} — ${m.controlName}`"
+                    :notes="notesForControl(m.auditControlId)"
+                    :read-only="isSubmitted"
+                    compact
+                    @control-updated="refreshControls"
+                  />
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
 
-      <div v-else class="card shadow-sm mb-3">
-        <div class="card-body">
-          <p class="small text-muted mb-2">Additional controls without simple mapped questions</p>
-          <div class="fw-semibold mb-3">
-            {{ currentAdditionalIndex + 1 }}. {{ currentAdditionalControl?.controlControlId }} - {{ currentAdditionalControl?.controlName }}
+      <!-- Additional controls -->
+      <div v-else-if="currentAdditionalControl" class="card respond-surface--section mb-4">
+        <div class="card-body respond-guided-canvas px-3 py-3 px-sm-4 py-md-4">
+          <div class="respond-topic-intro respond-topic-intro--amber mb-4">
+            <p class="respond-label-muted mb-1">Additional control</p>
+            <p class="respond-section-heading mb-0">
+              {{ currentAdditionalControl?.controlControlId }}
+              <span class="fw-normal text-muted">—</span>
+              {{ currentAdditionalControl?.controlName }}
+            </p>
+            <p class="text-muted mb-0 mt-2">
+              These items don’t use the guided questions above. Set your status, then add notes or files if helpful.
+            </p>
+            <p class="respond-extra-step small text-muted mb-0 mt-2">
+              Step {{ currentAdditionalIndex + 1 }} of {{ additionalControls.length }} in this section
+            </p>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">What best describes your current state for this area?</label>
-            <select v-model="additionalResponses[currentAdditionalControl.id].status" class="form-select">
-              <option value="NOT_STARTED">I have not started this yet</option>
-              <option value="IN_PROGRESS">This is in progress</option>
-              <option value="PASS">This is implemented and working</option>
-              <option value="FAIL">This is not implemented yet</option>
-              <option value="NA">This does not apply to my application</option>
-            </select>
-          </div>
+          <div class="respond-question-panel respond-question-panel--flush">
+            <div class="mb-3">
+              <label class="form-label" for="additional-status">Status for this control</label>
+              <select
+                id="additional-status"
+                v-model="additionalResponses[currentAdditionalControl.id].status"
+                class="form-select"
+              >
+                <option value="NOT_STARTED">I have not started this yet</option>
+                <option value="IN_PROGRESS">This is in progress</option>
+                <option value="PASS">This is implemented and working</option>
+                <option value="FAIL">This is not implemented yet</option>
+                <option value="NA">This does not apply to my application</option>
+              </select>
+            </div>
 
-          <div>
-            <label class="form-label">Notes or evidence (optional but helpful)</label>
-            <textarea
-              v-model="additionalResponses[currentAdditionalControl.id].notes"
-              rows="4"
-              class="form-control"
-              placeholder="Add details that will help the assessor understand your current state."
-            />
+            <details class="respond-evidence-details" open>
+            <summary class="respond-evidence-summary">
+              <span class="respond-evidence-summary__inner">
+                <span class="respond-evidence-summary__text">Notes &amp; supporting files</span>
+                <span class="text-muted fw-normal">(optional)</span>
+              </span>
+            </summary>
+            <div class="respond-evidence-details__body pt-3">
+              <OwnerEvidenceBlock
+                v-if="currentAdditionalControl"
+                :audit-control-id="currentAdditionalControl.id"
+                :control-label="`${currentAdditionalControl.controlControlId} — ${currentAdditionalControl.controlName}`"
+                :notes="additionalResponses[currentAdditionalControl.id]?.notes ?? ''"
+                :read-only="isSubmitted"
+                :show-title="false"
+                compact
+                @control-updated="refreshControls"
+              />
+            </div>
+          </details>
           </div>
         </div>
       </div>
+      <div v-else class="alert alert-light border">No additional controls in this audit.</div>
 
-      <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-        <div class="d-flex gap-2 flex-wrap">
-          <button type="button" class="btn btn-secondary" :disabled="saving || !canGoBack" @click="goBack">Back</button>
-          <button type="button" class="btn btn-outline-secondary" :disabled="saving" @click="saveDraft">Save draft</button>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
+      <!-- Actions -->
+      <div class="respond-actions card respond-surface--actions">
+        <div class="card-body px-3 py-3 px-sm-4">
+          <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-secondary" :disabled="saving || !canGoBack" @click="goBack">Back</button>
+              <button type="button" class="btn btn-outline-primary" :disabled="saving" @click="saveDraft">Save draft</button>
+            </div>
+            <div class="d-flex gap-2 flex-wrap justify-content-end">
+              <button
+                v-if="currentStage === 'human' && (!isLastHumanStep || additionalControls.length > 0)"
+                type="button"
+                class="btn btn-primary px-4"
+                :disabled="saving"
+                @click="goNext"
+              >
+                {{ isLastHumanStep ? 'Continue to additional questions' : 'Next section' }}
+              </button>
 
-        <button
-          v-if="currentStage === 'human' && (!isLastHumanStep || additionalControls.length > 0)"
-          type="button"
-          class="btn btn-primary"
-          :disabled="saving"
-          @click="goNext"
-        >
-          {{ isLastHumanStep ? 'Continue to additional questions' : 'Next' }}
-        </button>
+              <button
+                v-else-if="currentStage === 'additional' && !isLastAdditionalStep"
+                type="button"
+                class="btn btn-primary px-4"
+                :disabled="saving"
+                @click="goNext"
+              >
+                Next control
+              </button>
 
-        <button
-          v-else-if="currentStage === 'additional' && !isLastAdditionalStep"
-          type="button"
-          class="btn btn-primary"
-          :disabled="saving"
-          @click="goNext"
-        >
-          Next
-        </button>
-
-        <button
-          v-else
-          type="button"
-          class="btn btn-success"
-          :disabled="saving"
-          @click="finishAudit"
-        >
-          Submit assessment for review
-        </button>
+              <button
+                v-else
+                type="button"
+                class="btn btn-success px-4"
+                :disabled="saving"
+                @click="finishAudit"
+              >
+                Submit for review
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -146,6 +229,7 @@
 import { computed, reactive, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../services/api'
+import OwnerEvidenceBlock from '../../components/OwnerEvidenceBlock.vue'
 import { toastError, toastSuccess, toastWarning } from '../../services/toast'
 
 const route = useRoute()
@@ -230,6 +314,36 @@ function mappedControlSummary(question) {
   return (question.mappings || []).map((m) => m.controlControlId).join(', ')
 }
 
+/** One block per control when a question maps to multiple audit controls */
+function uniqueMappings(question) {
+  const seen = new Set()
+  return (question.mappings || []).filter((m) => {
+    if (seen.has(m.auditControlId)) return false
+    seen.add(m.auditControlId)
+    return true
+  })
+}
+
+function notesForControl(auditControlId) {
+  const c = controls.value.find((x) => x.id === auditControlId)
+  return c?.notes ?? ''
+}
+
+async function refreshControls() {
+  const controlsRes = await api.get(`/api/audits/${auditId}/controls`)
+  controls.value = controlsRes.data || []
+  const controlsWithOwnerQuestions = new Set(questionItems.value.map((item) => item.auditControlId))
+  additionalControls.value = controls.value.filter((c) => !controlsWithOwnerQuestions.has(c.id))
+  additionalControls.value.forEach((c) => {
+    if (!additionalResponses[c.id]) {
+      additionalResponses[c.id] = { status: c.status || 'NOT_STARTED', notes: c.notes || '' }
+    } else {
+      additionalResponses[c.id].notes = c.notes ?? additionalResponses[c.id].notes ?? ''
+      if (c.status) additionalResponses[c.id].status = c.status
+    }
+  })
+}
+
 function inferQuestionSection(question) {
   const controlIds = (question.mappings || []).map((m) => m.controlControlId || '')
   if (controlIds.some((id) => id.startsWith('AC-') || id.startsWith('IA-') || id === 'PCI-7' || id === 'PCI-8' || id === 'SOX-ACCESS' || id.startsWith('HIPAA-164.308(a)(4)'))) {
@@ -275,6 +389,14 @@ function inferQuestionSection(question) {
 }
 
 const currentAdditionalControl = computed(() => additionalControls.value[currentAdditionalIndex.value] || null)
+
+/** Short line under progress bar: topic name or phase */
+const stepContextLabel = computed(() => {
+  if (currentStage.value === 'human') {
+    return currentGuidedSection.value?.title || 'Guided questions'
+  }
+  return 'Additional controls'
+})
 
 const humanAnsweredCount = computed(() => {
   return guidedQuestions.value.filter((q) => {
@@ -529,3 +651,243 @@ function statusLabel(status) {
   }
 }
 </script>
+
+<style scoped>
+/* Full width of parent (Bootstrap container); no fixed max-width so layout adapts to viewport */
+.respond-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding-bottom: 4rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.respond-page-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0;
+  color: #212529;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+}
+
+.respond-label-muted {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6c757d;
+  margin: 0;
+}
+
+.respond-section-heading {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0;
+  color: #212529;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+}
+
+.respond-question-text {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 0;
+  color: #212529;
+  overflow-wrap: anywhere;
+  word-wrap: break-word;
+}
+
+.respond-page .form-select,
+.respond-page .form-label {
+  font-size: 1rem;
+  max-width: 100%;
+}
+
+.respond-question {
+  min-width: 0;
+}
+
+.respond-header__meta {
+  line-height: 1.4;
+}
+
+.respond-progress__bar {
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.respond-question__index {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #e7f1ff;
+  color: #0d6efd;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.respond-evidence-details {
+  border: 1px solid #e9ecef;
+  border-radius: 0.5rem;
+  background: #fafbfc;
+  padding: 0.5rem 0.75rem;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.respond-evidence-summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.4;
+  padding: 0.35rem 0;
+  user-select: none;
+}
+
+.respond-evidence-summary__inner {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  max-width: 100%;
+}
+
+.respond-evidence-summary__badge {
+  margin-left: 0 !important;
+}
+
+.respond-evidence-summary::-webkit-details-marker {
+  display: none;
+}
+
+.respond-evidence-summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.35rem;
+  transition: transform 0.15s ease;
+  color: #6c757d;
+}
+
+.respond-evidence-details[open] .respond-evidence-summary::before {
+  transform: rotate(90deg);
+}
+
+.respond-evidence-details__body {
+  border-top: 1px solid #e9ecef;
+  margin-left: 0;
+  padding-left: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.respond-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.respond-page .card {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Region surfaces: progress vs main section vs footer */
+.respond-surface--progress {
+  border: 1px solid #d8e4f5 !important;
+  background: linear-gradient(180deg, #f5f9ff 0%, #ffffff 100%);
+  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.08);
+}
+
+.respond-surface--section {
+  border: 1px solid #dee2e6 !important;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.respond-surface--actions {
+  border: 1px solid #dee2e6 !important;
+  background: #fafbfc;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Canvas behind topic + questions */
+.respond-guided-canvas {
+  background: #eef1f6;
+  border-radius: 0.375rem;
+}
+
+/* Topic banner (one per section) */
+.respond-topic-intro {
+  background: #fff;
+  border-left: 4px solid #0d6efd;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.respond-topic-intro--amber {
+  border-left-color: #fd7e14;
+  background: linear-gradient(90deg, #fffaf5 0%, #ffffff 55%);
+}
+
+.respond-extra-step {
+  border-top: 1px dashed #dee2e6;
+  padding-top: 0.75rem;
+}
+
+/* Each question = distinct card on shaded canvas */
+.respond-question-panel {
+  background: #fff;
+  border: 1px solid #d8dee6;
+  border-radius: 0.5rem;
+  padding: 1rem 1.15rem 1.15rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.respond-question-panel:last-child {
+  margin-bottom: 0;
+}
+
+.respond-question-panel__head {
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.respond-question-panel__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #495057;
+  background: #e9ecef;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.25rem;
+}
+
+.respond-question-panel--flush {
+  margin-bottom: 0;
+}
+
+/* Nested evidence block: slightly inset */
+.respond-question-panel .respond-evidence-details {
+  background: #f8f9fb;
+  border-color: #dce3ec;
+}
+
+.respond-question-panel .respond-evidence-details__body {
+  border-top-color: #dce3ec;
+}
+</style>

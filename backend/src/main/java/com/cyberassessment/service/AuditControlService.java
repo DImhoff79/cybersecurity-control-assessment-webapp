@@ -109,7 +109,8 @@ public class AuditControlService {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = ac.getAudit().getAssignedTo() != null && ac.getAudit().getAssignedTo().getId().equals(current.getId());
             boolean isTaskAssignee = auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId());
-            if (!isPrimary && !isTaskAssignee) {
+            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(ac.getAudit().getId(), current.getId());
+            if (!isPrimary && !isTaskAssignee && !isAuditCollaborator) {
                 throw new IllegalArgumentException("You do not have access to this audit");
             }
         }
