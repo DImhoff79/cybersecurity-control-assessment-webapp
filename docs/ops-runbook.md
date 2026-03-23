@@ -12,7 +12,7 @@ Run these **before** tagging or promoting a build; they mirror `.github/workflow
    `cd frontend` → `npm ci` → `npm run build` → `npm run test:coverage`  
    Confirms production build and Vitest coverage thresholds (`frontend/vitest.config.js`).
 
-3. **Manual full-stack** (local): start backend (`.\mvnw.cmd spring-boot:run`), start frontend (`npm run dev`), log in, open **Admin → Operations Queue** and one **GRC** screen (e.g. **Findings** or **Risk Register**) to confirm API + migrations on your target DB.
+3. **Manual full-stack** (local): start backend (`.\mvnw.cmd spring-boot:run`), start frontend (`npm run dev`), log in, open **Admin → Audit Queue** and one **GRC** screen (e.g. **Findings** or **Risk Register**) to confirm API + migrations on your target DB.
 
 4. **Production DB**: ensure Flyway has applied through the latest migration (see `backend/src/main/resources/db/migration/V*.sql`) and **never** point `prod` at the dev H2 file URL.
 

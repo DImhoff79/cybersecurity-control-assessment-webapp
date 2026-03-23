@@ -1,9 +1,19 @@
 export const adminSections = [
   {
+    key: 'workspace',
+    label: 'My workspace',
+    items: [
+      { label: 'My Audits', to: '/admin/my-audits' },
+      { label: 'My Tasks', to: '/admin/my-tasks' },
+      { label: 'My Policies', to: '/admin/my-policies' },
+      { label: 'Profile', to: '/admin/profile' }
+    ]
+  },
+  {
     key: 'audit-program',
     label: 'Audit Program',
     items: [
-      { label: 'Operations Queue', to: '/admin/operations', permission: 'REPORT_VIEW' },
+      { label: 'Audit Queue', to: '/admin/operations', permission: 'REPORT_VIEW' },
       { label: 'Audit Projects', to: '/admin/audit-projects', permission: 'REPORT_VIEW' },
       { label: 'Audits', to: '/admin/audits', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Questionnaire', to: '/admin/questionnaire', permission: 'AUDIT_MANAGEMENT' }
@@ -14,7 +24,7 @@ export const adminSections = [
     label: 'Governance & Compliance',
     items: [
       { label: 'Policies', to: '/admin/policies', permission: 'POLICY_MANAGEMENT' },
-      { label: 'Obligations', to: '/admin/compliance-obligations', permission: 'COMPLIANCE_MANAGEMENT' },
+      { label: 'Compliance Obligations', to: '/admin/compliance-obligations', permission: 'COMPLIANCE_MANAGEMENT' },
       { label: 'Policy Attestations', to: '/admin/policy-attestations', permission: 'REPORT_VIEW' }
     ]
   },

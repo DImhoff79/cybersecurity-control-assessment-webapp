@@ -24,7 +24,7 @@ describe('AuditorWorkbench', () => {
     global.URL.revokeObjectURL = vi.fn()
     api.get.mockImplementation((url) => {
       if (url === '/api/auth/me') {
-        return Promise.resolve({ data: { email: 'auditor@test.com' } })
+        return Promise.resolve({ data: { email: 'auditor@test.com', role: 'ADMIN' } })
       }
       if (url === '/api/reports/saved-filters') {
         return Promise.resolve({ data: [{ id: 100, name: 'Shared Queue', shared: true, filterState: { auditFilter: { queue: 'unassigned' }, evidenceFilter: {} } }] })
@@ -104,16 +104,15 @@ describe('AuditorWorkbench', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Audits Needing Attention')
-    expect(wrapper.text()).toContain('Evidence Review Queue')
+    expect(wrapper.text()).toContain('Audits needing attention')
+    expect(wrapper.text()).toContain('Evidence to review')
 
     const acceptBtn = wrapper.findAll('button').find((b) => b.text() === 'Accept')
     await acceptBtn.trigger('click')
     await flushPromises()
     expect(api.put).toHaveBeenCalledWith('/api/evidences/9/review', { reviewStatus: 'ACCEPTED' })
 
-    const queueSelect = wrapper.findAll('select').at(0)
-    await queueSelect.setValue('unassigned')
+    await wrapper.get('[data-testid="audit-queue-filter"]').setValue('unassigned')
     await flushPromises()
     expect(wrapper.text()).toContain('App B')
 
@@ -129,8 +128,36 @@ describe('AuditorWorkbench', () => {
     await flushPromises()
     expect(api.post).toHaveBeenCalledWith('/api/reports/saved-filters', expect.any(Object))
 
-    expect(wrapper.text()).toContain('Recent Activity Feed')
+    expect(wrapper.text()).toContain('Recent activity')
     expect(wrapper.text()).toContain('Finding created from assessment')
+  })
+
+  it('defaults queue to Assigned To Me for AUDITOR role', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/auth/me') {
+        return Promise.resolve({ data: { email: 'auditor@test.com', role: 'AUDITOR' } })
+      }
+      if (url === '/api/reports/saved-filters') {
+        return Promise.resolve({ data: [] })
+      }
+      return Promise.resolve({
+        data: {
+          summary: {},
+          auditsNeedingAttention: [],
+          evidenceQueue: [],
+          recentActivity: []
+        }
+      })
+    })
+    const wrapper = mount(AuditorWorkbench, {
+      global: {
+        stubs: { RouterLink: { template: '<a><slot /></a>' } }
+      }
+    })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="audit-queue-filter"]').element.value).toBe('mine')
+    expect(wrapper.text()).toContain('your assignments')
+    expect(wrapper.text()).toContain('all open items')
   })
 
   it('exports recent activity csv with selected filters', async () => {
@@ -149,7 +176,7 @@ describe('AuditorWorkbench', () => {
       s.element.options?.[0]?.text?.includes('All events'))
     await activityCategorySelect.setValue('finding')
 
-    const activitySearch = wrapper.find('input[placeholder="Search details or actor..."]')
+    const activitySearch = wrapper.get('[data-testid="activity-search"]')
     await activitySearch.setValue('Finding')
 
     api.get.mockImplementationOnce((url, options) => {

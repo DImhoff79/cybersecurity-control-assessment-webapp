@@ -1,13 +1,8 @@
 <template>
   <div>
     <div class="mb-3">
-      <h1 class="h3 mb-1">Triage Hub</h1>
-      <p class="text-muted mb-0">
-        Triage active audits and evidence from one execution workspace.
-      </p>
-    </div>
-    <div class="small text-muted mb-3">
-      Use saved filters to move quickly between assignment queues, evidence backlogs, and activity traces.
+      <h1 class="h3 mb-1">Triage</h1>
+      <p class="text-muted mb-0">Snapshot of program health and what needs attention next.</p>
     </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
@@ -16,122 +11,156 @@
         <span>{{ loadError }}</span>
         <button type="button" class="btn btn-outline-danger btn-sm" @click="load">Retry</button>
       </div>
-      <div class="row g-3 mb-3">
-        <div class="col-md-3" v-for="card in cards" :key="card.label">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
+
+      <!-- How we're doing -->
+      <div class="row g-2 mb-2">
+        <div class="col-6 col-lg-3" v-for="card in cards" :key="card.label">
+          <div
+            class="card shadow-sm h-100"
+            :class="{
+              'border-danger': card.variant === 'danger',
+              'border-warning': card.variant === 'warning'
+            }"
+          >
+            <div class="card-body py-3">
               <div class="text-muted small">{{ card.label }}</div>
               <div class="h3 mb-0">{{ card.value }}</div>
             </div>
           </div>
         </div>
       </div>
+      <p class="small text-muted mb-3 border-start border-3 ps-2" :class="healthBorderClass">{{ healthMessage }}</p>
 
+      <!-- Audits -->
       <div class="card shadow-sm mb-3">
         <div class="card-body">
-          <div class="row g-2 mb-3">
-            <div class="col-md-2">
-              <label class="form-label small mb-1">Queue</label>
-              <select v-model="auditFilter.queue" class="form-select form-select-sm">
-                <option value="all">All</option>
-                <option value="unassigned">Unassigned</option>
-                <option value="mine">Assigned To Me</option>
-                <option value="others">Assigned To Others</option>
-                <option value="overdue">Overdue</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small mb-1">Status</label>
-              <select v-model="auditFilter.status" class="form-select form-select-sm">
-                <option value="all">All</option>
-                <option value="DRAFT">DRAFT</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="SUBMITTED">SUBMITTED</option>
-                <option value="ATTESTED">ATTESTED</option>
-                <option value="COMPLETE">COMPLETE</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small mb-1">Project</label>
-              <select v-model="auditFilter.projectId" class="form-select form-select-sm" data-testid="audit-project-filter">
-                <option value="all">All</option>
-                <option value="none">No project (legacy)</option>
-                <option v-for="p in projectOptions" :key="`ap-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small mb-1">Framework</label>
-              <select v-model="auditFilter.framework" class="form-select form-select-sm">
-                <option value="all">All</option>
-                <option v-for="f in frameworkOptions" :key="`af-${f}`" :value="f">{{ f }}</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small mb-1">Search</label>
-              <input v-model="auditFilter.search" class="form-control form-control-sm" placeholder="Application, assignee..." />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small mb-1">Saved Filter</label>
-              <div class="d-flex gap-1 align-items-center">
-                <input v-model="filterName" class="form-control form-control-sm" placeholder="Filter name" />
-                <div class="form-check form-check-inline m-0">
-                  <input id="shareFilter" v-model="shareFilter" class="form-check-input" type="checkbox" />
-                  <label for="shareFilter" class="form-check-label small">Share</label>
-                </div>
-                <button class="btn btn-outline-primary btn-sm" @click="saveCurrentFilter">Save</button>
-                <button class="btn btn-outline-secondary btn-sm" @click="resetAuditFilters">Reset</button>
+          <h2 class="h5 mb-2">Audits needing attention</h2>
+          <p v-if="isAuditorSession" class="small text-muted mb-3">
+            Defaults to <strong>your assignments</strong> and <strong>all open items</strong>. Adjust below anytime.
+          </p>
+          <div class="audit-filter-toolbar border rounded-3 bg-light p-3 mb-3">
+            <div class="row g-2 align-items-end">
+              <div class="col-sm-6 col-lg-3">
+                <label class="form-label small text-muted mb-1">Assignment</label>
+                <select v-model="auditFilter.queue" class="form-select form-select-sm" data-testid="audit-queue-filter">
+                  <option value="all">Everyone</option>
+                  <option value="mine">Assigned to me</option>
+                  <option value="unassigned">Unassigned</option>
+                  <option value="others">Assigned to others</option>
+                  <option value="overdue">Overdue</option>
+                </select>
               </div>
-            </div>
-            <div class="col-12" v-if="savedFilters.length">
-              <div class="d-flex flex-wrap gap-2">
-                <button
-                  v-for="f in savedFilters"
-                  :key="f.id"
-                  class="btn btn-outline-secondary btn-sm"
-                  @click="loadSavedFilter(f.id)"
+              <div class="col-sm-6 col-lg-3">
+                <label class="form-label small text-muted mb-1">Stage</label>
+                <select
+                  v-model="auditFilter.statusPreset"
+                  class="form-select form-select-sm"
+                  data-testid="audit-status-preset"
+                  title="Draft through Attested — excludes audits already in the Complete stage."
                 >
-                  {{ f.name }} <span v-if="f.shared">[shared]</span>
-                </button>
-                <button class="btn btn-outline-danger btn-sm" @click="clearSavedFilters">Clear Saved</button>
+                  <option value="active">All open items</option>
+                  <option value="all">All stages</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="IN_PROGRESS">In progress</option>
+                  <option value="SUBMITTED">Submitted</option>
+                  <option value="ATTESTED">Attested</option>
+                  <option value="COMPLETE">Complete</option>
+                </select>
+              </div>
+              <div class="col-lg-6">
+                <label class="form-label small text-muted mb-1">Search</label>
+                <input
+                  v-model="auditFilter.search"
+                  class="form-control form-control-sm"
+                  type="search"
+                  placeholder="Application, assignee…"
+                  autocomplete="off"
+                />
               </div>
             </div>
           </div>
 
-          <h2 class="h5 mb-3">Audits Needing Attention</h2>
+          <details class="mb-3 border rounded px-2 py-1 bg-light">
+            <summary class="small fw-semibold py-1 user-select-none">More filters &amp; saved views</summary>
+            <div class="row g-2 pt-2 pb-1">
+              <div class="col-md-3">
+                <label class="form-label small mb-1">Project</label>
+                <select v-model="auditFilter.projectId" class="form-select form-select-sm" data-testid="audit-project-filter">
+                  <option value="all">All</option>
+                  <option value="none">No project (legacy)</option>
+                  <option v-for="p in projectOptions" :key="`ap-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small mb-1">Framework</label>
+                <select v-model="auditFilter.framework" class="form-select form-select-sm">
+                  <option value="all">All</option>
+                  <option v-for="f in frameworkOptions" :key="`af-${f}`" :value="f">{{ f }}</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Saved filter</label>
+                <div class="d-flex gap-1 flex-wrap align-items-center">
+                  <input v-model="filterName" class="form-control form-control-sm" placeholder="Filter name" />
+                  <div class="form-check form-check-inline m-0">
+                    <input id="shareFilter" v-model="shareFilter" class="form-check-input" type="checkbox" />
+                    <label for="shareFilter" class="form-check-label small">Share</label>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm" @click="saveCurrentFilter">Save</button>
+                  <button class="btn btn-outline-secondary btn-sm" @click="resetAuditFilters">Reset</button>
+                </div>
+              </div>
+              <div class="col-12" v-if="savedFilters.length">
+                <div class="d-flex flex-wrap gap-2">
+                  <button
+                    v-for="f in savedFilters"
+                    :key="f.id"
+                    class="btn btn-outline-secondary btn-sm"
+                    @click="loadSavedFilter(f.id)"
+                  >
+                    {{ f.name }} <span v-if="f.shared">[shared]</span>
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" @click="clearSavedFilters">Clear Saved</button>
+                </div>
+              </div>
+            </div>
+          </details>
+
           <div class="small text-muted mb-2">
-            Showing {{ filteredAudits.length }} of {{ (dashboard.auditsNeedingAttention || []).length }} audits
+            Showing {{ filteredAudits.length }} of {{ statusScopedAuditsCount }}
           </div>
           <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
               <thead>
                 <tr>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('applicationName')">Application {{ auditSortIndicator('applicationName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('projectName')">Project {{ auditSortIndicator('projectName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('year')">Year {{ auditSortIndicator('year') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('status')">Status {{ auditSortIndicator('status') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('status')">Stage {{ auditSortIndicator('status') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('assignedToEmail')">Assigned {{ auditSortIndicator('assignedToEmail') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('frameworks')">Frameworks {{ auditSortIndicator('frameworks') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('dueAt')">Due {{ auditSortIndicator('dueAt') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAuditSort('pendingEvidenceCount')">Pending Evidence {{ auditSortIndicator('pendingEvidenceCount') }}</button></th>
+                  <th>Application</th>
+                  <th>Status</th>
+                  <th>Due</th>
+                  <th>Assignee</th>
+                  <th class="text-nowrap">Pending evidence</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="a in sortedAudits" :key="a.auditId">
-                  <td>{{ a.applicationName }}</td>
-                  <td>{{ a.projectName || '-' }}</td>
-                  <td>{{ a.year }}</td>
-                  <td><span class="badge status-badge" :class="statusBadge(a.status)">{{ auditStatusLabel(a.status) }}</span></td>
-                  <td><span class="badge text-bg-light border">{{ auditStageLabel(a.status) }}</span></td>
-                  <td>{{ a.assignedToEmail || '-' }}</td>
-                  <td>{{ a.frameworks || '-' }}</td>
-                  <td>{{ formatDate(a.dueAt) }}</td>
+                  <td>
+                    <div class="fw-medium">{{ a.applicationName }}</div>
+                    <div class="small text-muted">{{ a.year }} · {{ a.projectName || 'No project' }}</div>
+                  </td>
+                  <td>
+                    <span class="badge status-badge" :class="statusBadge(a.status)">{{ auditStatusLabel(a.status) }}</span>
+                    <div class="small text-muted mt-1">{{ auditStageLabel(a.status) }}</div>
+                  </td>
+                  <td>
+                    <span v-if="isAuditOverdue(a)" class="badge text-bg-danger me-1">Overdue</span>
+                    {{ formatDate(a.dueAt) }}
+                  </td>
+                  <td>{{ a.assignedToEmail || '—' }}</td>
                   <td>{{ a.pendingEvidenceCount }}</td>
                   <td class="text-nowrap">
-                    <router-link :to="`/admin/audits/${a.auditId}`" class="btn btn-outline-primary btn-sm me-2">Open</router-link>
+                    <router-link :to="`/admin/audits/${a.auditId}`" class="btn btn-outline-primary btn-sm me-1">Open</router-link>
                     <button
-                      class="btn btn-outline-primary btn-sm me-2"
+                      class="btn btn-outline-primary btn-sm me-1"
                       :disabled="!canManageAudits"
                       :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
                       @click="remind(a.auditId)"
@@ -149,7 +178,7 @@
                   </td>
                 </tr>
                 <tr v-if="!sortedAudits.length">
-                  <td colspan="10" class="text-muted text-center py-3">No audits match current filters.</td>
+                  <td colspan="6" class="text-muted text-center py-3">No audits match current filters.</td>
                 </tr>
               </tbody>
             </table>
@@ -157,83 +186,80 @@
         </div>
       </div>
 
-      <div class="card shadow-sm">
+      <!-- Evidence -->
+      <div class="card shadow-sm mb-3">
         <div class="card-body">
-          <div class="row g-2 mb-3">
-            <div class="col-md-3">
-              <label class="form-label small mb-1">Project</label>
-              <select v-model="evidenceFilter.projectId" class="form-select form-select-sm" data-testid="evidence-project-filter">
-                <option value="all">All</option>
-                <option value="none">No project (legacy)</option>
-                <option v-for="p in projectOptions" :key="`ep-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small mb-1">Framework</label>
-              <select v-model="evidenceFilter.framework" class="form-select form-select-sm">
-                <option value="all">All</option>
-                <option v-for="f in frameworkOptions" :key="`ef-${f}`" :value="f">{{ f }}</option>
-              </select>
-            </div>
-            <div class="col-md-6">
+          <h2 class="h5 mb-3">Evidence to review</h2>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <div class="flex-grow-1" style="min-width: 200px">
               <label class="form-label small mb-1">Search</label>
-              <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, file, description..." />
-            </div>
-            <div class="col-md-12 d-flex justify-content-end">
-              <button class="btn btn-outline-secondary btn-sm" @click="resetEvidenceFilters">Reset evidence filters</button>
+              <input v-model="evidenceFilter.search" class="form-control form-control-sm" placeholder="Application, control, file…" />
             </div>
           </div>
-          <h2 class="h5 mb-3">Evidence Review Queue</h2>
+          <details class="mb-3 border rounded px-2 py-1 bg-light">
+            <summary class="small fw-semibold py-1 user-select-none">More evidence filters</summary>
+            <div class="row g-2 pt-2 pb-1">
+              <div class="col-md-4">
+                <label class="form-label small mb-1">Project</label>
+                <select v-model="evidenceFilter.projectId" class="form-select form-select-sm" data-testid="evidence-project-filter">
+                  <option value="all">All</option>
+                  <option value="none">No project (legacy)</option>
+                  <option v-for="p in projectOptions" :key="`ep-${p.id}`" :value="String(p.id)">{{ p.name }}</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small mb-1">Framework</label>
+                <select v-model="evidenceFilter.framework" class="form-select form-select-sm">
+                  <option value="all">All</option>
+                  <option v-for="f in frameworkOptions" :key="`ef-${f}`" :value="f">{{ f }}</option>
+                </select>
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-outline-secondary btn-sm" @click="resetEvidenceFilters">Reset filters</button>
+              </div>
+            </div>
+          </details>
+
           <div class="small text-muted mb-2">
-            Showing {{ filteredEvidence.length }} of {{ (dashboard.evidenceQueue || []).length }} documents
+            Showing {{ filteredEvidence.length }} of {{ (dashboard.evidenceQueue || []).length }}
           </div>
           <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
               <thead>
                 <tr>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('applicationName')">Application {{ evidenceSortIndicator('applicationName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('projectName')">Project {{ evidenceSortIndicator('projectName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('controlControlId')">Control {{ evidenceSortIndicator('controlControlId') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('framework')">Framework {{ evidenceSortIndicator('framework') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('fileName')">File {{ evidenceSortIndicator('fileName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('notes')">Description {{ evidenceSortIndicator('notes') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('expiresAt')">Expires {{ evidenceSortIndicator('expiresAt') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('lifecycleStatus')">Lifecycle {{ evidenceSortIndicator('lifecycleStatus') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEvidenceSort('createdAt')">Created {{ evidenceSortIndicator('createdAt') }}</button></th>
-                  <th>Download</th>
+                  <th>Application</th>
+                  <th>Control</th>
+                  <th>File</th>
+                  <th>Expires</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="e in sortedEvidence" :key="e.evidenceId">
-                  <td>{{ e.applicationName }} ({{ e.year }})</td>
-                  <td>{{ e.projectName || '-' }}</td>
-                  <td>{{ e.controlControlId }}</td>
-                  <td>{{ e.framework || '-' }}</td>
-                  <td>{{ e.fileName || '-' }}</td>
-                  <td>{{ e.notes || '-' }}</td>
+                  <td>
+                    <div class="fw-medium">{{ e.applicationName }}</div>
+                    <div class="small text-muted">{{ e.year }} · {{ e.projectName || 'No project' }}</div>
+                  </td>
+                  <td>
+                    <span class="font-monospace small">{{ e.controlControlId }}</span>
+                    <div class="small text-muted">{{ e.framework || '—' }}</div>
+                  </td>
+                  <td>{{ e.fileName || e.title || '—' }}</td>
                   <td>
                     <span v-if="e.stale" class="badge text-bg-danger me-1">Stale</span>
                     {{ formatDateTime(e.expiresAt) }}
                   </td>
-                  <td>
-                    <span class="badge text-bg-light border me-1">{{ e.lifecycleStatus || 'ACTIVE' }}</span>
-                    <span v-if="e.legalHold" class="badge text-bg-dark">Legal Hold</span>
-                  </td>
-                  <td>{{ formatDateTime(e.createdAt) }}</td>
-                  <td>
+                  <td class="text-nowrap">
                     <button
                       type="button"
-                      class="btn btn-outline-secondary btn-sm"
+                      class="btn btn-outline-secondary btn-sm me-1"
                       :disabled="!e.uri || e.lifecycleStatus === 'DISPOSED'"
                       @click="downloadEvidence(e)"
                     >
                       Download
                     </button>
-                  </td>
-                  <td class="text-nowrap">
                     <button
-                      class="btn btn-outline-success btn-sm me-2"
+                      class="btn btn-outline-success btn-sm me-1"
                       :disabled="!canManageAudits"
                       :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
                       @click="reviewEvidence(e.evidenceId, 'ACCEPTED')"
@@ -241,7 +267,7 @@
                       Accept
                     </button>
                     <button
-                      class="btn btn-outline-danger btn-sm"
+                      class="btn btn-outline-danger btn-sm me-1"
                       :disabled="!canManageAudits"
                       :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
                       @click="reviewEvidence(e.evidenceId, 'REJECTED')"
@@ -249,7 +275,7 @@
                       Reject
                     </button>
                     <button
-                      class="btn btn-outline-secondary btn-sm ms-2"
+                      class="btn btn-outline-secondary btn-sm"
                       :disabled="!canManageAudits || e.lifecycleStatus === 'ARCHIVED' || e.lifecycleStatus === 'DISPOSED' || e.legalHold"
                       :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
                       @click="archiveEvidence(e.evidenceId)"
@@ -259,7 +285,7 @@
                   </td>
                 </tr>
                 <tr v-if="!sortedEvidence.length">
-                  <td colspan="11" class="text-muted text-center py-3">No evidence items match current filters.</td>
+                  <td colspan="5" class="text-muted text-center py-3">No evidence items match current filters.</td>
                 </tr>
               </tbody>
             </table>
@@ -267,12 +293,15 @@
         </div>
       </div>
 
-      <div class="card shadow-sm mt-3">
-        <div class="card-body">
+      <!-- Activity (collapsed by default) -->
+      <details class="card shadow-sm" data-testid="recent-activity-panel">
+        <summary class="card-header user-select-none mb-0 list-group-item-action py-3">
+          Recent activity · {{ (dashboard.recentActivity || []).length }} events
+        </summary>
+        <div class="card-body border-top">
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <h2 class="h5 mb-0">Recent Activity Feed</h2>
+            <button class="btn btn-outline-primary btn-sm" @click="exportRecentActivityCsv">Export CSV</button>
             <div class="d-flex gap-2 align-items-center flex-wrap">
-              <button class="btn btn-outline-primary btn-sm" @click="exportRecentActivityCsv">Export CSV</button>
               <select v-model="activityFilter.projectId" class="form-select form-select-sm">
                 <option value="all">All projects</option>
                 <option value="none">No project (legacy)</option>
@@ -285,22 +314,26 @@
                 <option value="evidence">Evidence</option>
                 <option value="audit">Audit workflow</option>
               </select>
-              <input v-model="activityFilter.search" class="form-control form-control-sm" placeholder="Search details or actor..." />
+              <input
+                v-model="activityFilter.search"
+                class="form-control form-control-sm"
+                data-testid="activity-search"
+                placeholder="Search details or actor..."
+              />
               <button class="btn btn-outline-secondary btn-sm" @click="resetActivityFilters">Reset</button>
             </div>
           </div>
           <div class="small text-muted mb-2">
-            Showing {{ filteredActivity.length }} of {{ (dashboard.recentActivity || []).length }} events
+            Showing {{ filteredActivity.length }} of {{ (dashboard.recentActivity || []).length }}
           </div>
           <div class="table-responsive">
             <table class="table table-striped align-middle mb-0">
               <thead>
                 <tr>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('createdAt')">When {{ activitySortIndicator('createdAt') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('applicationName')">Application {{ activitySortIndicator('applicationName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('projectName')">Project {{ activitySortIndicator('projectName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('activityType')">Type {{ activitySortIndicator('activityType') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleActivitySort('details')">Details {{ activitySortIndicator('details') }}</button></th>
+                  <th>When</th>
+                  <th>Application</th>
+                  <th>Type</th>
+                  <th>Details</th>
                   <th>Actor</th>
                   <th></th>
                 </tr>
@@ -308,23 +341,25 @@
               <tbody>
                 <tr v-for="event in sortedActivity" :key="event.id">
                   <td>{{ formatDateTime(event.createdAt) }}</td>
-                  <td>{{ event.applicationName }} ({{ event.year }})</td>
-                  <td>{{ event.projectName || '-' }}</td>
+                  <td>
+                    <div>{{ event.applicationName }}</div>
+                    <div class="small text-muted">{{ event.year }} · {{ event.projectName || '—' }}</div>
+                  </td>
                   <td><span class="badge text-bg-light border">{{ event.activityType }}</span></td>
-                  <td>{{ event.details || '-' }}</td>
+                  <td>{{ event.details || '—' }}</td>
                   <td>{{ event.actorEmail || 'system' }}</td>
                   <td class="text-nowrap">
-                    <router-link :to="`/admin/audits/${event.auditId}`" class="btn btn-outline-primary btn-sm">Open Audit</router-link>
+                    <router-link :to="`/admin/audits/${event.auditId}`" class="btn btn-outline-primary btn-sm">Open audit</router-link>
                   </td>
                 </tr>
                 <tr v-if="!sortedActivity.length">
-                  <td colspan="7" class="text-muted text-center py-3">No activity events match current filters.</td>
+                  <td colspan="6" class="text-muted text-center py-3">No activity events match current filters.</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </div>
+      </details>
     </div>
   </div>
 </template>
@@ -341,14 +376,24 @@ const loading = ref(true)
 const loadError = ref('')
 const dashboard = ref({ summary: {}, auditsNeedingAttention: [], evidenceQueue: [] })
 const currentUserEmail = ref('')
+/** Set from /api/auth/me on load — drives auditor-specific defaults */
+const sessionRole = ref(null)
+const auditorDefaultsApplied = ref(false)
 const authStore = useAuthStore()
 const canManageAudits = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
+const isAuditorSession = computed(() => sessionRole.value === 'AUDITOR')
 const filterName = ref('')
 const shareFilter = ref(true)
 const savedFilters = ref([])
+
+/** Stages shown for preset `active` (“all open items” — everything except Complete) */
+const DEFAULT_ACTIVE_STATUSES = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'ATTESTED']
+const ALL_AUDIT_STATUSES = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'ATTESTED', 'COMPLETE']
+
 const auditFilter = reactive({
   queue: 'all',
-  status: 'all',
+  /** active | all | DRAFT | … — drives which statuses appear */
+  statusPreset: 'active',
   projectId: 'all',
   framework: 'all',
   search: ''
@@ -366,13 +411,47 @@ const activityFilter = reactive({
 
 const cards = computed(() => {
   const s = dashboard.value.summary || {}
+  const pending = (dashboard.value.evidenceQueue || []).length
   return [
-    { label: 'Total Audits', value: s.totalAudits ?? 0 },
-    { label: 'Open Audits', value: s.openAudits ?? 0 },
-    { label: 'Overdue Audits', value: s.overdueAudits ?? 0 },
-    { label: 'Submitted', value: s.submittedAudits ?? 0 }
+    { label: 'Open audits', value: s.openAudits ?? 0, variant: 'default' },
+    { label: 'Overdue', value: s.overdueAudits ?? 0, variant: (s.overdueAudits ?? 0) > 0 ? 'danger' : 'default' },
+    { label: 'Awaiting review', value: s.submittedAudits ?? 0, variant: 'default' },
+    { label: 'Evidence to review', value: pending, variant: pending > 0 ? 'warning' : 'default' }
   ]
 })
+
+const pendingEvidenceCount = computed(() => (dashboard.value.evidenceQueue || []).length)
+
+const healthMessage = computed(() => {
+  const s = dashboard.value.summary || {}
+  const overdue = s.overdueAudits ?? 0
+  const submitted = s.submittedAudits ?? 0
+  const ev = pendingEvidenceCount.value
+  if (overdue > 0) {
+    return `Watch: ${overdue} audit(s) are past due — confirm owners and dates before work stacks up.`
+  }
+  if (submitted > 0) {
+    return `Next: ${submitted} submitted audit(s) need review or attestation.`
+  }
+  if (ev > 0) {
+    return `Next: ${ev} evidence item(s) are waiting for accept/reject.`
+  }
+  return 'Looking clear — no overdue audits or evidence backlog on this snapshot.'
+})
+
+const healthBorderClass = computed(() => {
+  const s = dashboard.value.summary || {}
+  if ((s.overdueAudits ?? 0) > 0) return 'border-danger'
+  if ((s.submittedAudits ?? 0) > 0 || pendingEvidenceCount.value > 0) return 'border-warning'
+  return 'border-success'
+})
+
+function isAuditOverdue(a) {
+  if (!a?.dueAt) return false
+  const st = a.status
+  if (st === 'COMPLETE') return false
+  return new Date(a.dueAt).getTime() < Date.now()
+}
 
 onMounted(load)
 
@@ -386,6 +465,11 @@ async function load() {
     ])
     dashboard.value = res.data || { summary: {}, auditsNeedingAttention: [], evidenceQueue: [] }
     currentUserEmail.value = meRes.data?.email || ''
+    sessionRole.value = meRes.data?.role || null
+    if (!auditorDefaultsApplied.value && sessionRole.value === 'AUDITOR') {
+      auditFilter.queue = 'mine'
+      auditorDefaultsApplied.value = true
+    }
     await loadSavedFilters()
   } catch (e) {
     loadError.value = e.response?.data?.error || 'Failed to load auditor dashboard data.'
@@ -397,8 +481,8 @@ async function load() {
 
 function resetAuditFilters() {
   Object.assign(auditFilter, {
-    queue: 'all',
-    status: 'all',
+    queue: sessionRole.value === 'AUDITOR' ? 'mine' : 'all',
+    statusPreset: 'active',
     projectId: 'all',
     framework: 'all',
     search: ''
@@ -532,17 +616,40 @@ const projectOptions = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const filteredAudits = computed(() => {
+const effectiveStatuses = computed(() => {
+  const p = auditFilter.statusPreset || 'active'
+  if (p === 'active') return [...DEFAULT_ACTIVE_STATUSES]
+  if (p === 'all') return [...ALL_AUDIT_STATUSES]
+  return [p]
+})
+
+function matchesQueue(a) {
+  const q = auditFilter.queue || 'all'
+  if (q === 'all') return true
   const now = Date.now()
+  const email = currentUserEmail.value
+  if (q === 'unassigned') return !a.assignedToEmail
+  if (q === 'mine') return !!email && a.assignedToEmail === email
+  if (q === 'others') return !!a.assignedToEmail && a.assignedToEmail !== email
+  if (q === 'overdue') {
+    if (!a.dueAt) return false
+    if (a.status === 'COMPLETE') return false
+    return new Date(a.dueAt).getTime() < now
+  }
+  return true
+}
+
+/** Count before queue/search/project/framework (matches status selection only) */
+const statusScopedAuditsCount = computed(() => {
+  const rows = dashboard.value.auditsNeedingAttention || []
+  const statuses = effectiveStatuses.value
+  return rows.filter((a) => statuses.includes(a.status)).length
+})
+
+const filteredAudits = computed(() => {
   return (dashboard.value.auditsNeedingAttention || []).filter((a) => {
-    if (auditFilter.queue === 'unassigned' && !!a.assignedToEmail) return false
-    if (auditFilter.queue === 'mine' && a.assignedToEmail !== currentUserEmail.value) return false
-    if (auditFilter.queue === 'others' && (!a.assignedToEmail || a.assignedToEmail === currentUserEmail.value)) return false
-    if (auditFilter.queue === 'overdue') {
-      if (!a.dueAt) return false
-      if (new Date(a.dueAt).getTime() >= now) return false
-    }
-    if (auditFilter.status !== 'all' && a.status !== auditFilter.status) return false
+    if (!effectiveStatuses.value.includes(a.status)) return false
+    if (!matchesQueue(a)) return false
     if (auditFilter.projectId === 'none' && a.projectId) return false
     if (auditFilter.projectId !== 'all' && auditFilter.projectId !== 'none' && String(a.projectId) !== auditFilter.projectId) return false
     if (auditFilter.framework !== 'all' && !(a.frameworks || '').includes(auditFilter.framework)) return false
@@ -585,16 +692,16 @@ const filteredActivity = computed(() => {
   })
 })
 
-const { sortedRows: sortedAudits, toggleSort: toggleAuditSort, sortIndicator: auditSortIndicator } = useTableSort(filteredAudits, {
+const { sortedRows: sortedAudits } = useTableSort(filteredAudits, {
   initialKey: 'dueAt'
 })
 
-const { sortedRows: sortedEvidence, toggleSort: toggleEvidenceSort, sortIndicator: evidenceSortIndicator } = useTableSort(filteredEvidence, {
+const { sortedRows: sortedEvidence } = useTableSort(filteredEvidence, {
   initialKey: 'createdAt',
   initialDirection: 'desc'
 })
 
-const { sortedRows: sortedActivity, toggleSort: toggleActivitySort, sortIndicator: activitySortIndicator } = useTableSort(filteredActivity, {
+const { sortedRows: sortedActivity } = useTableSort(filteredActivity, {
   initialKey: 'createdAt',
   initialDirection: 'desc'
 })
@@ -632,11 +739,46 @@ async function saveCurrentFilter() {
   }
 }
 
+function normalizeAuditFilterState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const out = { ...raw }
+  delete out.queueBuckets
+  delete out.statuses
+
+  if (Array.isArray(raw.queueBuckets)) {
+    const b = raw.queueBuckets
+    if (b.length === 0) out.queue = 'all'
+    else if (b.length === 1) out.queue = b[0]
+    else out.queue = 'all'
+  }
+  if (out.queue === undefined || out.queue === null) out.queue = 'all'
+
+  if (raw.statuses && Array.isArray(raw.statuses)) {
+    const sorted = [...raw.statuses].sort().join(',')
+    const activeSorted = [...DEFAULT_ACTIVE_STATUSES].sort().join(',')
+    const allSorted = [...ALL_AUDIT_STATUSES].sort().join(',')
+    if (sorted === activeSorted) out.statusPreset = 'active'
+    else if (sorted === allSorted) out.statusPreset = 'all'
+    else if (raw.statuses.length === 1) out.statusPreset = raw.statuses[0]
+    else out.statusPreset = 'active'
+  } else if (raw.statusPreset !== undefined) {
+    out.statusPreset = raw.statusPreset
+  } else if (typeof raw.status === 'string') {
+    out.statusPreset = raw.status === 'all' ? 'active' : raw.status
+  } else {
+    out.statusPreset = 'active'
+  }
+
+  delete out.status
+  return out
+}
+
 function loadSavedFilter(id) {
   const found = savedFilters.value.find((f) => f.id === id)
   if (!found) return
   const state = found.filterState || {}
-  Object.assign(auditFilter, state.auditFilter || {})
+  const audit = normalizeAuditFilterState(state.auditFilter)
+  if (audit) Object.assign(auditFilter, audit)
   Object.assign(evidenceFilter, state.evidenceFilter || {})
   Object.assign(activityFilter, state.activityFilter || {})
   toastSuccess(`Loaded filter "${found.name}".`)
@@ -686,3 +828,9 @@ watch([auditFilter, evidenceFilter, activityFilter], () => {
   // Keep UI reactive and deterministic for saved-filter snapshots.
 }, { deep: true })
 </script>
+
+<style scoped>
+.audit-filter-toolbar {
+  border-color: var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08)) !important;
+}
+</style>

@@ -1,12 +1,19 @@
 <template>
   <div class="admin-layout">
-    <aside class="admin-sidebar" :class="{ open: sidebarOpen }">
+    <div
+      class="sidebar-backdrop"
+      :class="{ 'is-visible': sidebarOpen }"
+      aria-hidden="true"
+      @click="sidebarOpen = false"
+    />
+
+    <aside id="admin-sidebar-nav" class="admin-sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-brand">
-        <router-link to="/admin" class="brand-link">Cybersecurity Assessment</router-link>
+        <router-link to="/admin" class="brand-link" @click="sidebarOpen = false">Cybersecurity Assessment</router-link>
         <div class="brand-caption">Admin Workspace</div>
       </div>
 
-      <nav class="sidebar-nav">
+      <nav class="sidebar-nav" aria-label="Admin sidebar">
         <section v-for="section in visibleSections" :key="section.key" class="nav-section">
           <div class="section-label">{{ section.label }}</div>
           <router-link
@@ -14,7 +21,8 @@
             :key="item.to"
             :to="item.to"
             class="nav-item"
-            :class="{ active: isActive(item.to) }"
+            :class="{ active: isNavItemActive(item.to) }"
+            @click="sidebarOpen = false"
           >
             {{ item.label }}
           </router-link>
@@ -25,7 +33,13 @@
     <div class="admin-main">
       <header class="utility-bar border-bottom">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <button type="button" class="btn btn-outline-secondary btn-sm menu-toggle" @click="sidebarOpen = !sidebarOpen">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm menu-toggle"
+            :aria-expanded="sidebarOpen"
+            aria-controls="admin-sidebar-nav"
+            @click="sidebarOpen = !sidebarOpen"
+          >
             Menu
           </button>
           <div class="small text-muted">
@@ -42,11 +56,15 @@
           </div>
         </div>
 
-        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-          <router-link to="/my-audits" class="btn btn-outline-secondary btn-sm">My Audits</router-link>
-          <router-link to="/my-tasks" class="btn btn-outline-secondary btn-sm">My Tasks</router-link>
-
-          <div class="dropdown position-relative">
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end utility-bar-actions">
+          <div
+            ref="notificationsDropdownRef"
+            class="dropdown position-relative utility-dropdown"
+            @mouseenter="positionUtilityDropdown(notificationsDropdownRef)"
+            @mouseleave="resetUtilityDropdown(notificationsDropdownRef)"
+            @focusin="positionUtilityDropdown(notificationsDropdownRef)"
+            @focusout="onUtilityDropdownFocusOut"
+          >
             <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button">
               Notifications
               <span v-if="unreadCount > 0" class="badge text-bg-danger ms-1">{{ unreadCount }}</span>
@@ -70,15 +88,40 @@
             </div>
           </div>
 
-          <div class="dropdown position-relative">
+          <div
+            ref="accountDropdownRef"
+            class="dropdown position-relative utility-dropdown"
+            @mouseenter="positionUtilityDropdown(accountDropdownRef)"
+            @mouseleave="resetUtilityDropdown(accountDropdownRef)"
+            @focusin="positionUtilityDropdown(accountDropdownRef)"
+            @focusout="onUtilityDropdownFocusOut"
+          >
             <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button">Account</button>
-            <div class="dropdown-menu dropdown-menu-end shadow-sm">
-              <router-link to="/profile" class="dropdown-item">Profile</router-link>
+            <div class="dropdown-menu dropdown-menu-end shadow-sm account-menu">
+              <router-link to="/admin/profile" class="dropdown-item">Profile</router-link>
               <button type="button" class="dropdown-item" @click="logout">Log out</button>
             </div>
           </div>
         </div>
       </header>
+
+      <!-- Same links as the sidebar, for narrow viewports where the drawer is hidden -->
+      <nav class="admin-mobile-nav border-bottom bg-white" aria-label="Admin pages">
+        <div class="admin-mobile-nav-scroll">
+          <template v-for="section in visibleSections" :key="'mob-' + section.key">
+            <span class="admin-mobile-nav-section-label">{{ section.label }}</span>
+            <router-link
+              v-for="item in section.items"
+              :key="'mob-' + item.to"
+              :to="item.to"
+              class="admin-mobile-nav-pill"
+              :class="{ active: isNavItemActive(item.to) }"
+            >
+              {{ item.label }}
+            </router-link>
+          </template>
+        </div>
+      </nav>
 
       <main class="admin-content">
         <router-view />
@@ -88,17 +131,82 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { adminSections } from '../config/adminNavigation'
+import { findLongestNavMatch } from '../utils/adminNavMatch'
 import { useNotificationsMenu } from '../composables/useNotificationsMenu'
 
 const authStore = useAuthStore()
 const route = useRoute()
 const sidebarOpen = ref(false)
+const notificationsDropdownRef = ref(null)
+const accountDropdownRef = ref(null)
 const { notifications, unreadCount, markRead, markAllRead } = useNotificationsMenu(authStore)
+
+/** Fixed positioning so menus escape grid overflow and stay aligned to the trigger without shifting layout */
+function getDropdownRoot(refOrEl) {
+  return refOrEl?.value ?? refOrEl
+}
+
+function positionUtilityDropdown(refOrEl) {
+  const root = getDropdownRoot(refOrEl)
+  if (!root) return
+  const btn = root.querySelector('button.dropdown-toggle')
+  const menu = root.querySelector('.dropdown-menu')
+  if (!btn || !menu) return
+  const rect = btn.getBoundingClientRect()
+  const margin = 4
+  menu.style.position = 'fixed'
+  menu.style.top = `${Math.round(rect.bottom + margin)}px`
+  menu.style.left = 'auto'
+  menu.style.right = `${Math.round(window.innerWidth - rect.right)}px`
+  menu.style.marginTop = '0'
+  menu.style.marginLeft = '0'
+  menu.style.transform = 'none'
+  menu.style.zIndex = '2000'
+}
+
+function resetUtilityDropdown(refOrEl) {
+  const root = getDropdownRoot(refOrEl)
+  if (!root) return
+  const menu = root.querySelector('.dropdown-menu')
+  if (!menu) return
+  ;['position', 'top', 'left', 'right', 'marginTop', 'marginLeft', 'transform', 'zIndex'].forEach((k) => {
+    menu.style[k] = ''
+  })
+}
+
+function onUtilityDropdownFocusOut(event) {
+  const el = event.currentTarget
+  const next = event.relatedTarget
+  if (next && el.contains(next)) return
+  resetUtilityDropdown(el)
+}
+
+function repositionOpenUtilityDropdowns() {
+  if (notificationsDropdownRef.value?.matches(':hover') || notificationsDropdownRef.value?.contains(document.activeElement)) {
+    positionUtilityDropdown(notificationsDropdownRef)
+  }
+  if (accountDropdownRef.value?.matches(':hover') || accountDropdownRef.value?.contains(document.activeElement)) {
+    positionUtilityDropdown(accountDropdownRef)
+  }
+}
+
+let repositionOnScroll = null
+onMounted(() => {
+  repositionOnScroll = () => repositionOpenUtilityDropdowns()
+  window.addEventListener('scroll', repositionOnScroll, true)
+  window.addEventListener('resize', repositionOnScroll)
+})
+onUnmounted(() => {
+  if (repositionOnScroll) {
+    window.removeEventListener('scroll', repositionOnScroll, true)
+    window.removeEventListener('resize', repositionOnScroll)
+  }
+})
 
 const visibleSections = computed(() => {
   return adminSections
@@ -113,12 +221,15 @@ const visibleSections = computed(() => {
     .filter((section) => section.items.length > 0)
 })
 
-function isActive(to) {
-  return route.path === to || route.path.startsWith(`${to}/`)
+const navMatch = computed(() => findLongestNavMatch(route.path, visibleSections.value))
+
+function isNavItemActive(itemTo) {
+  return navMatch.value?.item.to === itemTo
 }
 
-const currentSection = computed(() => route.meta.section || 'Workspace')
-const currentPage = computed(() => route.meta.pageTitle || 'Overview')
+/** Breadcrumb: prefer labels from the same nav config as the sidebar */
+const currentSection = computed(() => navMatch.value?.section.label ?? route.meta.section ?? 'Workspace')
+const currentPage = computed(() => navMatch.value?.item.label ?? route.meta.pageTitle ?? 'Overview')
 
 watch(
   () => route.fullPath,
@@ -144,6 +255,7 @@ async function logout() {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   background: #f8f9fa;
+  overflow: visible;
 }
 
 .admin-sidebar {
@@ -205,6 +317,7 @@ async function logout() {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: visible;
 }
 
 .utility-bar {
@@ -214,34 +327,113 @@ async function logout() {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+  overflow: visible;
+}
+
+.utility-bar-actions {
+  flex-shrink: 0;
+}
+
+/* Invisible hover bridge so moving from button → menu doesn’t close the dropdown */
+.utility-dropdown {
+  padding-bottom: 0.5rem;
 }
 
 .admin-content {
   padding: 0.9rem;
 }
 
-.dropdown:hover > .dropdown-menu,
-.dropdown:focus-within > .dropdown-menu {
+.utility-dropdown:hover > .dropdown-menu,
+.utility-dropdown:focus-within > .dropdown-menu {
   display: block;
 }
 
 .notification-menu {
-  width: 24rem;
-  max-height: 24rem;
+  width: min(24rem, calc(100vw - 1rem));
+  max-width: calc(100vw - 1rem);
+  max-height: min(24rem, 70vh);
   overflow: auto;
+}
+
+.account-menu {
+  min-width: 11rem;
+  max-width: calc(100vw - 1rem);
 }
 
 .menu-toggle {
   display: none;
 }
 
-@media (max-width: 1100px) {
-  .admin-layout {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
+.sidebar-backdrop {
+  display: none;
+}
+
+.admin-mobile-nav {
+  display: none;
 }
 
 @media (max-width: 900px) {
+  .sidebar-backdrop.is-visible {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .admin-mobile-nav {
+    display: block;
+  }
+
+  .admin-mobile-nav-scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding: 0.5rem 0.65rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-mobile-nav-section-label {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6c757d;
+    padding: 0 0.25rem 0 0.35rem;
+    border-left: 2px solid #dee2e6;
+    margin-left: 0.15rem;
+  }
+
+  .admin-mobile-nav-section-label:first-child {
+    border-left: 0;
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .admin-mobile-nav-pill {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid #ced4da;
+    color: #212529;
+    text-decoration: none;
+    background: #fff;
+    white-space: nowrap;
+  }
+
+  .admin-mobile-nav-pill:hover {
+    background: #f8f9fa;
+  }
+
+  .admin-mobile-nav-pill.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+  }
+
   .admin-layout {
     grid-template-columns: 1fr;
   }
@@ -273,6 +465,13 @@ async function logout() {
 
   .admin-content {
     padding: 0.75rem;
+  }
+}
+
+/* Tablet: narrow sidebar column; mobile (≤900px) overrides to overlay + single column above */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .admin-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
   }
 }
 </style>

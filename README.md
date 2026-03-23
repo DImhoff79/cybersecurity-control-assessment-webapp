@@ -26,7 +26,7 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - Audit projects and kickoff workflows
   - Audit project scope editing with linked-audit reconciliation (add/remove scoped apps)
   - Automatic assignment of project-created audits to each scoped application's owner
-  - Unified admin **Operations Queue** (triage + submitted reviews)
+  - Unified admin **Audit Queue** (triage + submitted reviews)
   - Assign/send/remind/attest
   - Self-service owner response flow
   - Task delegation via My Tasks
@@ -89,7 +89,7 @@ npm run dev -- --host
 3. Open **Admin Workspace -> Applications** to create/manage applications.
 4. Open **Admin Workspace -> Questionnaire** to maintain controls/questions and governance versions.
 5. Open **Admin Workspace -> Audit Projects** to create projects and scope applications.
-6. Open **Admin Workspace -> Operations Queue** for triage and submitted review workflows.
+6. Open **Admin Workspace -> Audit Queue** for triage and submitted review workflows.
 
 ## Architecture Overview
 

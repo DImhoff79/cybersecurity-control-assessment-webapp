@@ -38,6 +38,9 @@ describe('Reports', () => {
       if (url === '/api/reports/board-pack.pdf') {
         return Promise.resolve({ data: 'pdf-bytes' })
       }
+      if (url === '/api/reports/schedules') {
+        return Promise.resolve({ data: [] })
+      }
       return Promise.resolve({ data: {} })
     })
     vi.stubGlobal('URL', {
@@ -65,18 +68,18 @@ describe('Reports', () => {
     })
     await flushPromises()
 
+    expect(wrapper.text()).toContain('Open audits')
+    expect(wrapper.text()).toContain('By year')
+    expect(wrapper.text()).toContain('Quick links')
     expect(wrapper.text()).toContain('Applications')
-    expect(wrapper.text()).toContain('By Year')
-    expect(wrapper.text()).toContain('Manager Drilldowns')
-    expect(wrapper.text()).toContain('Executive Deltas & SLA Alerts')
 
-    const exportBtn = wrapper.findAll('button').find((b) => b.text().includes('Export Audits CSV'))
+    const exportBtn = wrapper.get('[data-testid="export-audits-csv"]')
     await exportBtn.trigger('click')
     await flushPromises()
 
     expect(api.get).toHaveBeenCalledWith('/api/reports/audits.csv', { responseType: 'blob' })
 
-    const pdfBtn = wrapper.findAll('button').find((b) => b.text().includes('Board Pack PDF'))
+    const pdfBtn = wrapper.get('[data-testid="export-board-pack-pdf"]')
     await pdfBtn.trigger('click')
     await flushPromises()
     expect(api.get).toHaveBeenCalledWith('/api/reports/board-pack.pdf', { responseType: 'blob' })
@@ -111,6 +114,9 @@ describe('Reports', () => {
       }
       if (url === '/api/reports/risk-kpis') {
         return Promise.resolve({ data: { openRisks: 1, highRisks: 1, overdueRemediationActions: 0 } })
+      }
+      if (url === '/api/reports/schedules') {
+        return Promise.resolve({ data: [] })
       }
       return Promise.resolve({ data: {} })
     })

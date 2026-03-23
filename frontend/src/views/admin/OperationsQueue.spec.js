@@ -23,8 +23,8 @@ describe('OperationsQueue', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Operations Queue')
-    expect(wrapper.text()).toContain('Triage Hub')
+    expect(wrapper.text()).toContain('Audit Queue')
+    expect(wrapper.text()).not.toContain('Triage Hub')
     expect(wrapper.find('.stub-workbench').exists()).toBe(true)
   })
 
@@ -47,5 +47,9 @@ describe('OperationsQueue', () => {
     expect(reviewsBtn).toBeDefined()
     await reviewsBtn.trigger('click')
     expect(wrapper.find('.stub-reviews').exists()).toBe(true)
+
+    const triageBtn = wrapper.findAll('button').find((b) => b.text().includes('Triage Hub'))
+    await triageBtn.trigger('click')
+    expect(wrapper.find('.stub-workbench').exists()).toBe(true)
   })
 })

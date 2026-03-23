@@ -17,6 +17,30 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/admin/operations' },
         {
+          path: 'my-audits',
+          name: 'AdminWorkspaceMyAudits',
+          component: () => import('../views/selfservice/MyAudits.vue'),
+          meta: { section: 'Workspace', pageTitle: 'My Audits' }
+        },
+        {
+          path: 'my-tasks',
+          name: 'AdminWorkspaceMyTasks',
+          component: () => import('../views/selfservice/MyTasks.vue'),
+          meta: { section: 'Workspace', pageTitle: 'My Tasks' }
+        },
+        {
+          path: 'my-policies',
+          name: 'AdminWorkspaceMyPolicies',
+          component: () => import('../views/selfservice/MyPolicies.vue'),
+          meta: { section: 'Workspace', pageTitle: 'My Policies' }
+        },
+        {
+          path: 'profile',
+          name: 'AdminWorkspaceProfile',
+          component: () => import('../views/Profile.vue'),
+          meta: { section: 'Workspace', pageTitle: 'Profile' }
+        },
+        {
           path: 'applications',
           name: 'AdminApplications',
           component: () => import('../views/admin/Applications.vue'),
@@ -38,7 +62,7 @@ const router = createRouter({
           path: 'operations',
           name: 'AdminOperations',
           component: () => import('../views/admin/OperationsQueue.vue'),
-          meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Operations Queue' }
+          meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Audit Queue' }
         },
         {
           path: 'issue-program',
@@ -157,6 +181,11 @@ router.beforeEach(async (to, from, next) => {
     await authStore.fetchUser()
   } catch {
     return next({ name: 'Login' })
+  }
+  // Keep admins in the Admin shell for self-service pages (same sidebar as other admin routes)
+  const adminWorkspacePaths = ['/my-audits', '/my-tasks', '/my-policies', '/profile']
+  if (authStore.canAccessAdmin && adminWorkspacePaths.includes(to.path)) {
+    return next({ path: `/admin${to.path}`, query: to.query, hash: to.hash, replace: true })
   }
   if (to.path === '/admin') {
     if (!authStore.canAccessAdmin) return next('/my-audits')
