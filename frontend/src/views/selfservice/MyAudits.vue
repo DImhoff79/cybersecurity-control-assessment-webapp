@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="tour-my-audits-panel">
     <div class="mb-3">
       <h1 class="h3 mb-1">My Audits</h1>
       <p class="text-muted mb-0">

@@ -31,7 +31,7 @@
     </aside>
 
     <div class="admin-main">
-      <header class="utility-bar border-bottom">
+      <header id="tour-admin-toolbar" class="utility-bar border-bottom">
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
@@ -123,7 +123,7 @@
         </div>
       </nav>
 
-      <main class="admin-content">
+      <main id="tour-admin-content" class="admin-content">
         <router-view />
       </main>
     </div>

@@ -2,22 +2,22 @@
   <div class="min-vh-100 bg-light">
     <router-view v-if="route.path.startsWith('/admin')" />
     <div v-else-if="showSelfServiceShell" class="workspace-layout">
-      <aside class="workspace-sidebar">
+      <aside id="tour-workspace-sidebar" class="workspace-sidebar">
         <div class="workspace-brand">
           <div class="fw-semibold">Cybersecurity Assessment</div>
           <div class="small text-white-50">Workspace</div>
         </div>
         <nav class="workspace-nav">
-          <router-link to="/my-audits" class="workspace-nav-item">My Audits</router-link>
-          <router-link to="/my-tasks" class="workspace-nav-item">My Tasks</router-link>
-          <router-link to="/my-policies" class="workspace-nav-item">My Policies</router-link>
+          <router-link id="tour-nav-my-audits" to="/my-audits" class="workspace-nav-item">My Audits</router-link>
+          <router-link id="tour-nav-my-tasks" to="/my-tasks" class="workspace-nav-item">My Tasks</router-link>
+          <router-link id="tour-nav-my-policies" to="/my-policies" class="workspace-nav-item">My Policies</router-link>
           <router-link to="/profile" class="workspace-nav-item">Profile</router-link>
           <router-link v-if="authStore.canAccessAdmin" to="/admin" class="workspace-nav-item">Admin Workspace</router-link>
         </nav>
       </aside>
 
       <div class="workspace-main">
-        <header class="workspace-utility border-bottom">
+        <header id="tour-workspace-header" class="workspace-utility border-bottom">
           <div class="small text-muted">
             Signed in as <strong>{{ authStore.user?.displayName || authStore.user?.email }}</strong>
           </div>
@@ -48,7 +48,7 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" @click="logout">Log out</button>
           </div>
         </header>
-        <main class="container py-4 flex-grow-1">
+        <main id="tour-workspace-content" class="container py-4 flex-grow-1">
           <router-view />
         </main>
       </div>
@@ -60,11 +60,16 @@
 
 <script setup>
 import api from './services/api'
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import AppToasts from './components/AppToasts.vue'
 import { useNotificationsMenu } from './composables/useNotificationsMenu'
+import {
+  startWorkspaceTour,
+  startApplicationOwnerWorkspaceTour,
+  startAdminTour
+} from './composables/productTour'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -74,6 +79,46 @@ const showSelfServiceShell = computed(() => {
   if (!authStore.user || route.name === 'Login') return false
   return !route.path.startsWith('/admin')
 })
+
+/** Run once per session per shell (workspace vs admin); resets on page reload. */
+const didWorkspaceTour = ref(false)
+const didAdminTour = ref(false)
+
+function scheduleProductTour() {
+  if (!authStore.user || route.name === 'Login') return
+  nextTick(() => {
+    setTimeout(() => {
+      if (route.path.startsWith('/admin')) {
+        if (!didAdminTour.value) {
+          didAdminTour.value = true
+          startAdminTour()
+        }
+      } else if (showSelfServiceShell.value) {
+        if (!didWorkspaceTour.value) {
+          didWorkspaceTour.value = true
+          if (authStore.user?.role === 'APPLICATION_OWNER') {
+            startApplicationOwnerWorkspaceTour()
+          } else {
+            startWorkspaceTour()
+          }
+        }
+      }
+    }, 750)
+  })
+}
+
+watch(
+  () => [authStore.user?.id, route.fullPath],
+  () => {
+    if (!authStore.user) {
+      didWorkspaceTour.value = false
+      didAdminTour.value = false
+      return
+    }
+    scheduleProductTour()
+  },
+  { immediate: true }
+)
 
 async function logout() {
   try {
