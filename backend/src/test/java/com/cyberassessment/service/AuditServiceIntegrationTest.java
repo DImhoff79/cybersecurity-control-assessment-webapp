@@ -40,8 +40,6 @@ class AuditServiceIntegrationTest {
     @Autowired
     private AuditControlRepository auditControlRepository;
     @Autowired
-    private AuditControlService auditControlService;
-    @Autowired
     private AuditControlAnswerRepository auditControlAnswerRepository;
 
     @AfterEach
@@ -170,6 +168,13 @@ class AuditServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("auditor-submit@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Submit App")
                 .description("test")
@@ -179,6 +184,7 @@ class AuditServiceIntegrationTest {
         authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2034);
         auditService.assign(created.getId(), owner.getId());
+        auditService.addAssignment(created.getId(), auditor.getId(), AuditAssignmentRole.REVIEWER);
         auditService.sendToOwner(created.getId());
         authenticate(owner.getEmail());
 
@@ -191,7 +197,7 @@ class AuditServiceIntegrationTest {
         auditService.submitAnswers(created.getId(), request);
 
         AuditDto submitted = auditService.submitAudit(created.getId());
-        assertThat(submitted.getStatus()).isEqualTo(AuditStatus.SUBMITTED);
+        assertThat(submitted.getStatus()).isEqualTo(AuditStatus.PENDING_APPROVAL);
         assertThat(submitted.getCompletedAt()).isNotNull();
     }
 
@@ -261,8 +267,6 @@ class AuditServiceIntegrationTest {
         AuditDto created = auditService.create(app.getId(), 2042);
         auditService.assign(created.getId(), owner.getId());
         auditService.addAssignment(created.getId(), delegate.getId(), AuditAssignmentRole.DELEGATE);
-        Long auditControlId = auditControlRepository.findByAuditId(created.getId()).get(0).getId();
-        auditControlService.addAssignment(auditControlId, delegate.getId(), AuditControlAssignmentRole.CONTRIBUTOR);
 
         authenticate(delegate.getEmail());
         List<AuditQuestionItemDto> questions = auditService.getQuestionsForAudit(created.getId());

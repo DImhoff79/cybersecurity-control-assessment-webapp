@@ -1,17 +1,13 @@
 package com.cyberassessment.service;
 
 import com.cyberassessment.dto.AuditControlAnswerDto;
-import com.cyberassessment.dto.AuditControlAssignmentDto;
 import com.cyberassessment.dto.AuditControlDto;
 import com.cyberassessment.dto.AuditEvidenceDto;
 import com.cyberassessment.dto.BulkAuditControlUpdateItemDto;
-import com.cyberassessment.dto.MyTaskDto;
 import com.cyberassessment.entity.*;
-import com.cyberassessment.repository.AuditControlAssignmentRepository;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditRepository;
 import com.cyberassessment.repository.AuditAssignmentRepository;
-import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -28,9 +24,7 @@ public class AuditControlService {
     private final AuditRepository auditRepository;
     private final CurrentUserService currentUserService;
     private final AuditActivityLogService auditActivityLogService;
-    private final AuditControlAssignmentRepository auditControlAssignmentRepository;
     private final AuditAssignmentRepository auditAssignmentRepository;
-    private final UserRepository userRepository;
 
     public static AuditControlDto toDto(AuditControl ac) {
         if (ac == null) return null;
@@ -48,19 +42,6 @@ public class AuditControlService {
         List<AuditEvidenceDto> evidences = ac.getEvidences().stream()
                 .map(AuditEvidenceService::toDto)
                 .collect(Collectors.toList());
-        List<AuditControlAssignmentDto> assignments = ac.getAssignments().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getActive()))
-                .map(a -> AuditControlAssignmentDto.builder()
-                        .id(a.getId())
-                        .auditControlId(ac.getId())
-                        .userId(a.getUser().getId())
-                        .userEmail(a.getUser().getEmail())
-                        .userDisplayName(a.getUser().getDisplayName())
-                        .assignmentRole(a.getAssignmentRole())
-                        .active(a.getActive())
-                        .assignedAt(a.getAssignedAt())
-                        .build())
-                .collect(Collectors.toList());
         return AuditControlDto.builder()
                 .id(ac.getId())
                 .auditId(ac.getAudit().getId())
@@ -73,7 +54,6 @@ public class AuditControlService {
                 .assessedAt(ac.getAssessedAt())
                 .answers(answers)
                 .evidences(evidences)
-                .assignments(assignments)
                 .build();
     }
 
@@ -84,19 +64,11 @@ public class AuditControlService {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
             boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-            List<AuditControl> auditControls = auditControlRepository.findByAudit(audit);
-            boolean isTaskAssignee = auditControls.stream()
-                    .anyMatch(ac -> auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId()));
-            if (!isPrimary && !isAuditCollaborator && !isTaskAssignee) {
+            boolean isAppOwner = audit.getApplication().getOwner() != null
+                    && audit.getApplication().getOwner().getId().equals(current.getId());
+            if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
                 throw new IllegalArgumentException("You do not have access to this audit");
             }
-            if (isPrimary) {
-                return auditControls.stream().map(AuditControlService::toDto).collect(Collectors.toList());
-            }
-            return auditControls.stream()
-                    .filter(ac -> auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId()))
-                    .map(AuditControlService::toDto)
-                    .collect(Collectors.toList());
         }
         return auditControlRepository.findByAudit(audit).stream().map(AuditControlService::toDto).collect(Collectors.toList());
     }
@@ -107,10 +79,12 @@ public class AuditControlService {
         AuditControl ac = auditControlRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + id));
         if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             User current = currentUserService.getCurrentUserOrThrow();
-            boolean isPrimary = ac.getAudit().getAssignedTo() != null && ac.getAudit().getAssignedTo().getId().equals(current.getId());
-            boolean isTaskAssignee = auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId());
-            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(ac.getAudit().getId(), current.getId());
-            if (!isPrimary && !isTaskAssignee && !isAuditCollaborator) {
+            Audit audit = ac.getAudit();
+            boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
+            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
+            boolean isAppOwner = audit.getApplication().getOwner() != null
+                    && audit.getApplication().getOwner().getId().equals(current.getId());
+            if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
                 throw new IllegalArgumentException("You do not have access to this audit");
             }
         }
@@ -133,7 +107,9 @@ public class AuditControlService {
             User current = currentUserService.getCurrentUserOrThrow();
             boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
             boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-            if (!isPrimary && !isAuditCollaborator) {
+            boolean isAppOwner = audit.getApplication().getOwner() != null
+                    && audit.getApplication().getOwner().getId().equals(current.getId());
+            if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
                 throw new IllegalArgumentException("You do not have access to this audit");
             }
         }
@@ -162,104 +138,5 @@ public class AuditControlService {
             auditControlRepository.saveAll(changed);
             auditActivityLogService.log(audit, AuditActivityType.CONTROL_UPDATED, "Bulk-updated " + changed.size() + " controls");
         }
-    }
-
-    @Transactional(readOnly = true)
-    public List<AuditControlAssignmentDto> listAssignments(Long auditControlId) {
-        AuditControl ac = auditControlRepository.findById(auditControlId).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
-        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            User current = currentUserService.getCurrentUserOrThrow();
-            boolean isPrimary = ac.getAudit().getAssignedTo() != null && ac.getAudit().getAssignedTo().getId().equals(current.getId());
-            boolean isAssignee = auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(auditControlId, current.getId());
-            if (!isPrimary && !isAssignee) {
-                throw new IllegalArgumentException("You do not have access to this audit control");
-            }
-        }
-        return auditControlAssignmentRepository.findByAuditControlIdAndActiveTrue(auditControlId).stream()
-                .map(this::toAssignmentDto)
-                .toList();
-    }
-
-    @Transactional
-    public List<AuditControlAssignmentDto> addAssignment(Long auditControlId, Long userId, AuditControlAssignmentRole role) {
-        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
-        }
-        AuditControl ac = auditControlRepository.findById(auditControlId).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + auditControlId));
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-        AuditControlAssignment assignment = auditControlAssignmentRepository
-                .findByAuditControlIdAndUserIdAndAssignmentRole(auditControlId, userId, role)
-                .orElse(AuditControlAssignment.builder()
-                        .auditControl(ac)
-                        .user(user)
-                        .assignmentRole(role)
-                        .build());
-        assignment.setActive(true);
-        auditControlAssignmentRepository.save(assignment);
-        auditActivityLogService.log(ac.getAudit(), AuditActivityType.AUDIT_ASSIGNED, "Task delegated for control " + ac.getControl().getControlId() + " to " + user.getEmail());
-        return listAssignments(auditControlId);
-    }
-
-    @Transactional
-    public List<AuditControlAssignmentDto> removeAssignment(Long auditControlId, Long assignmentId) {
-        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
-        }
-        AuditControlAssignment assignment = auditControlAssignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new IllegalArgumentException("Task assignment not found"));
-        if (!assignment.getAuditControl().getId().equals(auditControlId)) {
-            throw new IllegalArgumentException("Assignment does not belong to this control");
-        }
-        assignment.setActive(false);
-        auditControlAssignmentRepository.save(assignment);
-        auditActivityLogService.log(assignment.getAuditControl().getAudit(), AuditActivityType.AUDIT_ASSIGNED,
-                "Task assignment removed for control " + assignment.getAuditControl().getControl().getControlId());
-        return listAssignments(auditControlId);
-    }
-
-    private AuditControlAssignmentDto toAssignmentDto(AuditControlAssignment a) {
-        return AuditControlAssignmentDto.builder()
-                .id(a.getId())
-                .auditControlId(a.getAuditControl().getId())
-                .userId(a.getUser().getId())
-                .userEmail(a.getUser().getEmail())
-                .userDisplayName(a.getUser().getDisplayName())
-                .assignmentRole(a.getAssignmentRole())
-                .active(a.getActive())
-                .assignedAt(a.getAssignedAt())
-                .build();
-    }
-
-    @Transactional(readOnly = true)
-    public List<MyTaskDto> myTasks() {
-        User current = currentUserService.getCurrentUserOrThrow();
-        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            return List.of();
-        }
-        return auditControlAssignmentRepository.findByUserIdAndActiveTrue(current.getId()).stream()
-                .map(a -> {
-                    AuditControl ac = a.getAuditControl();
-                    Audit audit = ac.getAudit();
-                    return MyTaskDto.builder()
-                            .assignmentId(a.getId())
-                            .auditId(audit.getId())
-                            .auditControlId(ac.getId())
-                            .applicationName(audit.getApplication().getName())
-                            .auditYear(audit.getYear())
-                            .controlControlId(ac.getControl().getControlId())
-                            .controlName(ac.getControl().getName())
-                            .status(ac.getStatus())
-                            .notes(ac.getNotes())
-                            .assignmentRole(a.getAssignmentRole())
-                            .dueAt(audit.getDueAt())
-                            .build();
-                })
-                .sorted((a, b) -> {
-                    if (a.getDueAt() == null && b.getDueAt() == null) return 0;
-                    if (a.getDueAt() == null) return 1;
-                    if (b.getDueAt() == null) return -1;
-                    return a.getDueAt().compareTo(b.getDueAt());
-                })
-                .toList();
     }
 }

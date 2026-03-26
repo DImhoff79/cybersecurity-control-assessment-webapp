@@ -1,6 +1,5 @@
 package com.cyberassessment.controller;
 
-import com.cyberassessment.dto.PolicyAcknowledgementDto;
 import com.cyberassessment.dto.PolicyDto;
 import com.cyberassessment.dto.PolicyRevisionEventDto;
 import com.cyberassessment.dto.PolicyVersionDto;
@@ -98,22 +97,6 @@ public class PolicyController {
             dueAt = Instant.parse(s);
         }
         return policyService.publish(policyId, policyVersionId, dueAt);
-    }
-
-    @GetMapping("/acknowledgements")
-    @PreAuthorize("hasAnyAuthority('PERM_POLICY_MANAGEMENT','PERM_REPORT_VIEW')")
-    public List<PolicyAcknowledgementDto> acknowledgements(@RequestParam(required = false) Long policyId) {
-        return policyService.listAcknowledgements(policyId);
-    }
-
-    @GetMapping("/my-acknowledgements")
-    public List<PolicyAcknowledgementDto> myAcknowledgements() {
-        return policyService.myAcknowledgements();
-    }
-
-    @PostMapping("/acknowledgements/{acknowledgementId}/acknowledge")
-    public PolicyAcknowledgementDto acknowledge(@PathVariable Long acknowledgementId) {
-        return policyService.acknowledge(acknowledgementId);
     }
 
     @GetMapping("/{policyId}/csf-mappings")

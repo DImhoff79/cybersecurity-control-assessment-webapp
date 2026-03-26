@@ -16,7 +16,6 @@ This matrix documents frontend route guard requirements and the backend API auth
 | Page | Frontend Guard | Primary APIs | Backend Guard |
 |---|---|---|---|
 | `/admin/policies` | `POLICY_MANAGEMENT` | `/api/policies/**` create/update/publish/version | `PERM_POLICY_MANAGEMENT` |
-| `/admin/policy-attestations` | `REPORT_VIEW` | `/api/policies/acknowledgements` | `PERM_POLICY_MANAGEMENT` or `PERM_REPORT_VIEW` |
 | `/admin/compliance-obligations` | `COMPLIANCE_MANAGEMENT` | `/api/compliance-obligations/**` | `PERM_COMPLIANCE_MANAGEMENT` |
 
 ### Risk and Remediation

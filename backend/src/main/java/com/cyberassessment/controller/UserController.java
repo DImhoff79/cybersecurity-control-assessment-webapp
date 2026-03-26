@@ -29,6 +29,13 @@ public class UserController {
         return userService.findAll();
     }
 
+    /** Users with role AUDITOR (for audit approval workflow assignees). */
+    @GetMapping("/auditors")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    public List<UserDto> listAuditors() {
+        return userService.findByRole(UserRole.AUDITOR);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('PERM_USER_MANAGEMENT')")
     public ResponseEntity<UserDto> get(@PathVariable Long id) {

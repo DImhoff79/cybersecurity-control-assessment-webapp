@@ -19,7 +19,7 @@
     <div v-else-if="isSubmitted" class="card shadow-sm border-0">
       <div class="card-body">
         <p class="mb-2 fw-semibold">This assessment was already submitted.</p>
-        <p class="text-muted mb-0">It is now waiting for admin review and validation.</p>
+        <p class="text-muted mb-0">It is in the auditor approval or attestation process.</p>
       </div>
     </div>
 
@@ -231,6 +231,7 @@ import { useRoute } from 'vue-router'
 import api from '../../services/api'
 import OwnerEvidenceBlock from '../../components/OwnerEvidenceBlock.vue'
 import { toastError, toastSuccess, toastWarning } from '../../services/toast'
+import { isAuditOwnerAnswerLocked } from '../../utils/auditStatus'
 
 const route = useRoute()
 const auditId = Number(route.params.auditId)
@@ -420,7 +421,7 @@ const completionPct = computed(() => {
 })
 
 const humanComplete = computed(() => humanAnsweredCount.value === guidedQuestions.value.length)
-const isSubmitted = computed(() => ['SUBMITTED', 'ATTESTED', 'COMPLETE'].includes(audit.value?.status))
+const isSubmitted = computed(() => isAuditOwnerAnswerLocked(audit.value?.status))
 
 const isLastHumanStep = computed(() => {
   return currentHumanIndex.value >= guidedSections.value.length - 1
@@ -568,8 +569,8 @@ async function finishAudit() {
 
   try {
     const res = await api.post(`/api/audits/${auditId}/submit`)
-    if (audit.value) audit.value.status = res.data?.status || 'SUBMITTED'
-    toastSuccess('Assessment submitted. An admin will now review it.')
+    if (audit.value) audit.value.status = res.data?.status || 'PENDING_APPROVAL'
+    toastSuccess('Assessment submitted for auditor approval.')
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to submit assessment.')
   }
@@ -640,12 +641,17 @@ function statusLabel(status) {
       return 'Draft'
     case 'IN_PROGRESS':
       return 'In progress'
+    case 'REVISIONS_REQUESTED':
+      return 'Revisions requested — please update and resubmit'
+    case 'PENDING_APPROVAL':
+    case 'SUBMITTED':
+      return 'Submitted — pending auditor approval'
+    case 'AUDITOR_APPROVED':
+      return 'Auditor approved — pending attestation'
     case 'COMPLETE':
       return 'Validated complete'
     case 'ATTESTED':
       return 'Attested by audit team'
-    case 'SUBMITTED':
-      return 'Submitted - pending admin review'
     default:
       return status || '-'
   }

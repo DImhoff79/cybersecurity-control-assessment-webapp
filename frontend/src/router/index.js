@@ -5,17 +5,23 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', name: 'Login', component: () => import('../views/Login.vue'), meta: { public: true } },
-    { path: '/start', name: 'RoleHub', component: () => import('../views/RoleHub.vue') },
-    { path: '/', redirect: '/start' },
-    { path: '/my-audits', name: 'MyAudits', component: () => import('../views/selfservice/MyAudits.vue') },
     {
-      path: '/my-exceptions',
-      name: 'MyExceptions',
-      component: () => import('../views/selfservice/MyExceptions.vue')
+      path: '/',
+      component: () => import('../layouts/WorkspaceShell.vue'),
+      children: [
+        { path: '', redirect: '/start' },
+        { path: 'start', name: 'RoleHub', component: () => import('../views/RoleHub.vue') },
+        { path: 'my-audits', name: 'MyAudits', component: () => import('../views/selfservice/MyAudits.vue') },
+        {
+          path: 'my-exceptions',
+          name: 'MyExceptions',
+          component: () => import('../views/selfservice/MyExceptions.vue')
+        },
+        { path: 'audits/:auditId/respond', name: 'AuditRespond', component: () => import('../views/selfservice/AuditRespond.vue') },
+        { path: 'profile', name: 'Profile', component: () => import('../views/Profile.vue') },
+        { path: 'access-denied', name: 'AccessDenied', component: () => import('../views/AccessDenied.vue') }
+      ]
     },
-    { path: '/my-tasks', name: 'MyTasks', component: () => import('../views/selfservice/MyTasks.vue') },
-    { path: '/my-policies', name: 'MyPolicies', component: () => import('../views/selfservice/MyPolicies.vue') },
-    { path: '/audits/:auditId/respond', name: 'AuditRespond', component: () => import('../views/selfservice/AuditRespond.vue') },
     {
       path: '/admin',
       component: () => import('../layouts/AdminLayout.vue'),
@@ -27,18 +33,6 @@ const router = createRouter({
           name: 'AdminWorkspaceMyAudits',
           component: () => import('../views/selfservice/MyAudits.vue'),
           meta: { section: 'Workspace', pageTitle: 'My Audits' }
-        },
-        {
-          path: 'my-tasks',
-          name: 'AdminWorkspaceMyTasks',
-          component: () => import('../views/selfservice/MyTasks.vue'),
-          meta: { section: 'Workspace', pageTitle: 'My Tasks' }
-        },
-        {
-          path: 'my-policies',
-          name: 'AdminWorkspaceMyPolicies',
-          component: () => import('../views/selfservice/MyPolicies.vue'),
-          meta: { section: 'Workspace', pageTitle: 'My Policies' }
         },
         {
           path: 'my-exceptions',
@@ -124,12 +118,6 @@ const router = createRouter({
           meta: { permission: 'POLICY_MANAGEMENT', section: 'Governance & Compliance', pageTitle: 'Policies' }
         },
         {
-          path: 'policy-attestations',
-          name: 'AdminPolicyAttestations',
-          component: () => import('../views/admin/PolicyAttestations.vue'),
-          meta: { permission: 'REPORT_VIEW', section: 'Governance & Compliance', pageTitle: 'Policy Attestations' }
-        },
-        {
           path: 'compliance-obligations',
           name: 'AdminComplianceObligations',
           component: () => import('../views/admin/ComplianceObligations.vue'),
@@ -196,9 +184,7 @@ const router = createRouter({
       })
     },
     { path: '/admin/review-queue', redirect: '/admin/operations' },
-    { path: '/admin/auditor-workbench', redirect: '/admin/operations' },
-    { path: '/access-denied', name: 'AccessDenied', component: () => import('../views/AccessDenied.vue') },
-    { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue') },
+    { path: '/admin/auditor-workbench', redirect: '/admin/operations' }
   ]
 })
 
@@ -212,7 +198,7 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'Login' })
   }
   // Keep admins in the Admin shell for self-service pages (same sidebar as other admin routes)
-  const adminWorkspacePaths = ['/my-audits', '/my-tasks', '/my-policies', '/my-exceptions', '/profile']
+  const adminWorkspacePaths = ['/my-audits', '/my-exceptions', '/profile']
   if (authStore.canAccessAdmin && adminWorkspacePaths.includes(to.path)) {
     return next({ path: `/admin${to.path}`, query: to.query, hash: to.hash, replace: true })
   }

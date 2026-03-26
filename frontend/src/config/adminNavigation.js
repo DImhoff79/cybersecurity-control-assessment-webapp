@@ -5,8 +5,6 @@ export const adminSections = [
     items: [
       { label: 'Home', to: '/start' },
       { label: 'My Audits', to: '/admin/my-audits' },
-      { label: 'My Tasks', to: '/admin/my-tasks' },
-      { label: 'My Policies', to: '/admin/my-policies' },
       { label: 'My Exceptions', to: '/admin/my-exceptions' },
       { label: 'Profile', to: '/admin/profile' }
     ]
@@ -27,7 +25,6 @@ export const adminSections = [
     items: [
       { label: 'Policies', to: '/admin/policies', permission: 'POLICY_MANAGEMENT' },
       { label: 'Compliance Obligations', to: '/admin/compliance-obligations', permission: 'COMPLIANCE_MANAGEMENT' },
-      { label: 'Policy Attestations', to: '/admin/policy-attestations', permission: 'REPORT_VIEW' }
     ]
   },
   {

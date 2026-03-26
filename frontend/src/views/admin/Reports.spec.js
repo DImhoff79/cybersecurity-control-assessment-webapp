@@ -27,7 +27,7 @@ describe('Reports', () => {
         return Promise.resolve({ data: [{ projectId: 10, projectName: 'PCI 2026', year: 2026, totalAudits: 5, scopedApplications: 3, openAudits: 2, submittedAudits: 1, attestedAudits: 1, completeAudits: 1 }] })
       }
       if (url === '/api/reports/compliance-kpis') {
-        return Promise.resolve({ data: { totalPolicies: 2, controlCoveragePct: 50, policyCoveragePct: 40, pendingAttestations: 3 } })
+        return Promise.resolve({ data: { totalPolicies: 2, controlCoveragePct: 50, policyCoveragePct: 40 } })
       }
       if (url === '/api/reports/risk-kpis') {
         return Promise.resolve({ data: { openRisks: 2, highRisks: 1, overdueRemediationActions: 1 } })
@@ -110,7 +110,7 @@ describe('Reports', () => {
         })
       }
       if (url === '/api/reports/compliance-kpis') {
-        return Promise.resolve({ data: { totalPolicies: 1, controlCoveragePct: 10, policyCoveragePct: 10, pendingAttestations: 1 } })
+        return Promise.resolve({ data: { totalPolicies: 1, controlCoveragePct: 10, policyCoveragePct: 10 } })
       }
       if (url === '/api/reports/risk-kpis') {
         return Promise.resolve({ data: { openRisks: 1, highRisks: 1, overdueRemediationActions: 0 } })

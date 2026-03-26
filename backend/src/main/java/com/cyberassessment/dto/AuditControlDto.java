@@ -28,6 +28,4 @@ public class AuditControlDto {
     private List<AuditControlAnswerDto> answers = new ArrayList<>();
     @Builder.Default
     private List<AuditEvidenceDto> evidences = new ArrayList<>();
-    @Builder.Default
-    private List<AuditControlAssignmentDto> assignments = new ArrayList<>();
 }

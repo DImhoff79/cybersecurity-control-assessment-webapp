@@ -197,7 +197,7 @@ public class DemoDatasetSeeder implements ApplicationRunner {
         Instant baseDue = Instant.now().plus(45, ChronoUnit.DAYS);
         AuditStatus[] targets = {
                 AuditStatus.IN_PROGRESS,
-                AuditStatus.SUBMITTED,
+                AuditStatus.PENDING_APPROVAL,
                 AuditStatus.DRAFT,
                 AuditStatus.COMPLETE
         };

@@ -116,7 +116,6 @@ class PolicyComplianceControllerIntegrationTest {
         assertThat(policyReq.getPolicyId()).isEqualTo(policy.getId());
 
         assertThat(complianceController.kpis().getTotalRequirements()).isGreaterThanOrEqualTo(1);
-        assertThat(policyController.acknowledgements(null)).isNotNull();
         assertThat(controlController.list(null, true, false)).isNotEmpty();
     }
 

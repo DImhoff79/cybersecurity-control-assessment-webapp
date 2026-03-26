@@ -22,13 +22,14 @@ public class AuditService {
     private final ApplicationRepository applicationRepository;
     private final ControlRepository controlRepository;
     private final AuditControlRepository auditControlRepository;
-    private final AuditControlAssignmentRepository auditControlAssignmentRepository;
     private final AuditControlAnswerRepository auditControlAnswerRepository;
     private final QuestionControlMappingRepository questionControlMappingRepository;
     private final QuestionRepository questionRepository;
     private final AuditQuestionnaireSnapshotRepository auditQuestionnaireSnapshotRepository;
     private final AuditQuestionnaireItemRepository auditQuestionnaireItemRepository;
     private final AuditAssignmentRepository auditAssignmentRepository;
+    private final AuditApprovalStepRepository auditApprovalStepRepository;
+    private final AuditApprovalService auditApprovalService;
     private final AuditProjectRepository auditProjectRepository;
     private final QuestionnaireTemplateService questionnaireTemplateService;
     private final QuestionnaireTemplateItemRepository questionnaireTemplateItemRepository;
@@ -39,13 +40,14 @@ public class AuditService {
 
     public AuditService(AuditRepository auditRepository, ApplicationRepository applicationRepository,
                         ControlRepository controlRepository, AuditControlRepository auditControlRepository,
-                        AuditControlAssignmentRepository auditControlAssignmentRepository,
                         AuditControlAnswerRepository auditControlAnswerRepository,
                         QuestionControlMappingRepository questionControlMappingRepository,
                         QuestionRepository questionRepository,
                         AuditQuestionnaireSnapshotRepository auditQuestionnaireSnapshotRepository,
                         AuditQuestionnaireItemRepository auditQuestionnaireItemRepository,
                         AuditAssignmentRepository auditAssignmentRepository,
+                        AuditApprovalStepRepository auditApprovalStepRepository,
+                        AuditApprovalService auditApprovalService,
                         AuditProjectRepository auditProjectRepository,
                         QuestionnaireTemplateService questionnaireTemplateService,
                         QuestionnaireTemplateItemRepository questionnaireTemplateItemRepository,
@@ -56,13 +58,14 @@ public class AuditService {
         this.applicationRepository = applicationRepository;
         this.controlRepository = controlRepository;
         this.auditControlRepository = auditControlRepository;
-        this.auditControlAssignmentRepository = auditControlAssignmentRepository;
         this.auditControlAnswerRepository = auditControlAnswerRepository;
         this.questionControlMappingRepository = questionControlMappingRepository;
         this.questionRepository = questionRepository;
         this.auditQuestionnaireSnapshotRepository = auditQuestionnaireSnapshotRepository;
         this.auditQuestionnaireItemRepository = auditQuestionnaireItemRepository;
         this.auditAssignmentRepository = auditAssignmentRepository;
+        this.auditApprovalStepRepository = auditApprovalStepRepository;
+        this.auditApprovalService = auditApprovalService;
         this.auditProjectRepository = auditProjectRepository;
         this.questionnaireTemplateService = questionnaireTemplateService;
         this.questionnaireTemplateItemRepository = questionnaireTemplateItemRepository;
@@ -373,6 +376,12 @@ public class AuditService {
     public void submitAnswers(Long auditId, SubmitAnswersRequest request) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         ensureCanAccessAudit(audit);
+        if (audit.getStatus() == AuditStatus.PENDING_APPROVAL
+                || audit.getStatus() == AuditStatus.AUDITOR_APPROVED
+                || audit.getStatus() == AuditStatus.ATTESTED
+                || audit.getStatus() == AuditStatus.COMPLETE) {
+            throw new IllegalArgumentException("Answers cannot be edited in the current audit status");
+        }
         Set<Long> allowedControlIds = allowedControlIdsForCurrentUser(audit);
         for (SubmitAnswersRequest.AnswerItem item : request.getAnswers()) {
             if (item.getAuditControlId() == null || item.getQuestionId() == null) continue;
@@ -424,7 +433,13 @@ public class AuditService {
         if (!isAuditCompleteForOwner(audit)) {
             throw new IllegalArgumentException("Please answer all questions before submitting.");
         }
-        audit.setStatus(AuditStatus.SUBMITTED);
+        if (audit.getStatus() != AuditStatus.DRAFT
+                && audit.getStatus() != AuditStatus.IN_PROGRESS
+                && audit.getStatus() != AuditStatus.REVISIONS_REQUESTED) {
+            throw new IllegalArgumentException("This audit cannot be submitted in its current status");
+        }
+        auditApprovalService.prepareWorkflowForSubmit(audit);
+        audit.setStatus(AuditStatus.PENDING_APPROVAL);
         if (audit.getCompletedAt() == null) {
             audit.setCompletedAt(Instant.now());
         }
@@ -439,8 +454,8 @@ public class AuditService {
         if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
-        if (audit.getStatus() != AuditStatus.SUBMITTED && audit.getStatus() != AuditStatus.ATTESTED) {
-            throw new IllegalArgumentException("Only submitted audits can be attested");
+        if (audit.getStatus() != AuditStatus.AUDITOR_APPROVED && audit.getStatus() != AuditStatus.ATTESTED) {
+            throw new IllegalArgumentException("Only auditor-approved audits can be attested");
         }
         User actor = currentUserService.getCurrentUserOrThrow();
         audit.setStatus(AuditStatus.ATTESTED);
@@ -530,7 +545,8 @@ public class AuditService {
         boolean collaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
         boolean appOwner = audit.getApplication().getOwner() != null
                 && audit.getApplication().getOwner().getId().equals(current.getId());
-        if (!direct && !collaborator && !appOwner) {
+        boolean approvalAssignee = auditApprovalStepRepository.existsByAuditIdAndAssignedTo_Id(audit.getId(), current.getId());
+        if (!direct && !collaborator && !appOwner && !approvalAssignee) {
             throw new IllegalArgumentException("You do not have access to this audit");
         }
     }
@@ -546,13 +562,10 @@ public class AuditService {
         if (isPrimary || isAppOwner) {
             return auditControlRepository.findByAudit(audit).stream().map(ac -> ac.getControl().getId()).collect(Collectors.toSet());
         }
-        Set<Long> controlIds = new HashSet<>();
-        for (AuditControl ac : auditControlRepository.findByAudit(audit)) {
-            if (auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(ac.getId(), current.getId())) {
-                controlIds.add(ac.getControl().getId());
-            }
+        if (auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId())) {
+            return auditControlRepository.findByAudit(audit).stream().map(ac -> ac.getControl().getId()).collect(Collectors.toSet());
         }
-        return controlIds;
+        return Collections.emptySet();
     }
 
     @Transactional(readOnly = true)

@@ -44,7 +44,7 @@ export function startApplicationOwnerWorkspaceTour() {
       popover: {
         title: 'How you complete an assessment',
         description:
-          'From My Audits, choose Start or Resume to open the questionnaire. For each topic, answer the questions (for example: fully in place, partial, not yet, or not applicable). Expand Notes & supporting files to add context or upload evidence for auditors. Use Save draft anytime. Move through sections with Next section or Continue to additional questions, then Submit for review when everything is complete. If work is split across people, use My Tasks for control-level updates.',
+          'From My Audits, choose Start or Resume to open the questionnaire. For each topic, answer the questions (for example: fully in place, partial, not yet, or not applicable). Expand Notes & supporting files to add context or upload evidence for auditors. Use Save draft anytime. Move through sections with Next section or Continue to additional questions, then Submit for review when everything is complete.',
         side: 'over',
         align: 'center'
       }
@@ -67,26 +67,6 @@ export function startApplicationOwnerWorkspaceTour() {
           'Each row is an assignment: application, year, project, status, and how far along you are. Use the action on the right to open the response experience (or view a completed submission).',
         side: 'bottom',
         align: 'center'
-      }
-    },
-    {
-      element: '#tour-nav-my-tasks',
-      popover: {
-        title: 'My Tasks',
-        description:
-          'When controls are delegated to you, they appear here. Update status and notes, or use Open Task to jump into the same assessment with that control in context.',
-        side: 'right',
-        align: 'start'
-      }
-    },
-    {
-      element: '#tour-nav-my-policies',
-      popover: {
-        title: 'My Policies',
-        description:
-          'Use this for policy-related attestations your organization may require outside of a specific audit questionnaire.',
-        side: 'right',
-        align: 'start'
       }
     },
     {
@@ -119,7 +99,7 @@ export function startWorkspaceTour() {
       popover: {
         title: 'Workspace menu',
         description:
-          'Use My Audits for assessments assigned to you, My Tasks for control work, and My Policies for attestations. Profile and account settings are here too.',
+          'Use My Audits for assessments assigned to you. Profile and account settings are here too.',
         side: 'right',
         align: 'start'
       }

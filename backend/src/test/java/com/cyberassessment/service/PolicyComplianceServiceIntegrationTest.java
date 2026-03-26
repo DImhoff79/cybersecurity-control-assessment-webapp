@@ -42,20 +42,13 @@ class PolicyComplianceServiceIntegrationTest {
     }
 
     @Test
-    void policyPublishAndAcknowledgementFlowWorks() {
+    void policyPublishFlowWorks() {
         User manager = userRepository.save(User.builder()
                 .email("policy-manager@test.com")
                 .passwordHash("x")
                 .displayName("Policy Manager")
                 .role(UserRole.AUDIT_MANAGER)
                 .permissions(UserRole.AUDIT_MANAGER.defaultPermissions())
-                .build());
-        User owner = userRepository.save(User.builder()
-                .email("policy-owner@test.com")
-                .passwordHash("x")
-                .displayName("Policy Owner")
-                .role(UserRole.APPLICATION_OWNER)
-                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
 
         authenticate(manager.getEmail());
@@ -79,12 +72,6 @@ class PolicyComplianceServiceIntegrationTest {
         assertThat(published.getStatus()).isEqualTo(PolicyStatus.ACTIVE);
         assertThat(published.getPublishedVersionId()).isEqualTo(v2.getId());
         assertThat(policyService.getRevisionHistory(policy.getId())).isNotEmpty();
-
-        authenticate(owner.getEmail());
-        List<PolicyAcknowledgementDto> mine = policyService.myAcknowledgements();
-        assertThat(mine).isNotEmpty();
-        PolicyAcknowledgementDto ack = policyService.acknowledge(mine.get(0).getId());
-        assertThat(ack.getStatus()).isEqualTo(PolicyAcknowledgementStatus.ACKNOWLEDGED);
     }
 
     @Test

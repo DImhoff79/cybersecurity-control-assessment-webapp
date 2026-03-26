@@ -450,7 +450,9 @@ const { sortedRows: sortedProjects, toggleSort, sortIndicator } = useTableSort(f
 const projectCards = computed(() => {
   const rows = projects.value || []
   const allAudits = rows.flatMap((p) => p.audits || [])
-  const liveAudits = allAudits.filter((a) => ['IN_PROGRESS', 'SUBMITTED', 'ATTESTED'].includes(a.status)).length
+  const liveAudits = allAudits.filter((a) =>
+    ['IN_PROGRESS', 'PENDING_APPROVAL', 'REVISIONS_REQUESTED', 'AUDITOR_APPROVED', 'ATTESTED', 'SUBMITTED'].includes(a.status)
+  ).length
   const openAudits = allAudits.filter((a) => a.status !== 'COMPLETE').length
   const overdueAudits = allAudits.filter((a) => a.status !== 'COMPLETE' && a.dueAt && new Date(a.dueAt).getTime() < Date.now()).length
   return [
@@ -633,7 +635,10 @@ function stageCounts(project) {
   ;(project?.audits || []).forEach((audit) => {
     if (audit.status === 'DRAFT') counts.planning += 1
     else if (audit.status === 'IN_PROGRESS') counts.fieldwork += 1
-    else if (audit.status === 'SUBMITTED') counts.managerReview += 1
+    else if (
+      ['PENDING_APPROVAL', 'REVISIONS_REQUESTED', 'AUDITOR_APPROVED', 'SUBMITTED'].includes(audit.status)
+    )
+      counts.managerReview += 1
     else if (audit.status === 'ATTESTED') counts.finalValidation += 1
     else if (audit.status === 'COMPLETE') counts.closed += 1
   })

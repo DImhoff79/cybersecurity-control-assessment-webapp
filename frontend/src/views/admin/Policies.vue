@@ -4,7 +4,7 @@
       <div>
         <h1 class="h3 mb-1">Policy Management</h1>
         <p class="text-muted mb-0">
-          Author, version, and publish policy baselines with tracked owner attestations.
+          Author, version, and publish policy baselines with revision history.
         </p>
       </div>
       <button type="button" class="btn btn-primary btn-sm" @click="openCreatePolicyModal">
@@ -12,10 +12,10 @@
       </button>
     </div>
     <div class="small text-muted mb-3">
-      Use Add Policy for brand-new policies. Edit updates working drafts; publish sends attestations to application owners.
+      Use Add Policy for brand-new policies. Edit updates working drafts; publish activates the selected version.
     </div>
     <div class="small text-muted mb-3">
-      Lifecycle: <strong>Draft</strong> for authoring, then <strong>Publish Draft</strong> to move into active attestation.
+      Lifecycle: <strong>Draft</strong> for authoring, then <strong>Publish Draft</strong> to activate a version.
     </div>
 
     <div class="card shadow-sm">
@@ -657,7 +657,7 @@ async function publishPolicy(policy) {
       policyVersionId: draft.id
     })
     await loadPolicies()
-    toastSuccess('Policy published and attestation tasks generated.')
+    toastSuccess('Policy published.')
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to publish policy')
   }

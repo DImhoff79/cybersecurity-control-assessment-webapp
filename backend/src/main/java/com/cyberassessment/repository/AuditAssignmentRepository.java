@@ -13,4 +13,6 @@ public interface AuditAssignmentRepository extends JpaRepository<AuditAssignment
     boolean existsByAuditIdAndUserIdAndActiveTrue(Long auditId, Long userId);
     Optional<AuditAssignment> findByAuditIdAndUserIdAndAssignmentRole(Long auditId, Long userId, AuditAssignmentRole role);
     List<AuditAssignment> findByAuditIdAndAssignmentRole(Long auditId, AuditAssignmentRole role);
+
+    List<AuditAssignment> findByAuditIdAndAssignmentRoleAndActiveTrueOrderByAssignedAtAsc(Long auditId, AuditAssignmentRole role);
 }

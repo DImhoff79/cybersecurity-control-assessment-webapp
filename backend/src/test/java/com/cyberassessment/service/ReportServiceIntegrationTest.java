@@ -65,7 +65,7 @@ class ReportServiceIntegrationTest {
         Audit submitted = auditRepository.save(Audit.builder()
                 .application(app)
                 .year(2030)
-                .status(AuditStatus.SUBMITTED)
+                .status(AuditStatus.PENDING_APPROVAL)
                 .dueAt(Instant.now().plusSeconds(3600))
                 .build());
         auditRepository.save(Audit.builder()

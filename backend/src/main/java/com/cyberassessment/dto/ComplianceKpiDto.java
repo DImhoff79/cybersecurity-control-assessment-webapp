@@ -17,6 +17,4 @@ public class ComplianceKpiDto {
     private long mappedRequirementsToPolicies;
     private double controlCoveragePct;
     private double policyCoveragePct;
-    private long pendingAttestations;
-    private long overdueAttestations;
 }

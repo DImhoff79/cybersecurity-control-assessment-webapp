@@ -71,7 +71,13 @@ public class AuditAutomationService {
             return;
         }
         Instant now = Instant.now();
-        List<Audit> audits = auditRepository.findByStatusIn(List.of(AuditStatus.DRAFT, AuditStatus.IN_PROGRESS, AuditStatus.SUBMITTED, AuditStatus.ATTESTED));
+        List<Audit> audits = auditRepository.findByStatusIn(List.of(
+                AuditStatus.DRAFT,
+                AuditStatus.IN_PROGRESS,
+                AuditStatus.PENDING_APPROVAL,
+                AuditStatus.REVISIONS_REQUESTED,
+                AuditStatus.AUDITOR_APPROVED,
+                AuditStatus.ATTESTED));
         for (Audit audit : audits) {
             if (audit.getDueAt() == null) {
                 continue;

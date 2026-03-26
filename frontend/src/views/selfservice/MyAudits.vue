@@ -55,7 +55,7 @@
                   <router-link
                     :to="`/audits/${a.id}/respond`"
                     class="btn btn-primary btn-sm audit-action-btn"
-                    :class="{ disabled: a.status === 'SUBMITTED' || a.status === 'ATTESTED' || a.status === 'COMPLETE' }"
+                    :class="{ disabled: isAuditOwnerAnswerLocked(a.status) }"
                   >
                     {{ actionLabel(a) }}
                   </router-link>
@@ -73,7 +73,12 @@
 import { ref, onMounted } from 'vue'
 import api from '../../services/api'
 import { useTableSort } from '../../composables/useTableSort'
-import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from '../../utils/auditStatus'
+import {
+  auditStageLabel,
+  auditStatusBadgeClass,
+  auditStatusLabel,
+  isAuditOwnerAnswerLocked
+} from '../../utils/auditStatus'
 
 const items = ref([])
 const loading = ref(true)
@@ -91,7 +96,8 @@ onMounted(async () => {
 })
 
 function actionLabel(audit) {
-  if (audit.status === 'SUBMITTED' || audit.status === 'ATTESTED' || audit.status === 'COMPLETE') return 'View submission'
+  if (audit.status === 'REVISIONS_REQUESTED') return 'Address revisions'
+  if (isAuditOwnerAnswerLocked(audit.status)) return 'View submission'
   return (audit.completionPct || 0) > 0 ? 'Resume audit' : 'Start audit'
 }
 </script>

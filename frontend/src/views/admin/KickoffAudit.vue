@@ -74,7 +74,7 @@
                       <button class="btn btn-outline-primary btn-sm" @click="remind(a.id)">Remind</button>
                       <button
                         class="btn btn-outline-success btn-sm"
-                        :disabled="a.status !== 'SUBMITTED' && a.status !== 'ATTESTED'"
+                        :disabled="a.status !== 'AUDITOR_APPROVED' && a.status !== 'ATTESTED'"
                         @click="attest(a.id)"
                       >
                         Attest

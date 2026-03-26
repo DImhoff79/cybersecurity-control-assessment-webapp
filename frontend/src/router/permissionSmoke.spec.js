@@ -27,7 +27,6 @@ describe('permission smoke checks', () => {
     }
     expect(canAccessRoute('/admin/audit-projects', auditor)).toBe(true)
     expect(canAccessRoute('/admin/operations', auditor)).toBe(true)
-    expect(canAccessRoute('/admin/policy-attestations', auditor)).toBe(true)
     expect(canAccessRoute('/admin/policies', auditor)).toBe(false)
     expect(canAccessRoute('/admin/findings', auditor)).toBe(false)
     expect(canAccessRoute('/admin/issue-program', auditor)).toBe(false)

@@ -39,7 +39,7 @@ describe('AuditorWorkbench', () => {
               projectName: 'PCI 2026',
               applicationName: 'App A',
               year: 2026,
-              status: 'SUBMITTED',
+              status: 'PENDING_APPROVAL',
               assignedToEmail: 'auditor@test.com',
               dueAt: null,
               pendingEvidenceCount: 2,

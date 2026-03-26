@@ -103,7 +103,7 @@ describe('AuditRespond', () => {
 
   it('submits assessment for admin review when complete', async () => {
     api.post.mockImplementation((url) => {
-      if (url === '/api/audits/1/submit') return Promise.resolve({ data: { status: 'SUBMITTED' } })
+      if (url === '/api/audits/1/submit') return Promise.resolve({ data: { status: 'PENDING_APPROVAL' } })
       return Promise.resolve({ data: {} })
     })
 

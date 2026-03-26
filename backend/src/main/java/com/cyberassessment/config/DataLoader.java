@@ -9,7 +9,6 @@ import com.cyberassessment.entity.PolicyStatus;
 import com.cyberassessment.entity.PolicyVersion;
 import com.cyberassessment.entity.PolicyVersionStatus;
 import com.cyberassessment.repository.PolicyCsfMappingRepository;
-import com.cyberassessment.repository.PolicyAcknowledgementRepository;
 import com.cyberassessment.repository.PolicyRepository;
 import com.cyberassessment.repository.PolicyRevisionEventRepository;
 import com.cyberassessment.repository.PolicyVersionRepository;
@@ -42,7 +41,6 @@ public class DataLoader implements ApplicationRunner {
     private final PolicyRepository policyRepository;
     private final PolicyVersionRepository policyVersionRepository;
     private final PolicyCsfMappingRepository policyCsfMappingRepository;
-    private final PolicyAcknowledgementRepository policyAcknowledgementRepository;
     private final PolicyRevisionEventRepository policyRevisionEventRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -199,8 +197,6 @@ public class DataLoader implements ApplicationRunner {
         List<PolicyVersion> existingVersions = policyVersionRepository.findByPolicyIdOrderByVersionNumberDesc(policy.getId());
         if (existing.isPresent() && refreshTestPolicies) {
             // Reset seeded policy versions so numbering and content always match seed definitions.
-            policyAcknowledgementRepository.deleteByPolicyId(policy.getId());
-            policyAcknowledgementRepository.flush();
             policyRevisionEventRepository.deleteByPolicyId(policy.getId());
             policyRevisionEventRepository.flush();
             policyVersionRepository.deleteByPolicyId(policy.getId());

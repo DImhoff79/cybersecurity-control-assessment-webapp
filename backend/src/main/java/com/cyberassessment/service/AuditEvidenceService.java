@@ -3,7 +3,6 @@ package com.cyberassessment.service;
 import com.cyberassessment.dto.AuditEvidenceDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.AuditAssignmentRepository;
-import com.cyberassessment.repository.AuditControlAssignmentRepository;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditEvidenceRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,6 @@ public class AuditEvidenceService {
     private final CurrentUserService currentUserService;
     private final AuditActivityLogService auditActivityLogService;
     private final AuditAssignmentRepository auditAssignmentRepository;
-    private final AuditControlAssignmentRepository auditControlAssignmentRepository;
 
     @Value("${app.evidence-policy.min-description-length:8}")
     private int minDescriptionLength;
@@ -347,8 +345,9 @@ public class AuditEvidenceService {
         Audit audit = auditControl.getAudit();
         boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
         boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-        boolean isTaskAssignee = auditControlAssignmentRepository.existsByAuditControlIdAndUserIdAndActiveTrue(auditControl.getId(), current.getId());
-        if (!isPrimary && !isAuditCollaborator && !isTaskAssignee) {
+        boolean isAppOwner = audit.getApplication().getOwner() != null
+                && audit.getApplication().getOwner().getId().equals(current.getId());
+        if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
             throw new IllegalArgumentException("You do not have access to this audit");
         }
     }

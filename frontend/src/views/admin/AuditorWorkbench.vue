@@ -62,7 +62,9 @@
                   <option value="all">All stages</option>
                   <option value="DRAFT">Draft</option>
                   <option value="IN_PROGRESS">In progress</option>
-                  <option value="SUBMITTED">Submitted</option>
+                  <option value="PENDING_APPROVAL">Pending approval</option>
+                  <option value="REVISIONS_REQUESTED">Revisions requested</option>
+                  <option value="AUDITOR_APPROVED">Auditor approved</option>
                   <option value="ATTESTED">Attested</option>
                   <option value="COMPLETE">Complete</option>
                 </select>
@@ -169,7 +171,7 @@
                     </button>
                     <button
                       class="btn btn-outline-success btn-sm"
-                      :disabled="!canManageAudits || (a.status !== 'SUBMITTED' && a.status !== 'ATTESTED')"
+                      :disabled="!canManageAudits || (a.status !== 'AUDITOR_APPROVED' && a.status !== 'ATTESTED')"
                       :title="!canManageAudits ? 'Requires AUDIT_MANAGEMENT permission' : ''"
                       @click="attest(a.auditId)"
                     >
@@ -387,8 +389,23 @@ const shareFilter = ref(true)
 const savedFilters = ref([])
 
 /** Stages shown for preset `active` (“all open items” — everything except Complete) */
-const DEFAULT_ACTIVE_STATUSES = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'ATTESTED']
-const ALL_AUDIT_STATUSES = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'ATTESTED', 'COMPLETE']
+const DEFAULT_ACTIVE_STATUSES = [
+  'DRAFT',
+  'IN_PROGRESS',
+  'PENDING_APPROVAL',
+  'REVISIONS_REQUESTED',
+  'AUDITOR_APPROVED',
+  'ATTESTED'
+]
+const ALL_AUDIT_STATUSES = [
+  'DRAFT',
+  'IN_PROGRESS',
+  'PENDING_APPROVAL',
+  'REVISIONS_REQUESTED',
+  'AUDITOR_APPROVED',
+  'ATTESTED',
+  'COMPLETE'
+]
 
 const auditFilter = reactive({
   queue: 'all',

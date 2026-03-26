@@ -46,7 +46,7 @@
                   <button
                     type="button"
                     class="btn btn-outline-success btn-sm me-2"
-                    :disabled="audit.status !== 'SUBMITTED' && audit.status !== 'ATTESTED'"
+                    :disabled="audit.status !== 'AUDITOR_APPROVED' && audit.status !== 'ATTESTED'"
                     @click="attest(audit.id)"
                   >
                     Attest
@@ -74,8 +74,9 @@ const audits = ref([])
 const loading = ref(true)
 
 const submittedAudits = computed(() => {
+  const pipeline = ['PENDING_APPROVAL', 'REVISIONS_REQUESTED', 'AUDITOR_APPROVED', 'ATTESTED', 'SUBMITTED']
   return audits.value
-    .filter((a) => a.status === 'SUBMITTED' || a.status === 'ATTESTED')
+    .filter((a) => pipeline.includes(a.status))
     .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
 })
 const { sortedRows, toggleSort, sortIndicator } = useTableSort(submittedAudits, {
@@ -130,7 +131,12 @@ function statusBadgeClass(status) {
     case 'ATTESTED':
       return 'text-bg-primary'
     case 'SUBMITTED':
+    case 'PENDING_APPROVAL':
       return 'text-bg-info'
+    case 'REVISIONS_REQUESTED':
+      return 'text-bg-warning'
+    case 'AUDITOR_APPROVED':
+      return 'text-bg-success'
     case 'IN_PROGRESS':
       return 'text-bg-warning'
     case 'DRAFT':

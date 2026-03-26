@@ -1,11 +1,9 @@
 package com.cyberassessment.service;
 
-import com.cyberassessment.dto.PolicyAcknowledgementDto;
 import com.cyberassessment.dto.PolicyDto;
 import com.cyberassessment.dto.PolicyRevisionEventDto;
 import com.cyberassessment.dto.PolicyVersionDto;
 import com.cyberassessment.entity.*;
-import com.cyberassessment.repository.PolicyAcknowledgementRepository;
 import com.cyberassessment.repository.PolicyCsfMappingRepository;
 import com.cyberassessment.repository.PolicyRepository;
 import com.cyberassessment.repository.PolicyRevisionEventRepository;
@@ -15,8 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -30,7 +26,6 @@ public class PolicyService {
 
     private final PolicyRepository policyRepository;
     private final PolicyVersionRepository policyVersionRepository;
-    private final PolicyAcknowledgementRepository policyAcknowledgementRepository;
     private final PolicyCsfMappingRepository policyCsfMappingRepository;
     private final PolicyRevisionEventRepository policyRevisionEventRepository;
     private final UserRepository userRepository;
@@ -47,25 +42,6 @@ public class PolicyService {
                 .createdByEmail(row.getCreatedBy() != null ? row.getCreatedBy().getEmail() : null)
                 .publishedAt(row.getPublishedAt())
                 .createdAt(row.getCreatedAt())
-                .build();
-    }
-
-    public static PolicyAcknowledgementDto toAcknowledgementDto(PolicyAcknowledgement row) {
-        return PolicyAcknowledgementDto.builder()
-                .id(row.getId())
-                .policyId(row.getPolicy().getId())
-                .policyCode(row.getPolicy().getCode())
-                .policyName(row.getPolicy().getName())
-                .policyVersionId(row.getPolicyVersion().getId())
-                .policyVersionNumber(row.getPolicyVersion().getVersionNumber())
-                .policyVersionTitle(row.getPolicyVersion().getTitle())
-                .policyVersionBodyMarkdown(row.getPolicyVersion().getBodyMarkdown())
-                .userId(row.getUser().getId())
-                .userEmail(row.getUser().getEmail())
-                .status(deriveAcknowledgementStatus(row))
-                .dueAt(row.getDueAt())
-                .assignedAt(row.getAssignedAt())
-                .acknowledgedAt(row.getAcknowledgedAt())
                 .build();
     }
 
@@ -290,17 +266,6 @@ public class PolicyService {
         policyRepository.save(policy);
         logRevisionEvent(policy, version.getId(), PolicyRevisionEventType.VERSION_PUBLISHED, "Published policy version " + version.getVersionNumber());
 
-        List<User> attestors = userRepository.findByRole(UserRole.APPLICATION_OWNER);
-        for (User user : attestors) {
-            policyAcknowledgementRepository.save(PolicyAcknowledgement.builder()
-                    .policy(policy)
-                    .policyVersion(version)
-                    .user(user)
-                    .status(PolicyAcknowledgementStatus.PENDING)
-                    .dueAt(dueAt)
-                    .build());
-        }
-
         return toDto(
                 policy,
                 policyVersionRepository.findByPolicyIdOrderByVersionNumberDesc(policyId),
@@ -332,51 +297,6 @@ public class PolicyService {
         return policyRevisionEventRepository.findByPolicyIdOrderByCreatedAtDesc(policyId).stream()
                 .map(PolicyService::toRevisionEventDto)
                 .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<PolicyAcknowledgementDto> listAcknowledgements(Long policyId) {
-        List<PolicyAcknowledgement> rows = policyId == null
-                ? policyAcknowledgementRepository.findAll()
-                : policyAcknowledgementRepository.findByPolicyIdOrderByAssignedAtDesc(policyId);
-        return rows.stream()
-                .sorted(Comparator.comparing(PolicyAcknowledgement::getAssignedAt).reversed())
-                .map(PolicyService::toAcknowledgementDto)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<PolicyAcknowledgementDto> myAcknowledgements() {
-        User user = currentUserService.getCurrentUserOrThrow();
-        return policyAcknowledgementRepository.findByUserIdOrderByAssignedAtDesc(user.getId())
-                .stream()
-                .map(PolicyService::toAcknowledgementDto)
-                .toList();
-    }
-
-    @Transactional
-    public PolicyAcknowledgementDto acknowledge(Long acknowledgementId) {
-        User user = currentUserService.getCurrentUserOrThrow();
-        PolicyAcknowledgement row = policyAcknowledgementRepository.findByIdAndUserId(acknowledgementId, user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Policy acknowledgement not found"));
-        row.setStatus(PolicyAcknowledgementStatus.ACKNOWLEDGED);
-        row.setAcknowledgedAt(Instant.now());
-        row = policyAcknowledgementRepository.save(row);
-        return toAcknowledgementDto(row);
-    }
-
-    @Transactional(readOnly = true)
-    public double attestationCompletionPct() {
-        long total = policyAcknowledgementRepository.count();
-        if (total == 0) return 0.0;
-        long complete = policyAcknowledgementRepository.countByStatus(PolicyAcknowledgementStatus.ACKNOWLEDGED);
-        return BigDecimal.valueOf((complete * 100.0) / total).setScale(1, RoundingMode.HALF_UP).doubleValue();
-    }
-
-    private static PolicyAcknowledgementStatus deriveAcknowledgementStatus(PolicyAcknowledgement row) {
-        if (row.getStatus() == PolicyAcknowledgementStatus.ACKNOWLEDGED) return PolicyAcknowledgementStatus.ACKNOWLEDGED;
-        if (row.getDueAt() != null && row.getDueAt().isBefore(Instant.now())) return PolicyAcknowledgementStatus.OVERDUE;
-        return PolicyAcknowledgementStatus.PENDING;
     }
 
     private Policy ensurePolicyExists(Long policyId) {

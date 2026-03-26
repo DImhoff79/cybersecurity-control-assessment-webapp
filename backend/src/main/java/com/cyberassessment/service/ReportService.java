@@ -49,6 +49,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ReportService {
 
+    /** Owner has submitted; audit is in approval pipeline before attestation. */
+    private static final List<AuditStatus> SUBMITTED_PIPELINE = List.of(
+            AuditStatus.PENDING_APPROVAL,
+            AuditStatus.REVISIONS_REQUESTED,
+            AuditStatus.AUDITOR_APPROVED
+    );
+
     private final ApplicationRepository applicationRepository;
     private final AuditRepository auditRepository;
     private final AuditProjectRepository auditProjectRepository;
@@ -60,8 +67,14 @@ public class ReportService {
         Instant now = Instant.now();
         long totalAudits = auditRepository.count();
         long openAudits = auditRepository.countByStatusIn(List.of(AuditStatus.DRAFT, AuditStatus.IN_PROGRESS));
-        long overdueAudits = auditRepository.countByDueAtBeforeAndStatusIn(now, List.of(AuditStatus.DRAFT, AuditStatus.IN_PROGRESS, AuditStatus.SUBMITTED));
-        long submittedAudits = auditRepository.countByStatus(AuditStatus.SUBMITTED);
+        long overdueAudits = auditRepository.countByDueAtBeforeAndStatusIn(now, List.of(
+                AuditStatus.DRAFT,
+                AuditStatus.IN_PROGRESS,
+                AuditStatus.PENDING_APPROVAL,
+                AuditStatus.REVISIONS_REQUESTED,
+                AuditStatus.AUDITOR_APPROVED,
+                AuditStatus.ATTESTED));
+        long submittedAudits = auditRepository.countByStatusIn(SUBMITTED_PIPELINE);
         long attestedAudits = auditRepository.countByStatus(AuditStatus.ATTESTED);
         long completedAudits = auditRepository.countByStatus(AuditStatus.COMPLETE);
         long totalProjects = auditProjectRepository.count();
@@ -92,7 +105,7 @@ public class ReportService {
                             .total(audits.size())
                             .draft(audits.stream().filter(a -> a.getStatus() == AuditStatus.DRAFT).count())
                             .inProgress(audits.stream().filter(a -> a.getStatus() == AuditStatus.IN_PROGRESS).count())
-                            .submitted(audits.stream().filter(a -> a.getStatus() == AuditStatus.SUBMITTED).count())
+                            .submitted(audits.stream().filter(a -> SUBMITTED_PIPELINE.contains(a.getStatus())).count())
                             .attested(audits.stream().filter(a -> a.getStatus() == AuditStatus.ATTESTED).count())
                             .complete(audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count())
                             .build();
@@ -113,7 +126,7 @@ public class ReportService {
                     long total = rows.size();
                     long draft = rows.stream().filter(a -> a.getStatus() == AuditStatus.DRAFT).count();
                     long inProgress = rows.stream().filter(a -> a.getStatus() == AuditStatus.IN_PROGRESS).count();
-                    long submitted = rows.stream().filter(a -> a.getStatus() == AuditStatus.SUBMITTED).count();
+                    long submitted = rows.stream().filter(a -> SUBMITTED_PIPELINE.contains(a.getStatus())).count();
                     long attested = rows.stream().filter(a -> a.getStatus() == AuditStatus.ATTESTED).count();
                     long complete = rows.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count();
                     long open = draft + inProgress + submitted + attested;
@@ -144,7 +157,7 @@ public class ReportService {
                     List<Audit> audits = p.getAudits();
                     long total = audits.size();
                     long complete = audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count();
-                    long submitted = audits.stream().filter(a -> a.getStatus() == AuditStatus.SUBMITTED).count();
+                    long submitted = audits.stream().filter(a -> SUBMITTED_PIPELINE.contains(a.getStatus())).count();
                     long attested = audits.stream().filter(a -> a.getStatus() == AuditStatus.ATTESTED).count();
                     long open = audits.stream()
                             .filter(a -> a.getStatus() == AuditStatus.DRAFT || a.getStatus() == AuditStatus.IN_PROGRESS)
@@ -218,7 +231,12 @@ public class ReportService {
     @Transactional(readOnly = true)
     public AuditorDashboardDto auditorDashboard() {
         List<Audit> prioritized = auditRepository.findByStatusInOrderByDueAtAsc(
-                List.of(AuditStatus.SUBMITTED, AuditStatus.ATTESTED, AuditStatus.IN_PROGRESS),
+                List.of(
+                        AuditStatus.IN_PROGRESS,
+                        AuditStatus.PENDING_APPROVAL,
+                        AuditStatus.REVISIONS_REQUESTED,
+                        AuditStatus.AUDITOR_APPROVED,
+                        AuditStatus.ATTESTED),
                 PageRequest.of(0, 50)
         ).getContent();
 

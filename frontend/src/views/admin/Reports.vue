@@ -65,7 +65,6 @@
           <router-link to="/admin/operations" class="btn btn-outline-primary btn-sm">Audit Queue</router-link>
           <router-link to="/admin/risk-register" class="btn btn-outline-primary btn-sm">Risk Register</router-link>
           <router-link to="/admin/remediation-plans" class="btn btn-outline-primary btn-sm">Remediation Plans</router-link>
-          <router-link to="/admin/policy-attestations" class="btn btn-outline-primary btn-sm">Policy Attestations</router-link>
         </div>
       </div>
 
@@ -292,11 +291,9 @@ const healthCards = computed(() => {
 
 const riskComplianceCards = computed(() => {
   const rk = riskKpis.value || {}
-  const ck = complianceKpis.value || {}
   return [
     { label: 'High residual risks', value: rk.highRisks ?? 0, variant: (rk.highRisks ?? 0) > 0 ? 'danger' : 'default' },
-    { label: 'Overdue remediation', value: rk.overdueRemediationActions ?? 0, variant: (rk.overdueRemediationActions ?? 0) > 0 ? 'warning' : 'default' },
-    { label: 'Pending attestations', value: ck.pendingAttestations ?? 0, variant: (ck.pendingAttestations ?? 0) > 0 ? 'warning' : 'default' }
+    { label: 'Overdue remediation', value: rk.overdueRemediationActions ?? 0, variant: (rk.overdueRemediationActions ?? 0) > 0 ? 'warning' : 'default' }
   ]
 })
 
@@ -322,14 +319,13 @@ const healthNarrative = computed(() => {
   const overdue = s.overdueAudits ?? 0
   const submitted = s.submittedAudits ?? 0
   const rk = riskKpis.value || {}
-  const ck = complianceKpis.value || {}
   if (overdue > 0) {
     return `Attention: ${overdue} audit(s) are past due — prioritize dates and ownership before backlog grows.`
   }
   if (submitted > 0) {
-    return `${submitted} audit(s) are submitted and waiting for review or attestation.`
+    return `${submitted} audit(s) are submitted and waiting for review.`
   }
-  if ((rk.overdueRemediationActions ?? 0) > 0 || (ck.pendingAttestations ?? 0) > 0 || (rk.highRisks ?? 0) > 0) {
+  if ((rk.overdueRemediationActions ?? 0) > 0 || (rk.highRisks ?? 0) > 0) {
     return 'Risk and compliance follow-ups below need steady attention even when audits look healthy.'
   }
   return 'Program posture looks steady on this snapshot — keep exports and schedules aligned with leadership asks.'
@@ -339,8 +335,7 @@ const healthBorderClass = computed(() => {
   const s = summary.value || {}
   if ((s.overdueAudits ?? 0) > 0) return 'border-danger'
   const rk = riskKpis.value || {}
-  const ck = complianceKpis.value || {}
-  if ((rk.highRisks ?? 0) > 0 || (rk.overdueRemediationActions ?? 0) > 0 || (ck.pendingAttestations ?? 0) > 0) return 'border-warning'
+  if ((rk.highRisks ?? 0) > 0 || (rk.overdueRemediationActions ?? 0) > 0) return 'border-warning'
   return 'border-success'
 })
 
@@ -360,7 +355,6 @@ const actionItems = computed(() => {
   const items = []
   const s = summary.value || {}
   const rk = riskKpis.value || {}
-  const ck = complianceKpis.value || {}
   if ((s.overdueAudits ?? 0) > 0) {
     items.push({
       text: `${s.overdueAudits} audit(s) are overdue.`,
@@ -370,7 +364,7 @@ const actionItems = computed(() => {
   }
   if ((s.submittedAudits ?? 0) > 0) {
     items.push({
-      text: `${s.submittedAudits} audit(s) are submitted and need review or attestation.`,
+      text: `${s.submittedAudits} audit(s) are submitted and need review.`,
       to: '/admin/operations',
       linkLabel: 'Review in Audit Queue'
     })
@@ -387,13 +381,6 @@ const actionItems = computed(() => {
       text: `${rk.overdueRemediationActions} remediation action(s) are overdue.`,
       to: '/admin/remediation-plans',
       linkLabel: 'Remediation plans'
-    })
-  }
-  if ((ck.pendingAttestations ?? 0) > 0) {
-    items.push({
-      text: `${ck.pendingAttestations} policy attestation(s) are still pending.`,
-      to: '/admin/policy-attestations',
-      linkLabel: 'Policy attestations'
     })
   }
   const ordered = (trends.value || []).slice().sort((a, b) => a.year - b.year)

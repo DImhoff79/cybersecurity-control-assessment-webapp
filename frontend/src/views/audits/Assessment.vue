@@ -14,14 +14,14 @@
           <div class="assessment-top-actions">
             <button
               class="btn btn-outline-success btn-sm"
-              :disabled="!audit || (audit.status !== 'SUBMITTED' && audit.status !== 'ATTESTED')"
+              :disabled="!audit || (audit.status !== 'AUDITOR_APPROVED' && audit.status !== 'ATTESTED')"
               @click="attestAudit"
             >
               Attest Audit
             </button>
             <button
               class="btn btn-success btn-sm"
-              :disabled="!audit || (audit.status !== 'ATTESTED' && audit.status !== 'SUBMITTED')"
+              :disabled="!audit || audit.status !== 'ATTESTED'"
               @click="markComplete"
             >
               Mark Complete
@@ -80,6 +80,65 @@
       </div>
     </div>
 
+    <div v-if="activeWorkspaceTab === 'overview'" class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Approval workflow</h2>
+        <div v-if="approvalLoading" class="text-muted small">Loading workflow…</div>
+        <template v-else>
+          <ol v-if="approvalSteps.length" class="mb-3 small">
+            <li v-for="s in approvalSteps" :key="s.id" class="mb-1">
+              <strong>{{ s.assignedUserDisplayName || s.assignedUserEmail }}</strong>
+              <span class="badge text-bg-light border ms-2">{{ s.stepStatus }}</span>
+              <span v-if="s.decisionNotes" class="text-muted d-block"> — {{ s.decisionNotes }}</span>
+            </li>
+          </ol>
+          <p v-else class="text-muted small">
+            No approval steps yet. Managers can define them below, or a step is created automatically from an active REVIEWER
+            with role Auditor when the owner submits.
+          </p>
+
+          <div v-if="canManageAudits && canEditWorkflow" class="border rounded p-3 mb-3 bg-light">
+            <h3 class="h6">Edit approvers (auditors)</h3>
+            <p class="small text-muted mb-2">Build an ordered list. Save replaces the workflow for this audit.</p>
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+              <select v-model="workflowAddUserId" class="form-select form-select-sm" style="max-width: 280px">
+                <option :value="null">Add auditor…</option>
+                <option v-for="u in auditorPool" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="addWorkflowStep">Add</button>
+            </div>
+            <ul v-if="workflowDraftIds.length" class="list-group mb-2">
+              <li
+                v-for="(uid, idx) in workflowDraftIds"
+                :key="`${uid}-${idx}`"
+                class="list-group-item d-flex justify-content-between align-items-center py-1"
+              >
+                <span>{{ workflowUserLabel(uid) }}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" @click="removeWorkflowStep(idx)">Remove</button>
+              </li>
+            </ul>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="!workflowDraftIds.length" @click="saveWorkflow">
+              Save workflow
+            </button>
+          </div>
+
+          <div v-if="canActOnApproval" class="d-flex flex-wrap gap-2 align-items-start">
+            <button type="button" class="btn btn-success btn-sm" @click="approvalApprove">Approve</button>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <textarea
+                v-model="returnNotes"
+                class="form-control form-control-sm"
+                rows="2"
+                placeholder="Notes when returning for revision (required)"
+                style="min-width: 240px"
+              />
+              <button type="button" class="btn btn-warning btn-sm" @click="approvalReturn">Return for revision</button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <div v-if="loading" class="text-muted">Loading...</div>
     <div v-else-if="activeWorkspaceTab === 'controls'">
       <div v-if="!auditControls.length" class="card shadow-sm">
@@ -106,34 +165,7 @@
           </div>
           <div class="card-body">
             <div class="row g-3">
-              <div class="col-12 col-xl-4">
-                <h3 class="h6 mb-2">Task Delegation</h3>
-                <div class="border rounded p-2">
-                  <div v-if="!(ac.assignments || []).length" class="text-muted small mb-1">No task assignees.</div>
-                  <div v-for="ta in ac.assignments || []" :key="ta.id" class="small d-flex justify-content-between align-items-center border-top pt-1 mt-1 gap-2">
-                    <span>{{ ta.userDisplayName || ta.userEmail }} ({{ ta.assignmentRole }})</span>
-                    <button class="btn btn-outline-danger btn-sm" @click="removeControlAssignment(ac, ta.id)">Remove</button>
-                  </div>
-                  <div class="row g-1 mt-1">
-                    <div class="col-12">
-                      <select v-model="controlAssignmentDraft(ac.id).userId" class="form-select form-select-sm">
-                        <option :value="null">Select user</option>
-                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
-                      </select>
-                    </div>
-                    <div class="col-8">
-                      <select v-model="controlAssignmentDraft(ac.id).role" class="form-select form-select-sm">
-                        <option value="CONTRIBUTOR">CONTRIBUTOR</option>
-                        <option value="REVIEWER">REVIEWER</option>
-                      </select>
-                    </div>
-                    <div class="col-4">
-                      <button class="btn btn-primary btn-sm w-100" @click="addControlAssignment(ac)">Add</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-12 col-xl-5">
+              <div class="col-12 col-xl-6">
                 <h3 class="h6 mb-2">Assessment Notes</h3>
                 <textarea
                   :value="ac.notes"
@@ -151,7 +183,7 @@
                   <span v-if="!ac.answers?.length" class="text-muted">-</span>
                 </div>
               </div>
-              <div class="col-12 col-xl-3">
+              <div class="col-12 col-xl-6">
                 <h3 class="h6 mb-2">File Evidence Upload</h3>
                 <div class="border rounded p-2">
                   <p class="small text-muted mb-2">
@@ -283,9 +315,11 @@ import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess, toastWarning } from '../../services/toast'
+import { useAuthStore } from '../../stores/auth'
 import { auditStageLabel, auditStatusLabel } from '../../utils/auditStatus'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const auditId = Number(route.params.auditId)
 const audit = ref(null)
 const auditControls = ref([])
@@ -299,10 +333,27 @@ const activityFilter = ref({
 })
 const evidenceDrafts = ref({})
 const evidenceFiles = ref({})
-const controlAssignmentDrafts = ref({})
 const assignments = ref([])
 const users = ref([])
 const newAssignment = ref({ userId: null, role: 'DELEGATE' })
+const approvalSteps = ref([])
+const approvalLoading = ref(true)
+const auditorPool = ref([])
+const workflowDraftIds = ref([])
+const workflowAddUserId = ref(null)
+const returnNotes = ref('')
+
+const canManageAudits = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
+const canEditWorkflow = computed(() => audit.value && audit.value.status !== 'COMPLETE')
+const pendingStep = computed(() => approvalSteps.value.find((s) => s.stepStatus === 'PENDING'))
+const canActOnApproval = computed(() => {
+  if (!audit.value || audit.value.status !== 'PENDING_APPROVAL') return false
+  const p = pendingStep.value
+  if (!p) return false
+  const uid = authStore.user?.id
+  if (canManageAudits.value) return true
+  return uid != null && p.assignedUserId === uid
+})
 
 const isDetailsOpen = computed({
   get: () => !!detailsModal.value,
@@ -318,22 +369,100 @@ const detailsTitle = computed(() => {
 
 onMounted(async () => {
   try {
-    const [auditRes, controlsRes, logsRes, assignmentsRes, usersRes] = await Promise.all([
+    const [auditRes, controlsRes, logsRes, assignmentsRes, usersRes, auditorsRes] = await Promise.all([
       api.get(`/api/audits/${auditId}`),
       api.get(`/api/audits/${auditId}/controls`),
       api.get(`/api/audits/${auditId}/activity-logs`),
       api.get(`/api/audits/${auditId}/assignments`),
-      api.get('/api/users')
+      api.get('/api/users'),
+      api.get('/api/users/auditors').catch(() => ({ data: [] }))
     ])
     audit.value = auditRes.data
     auditControls.value = controlsRes.data || []
     activityLogs.value = logsRes.data || []
     assignments.value = assignmentsRes.data || []
     users.value = usersRes.data || []
+    auditorPool.value = auditorsRes.data || []
+    await loadApproval()
   } finally {
     loading.value = false
   }
 })
+
+async function loadApproval() {
+  approvalLoading.value = true
+  try {
+    const res = await api.get(`/api/audits/${auditId}/approval/workflow`)
+    approvalSteps.value = res.data || []
+    if (canManageAudits.value) {
+      workflowDraftIds.value = approvalSteps.value.map((s) => s.assignedUserId)
+    }
+  } catch {
+    approvalSteps.value = []
+  } finally {
+    approvalLoading.value = false
+  }
+}
+
+function workflowUserLabel(uid) {
+  const u = auditorPool.value.find((x) => x.id === uid) || users.value.find((x) => x.id === uid)
+  return u ? u.displayName || u.email : `User #${uid}`
+}
+
+function addWorkflowStep() {
+  if (workflowAddUserId.value == null) return
+  workflowDraftIds.value = [...workflowDraftIds.value, workflowAddUserId.value]
+  workflowAddUserId.value = null
+}
+
+function removeWorkflowStep(idx) {
+  workflowDraftIds.value = workflowDraftIds.value.filter((_, i) => i !== idx)
+}
+
+async function saveWorkflow() {
+  if (!workflowDraftIds.value.length) {
+    toastWarning('Add at least one auditor.')
+    return
+  }
+  try {
+    await api.put(`/api/audits/${auditId}/approval/workflow`, { assigneeUserIds: workflowDraftIds.value })
+    toastSuccess('Approval workflow saved.')
+    await loadApproval()
+    await loadActivityLogs()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to save workflow')
+  }
+}
+
+async function approvalApprove() {
+  try {
+    const res = await api.post(`/api/audits/${auditId}/approval/approve`, {})
+    audit.value = res.data
+    toastSuccess('Approval recorded.')
+    await loadApproval()
+    await loadActivityLogs()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to approve')
+  }
+}
+
+async function approvalReturn() {
+  const notes = returnNotes.value?.trim()
+  if (!notes) {
+    toastWarning('Enter notes for the application owner.')
+    return
+  }
+  try {
+    const res = await api.post(`/api/audits/${auditId}/approval/return`, { notes })
+    audit.value = res.data
+    returnNotes.value = ''
+    toastSuccess('Returned for revision.')
+    await loadApproval()
+    await loadActivityLogs()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to return audit')
+  }
+}
 
 async function addAssignment() {
   if (!newAssignment.value.userId) {
@@ -371,42 +500,6 @@ async function updateStatus(ac, status) {
     if (idx >= 0) auditControls.value[idx].status = status
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to update')
-  }
-}
-
-function controlAssignmentDraft(auditControlId) {
-  if (!controlAssignmentDrafts.value[auditControlId]) {
-    controlAssignmentDrafts.value[auditControlId] = { userId: null, role: 'CONTRIBUTOR' }
-  }
-  return controlAssignmentDrafts.value[auditControlId]
-}
-
-async function addControlAssignment(ac) {
-  const draft = controlAssignmentDraft(ac.id)
-  if (!draft.userId) {
-    toastWarning('Select a user for task delegation.')
-    return
-  }
-  try {
-    await api.post(`/api/audit-controls/${ac.id}/assignments`, {
-      userId: draft.userId,
-      role: draft.role
-    })
-    draft.userId = null
-    await reloadAuditControl(ac.id)
-    toastSuccess('Task assignment added.')
-  } catch (e) {
-    toastError(e.response?.data?.error || 'Failed to add task assignment')
-  }
-}
-
-async function removeControlAssignment(ac, assignmentId) {
-  try {
-    await api.delete(`/api/audit-controls/${ac.id}/assignments/${assignmentId}`)
-    await reloadAuditControl(ac.id)
-    toastSuccess('Task assignment removed.')
-  } catch (e) {
-    toastError(e.response?.data?.error || 'Failed to remove task assignment')
   }
 }
 

@@ -29,7 +29,6 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - Unified admin **Audit Queue** (triage + submitted reviews)
   - Assign/send/remind/attest
   - Self-service owner response flow
-  - Task delegation via My Tasks
 - **Workspace UX**:
   - Admin workspace uses left-sidebar + utility bar layout
   - Self-service workspace uses the same shell pattern with role-appropriate navigation
@@ -41,7 +40,7 @@ Supports role-based administration, audit execution, governance snapshots, and r
 - **Sortable table headings** across major admin/self-service tables.
 - **GRC / program management (Phase 2+)**:
   - Compliance obligations and requirement ↔ control mappings
-  - Policies, versions, attestations, and regulatory scope
+  - Policies, versions, and regulatory scope
   - Risk register, risk ↔ control/finding links, remediation plans and actions
   - Findings workflow and control exception requests (including linkage to findings)
   - In-app notifications and scheduled report delivery hooks
@@ -114,7 +113,7 @@ npm run dev -- --host
   - `views/admin/KickoffAudit.vue`, `AuditProjects.vue`: audit operations and project scoping
   - `views/admin/OperationsQueue.vue`: consolidated triage and submitted reviews
   - `views/admin/Reports.vue`: reporting and export surfaces
-  - `views/selfservice/MyAudits.vue`, `MyTasks.vue`, `AuditRespond.vue`: owner and assignee workflows
+  - `views/selfservice/MyAudits.vue`, `AuditRespond.vue`: owner and assignee workflows
 - **Shared UI behavior**
   - `composables/useTableSort.js`: reusable sortable table heading behavior used across tables
   - `styles/theme.css`: global theme, sortable header visual treatment

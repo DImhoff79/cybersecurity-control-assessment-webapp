@@ -58,18 +58,6 @@ const cards = computed(() => {
         to: '/my-audits'
       },
       {
-        key: 'my-tasks',
-        title: 'My delegated tasks',
-        description: 'Control tasks delegated to you with status and notes.',
-        to: '/my-tasks'
-      },
-      {
-        key: 'my-policies',
-        title: 'Policy attestations',
-        description: 'Policies you may need to attest to.',
-        to: '/my-policies'
-      },
-      {
         key: 'my-exceptions',
         title: 'Control exceptions',
         description: 'Request and track exceptions for controls on your audits.',
@@ -103,7 +91,7 @@ const cards = computed(() => {
       {
         key: 'workspace',
         title: 'My workspace',
-        description: 'My Audits, Tasks, and Policies in the admin shell.',
+        description: 'My Audits and workspace shortcuts in the admin shell.',
         to: '/admin/my-audits'
       }
     )

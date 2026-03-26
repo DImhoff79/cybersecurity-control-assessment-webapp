@@ -16,7 +16,7 @@ describe('ReviewQueue', () => {
     vi.clearAllMocks()
     api.get.mockResolvedValue({
       data: [
-        { id: 1, applicationName: 'App A', year: 2026, status: 'SUBMITTED' },
+        { id: 1, applicationName: 'App A', year: 2026, status: 'PENDING_APPROVAL' },
         { id: 2, applicationName: 'App B', year: 2026, status: 'IN_PROGRESS' }
       ]
     })
@@ -45,6 +45,12 @@ describe('ReviewQueue', () => {
   })
 
   it('attests submitted assessment from queue', async () => {
+    api.get.mockResolvedValue({
+      data: [
+        { id: 1, applicationName: 'App A', year: 2026, status: 'AUDITOR_APPROVED' },
+        { id: 2, applicationName: 'App B', year: 2026, status: 'IN_PROGRESS' }
+      ]
+    })
     const wrapper = mount(ReviewQueue, {
       global: {
         stubs: {

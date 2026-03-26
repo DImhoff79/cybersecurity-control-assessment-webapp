@@ -39,7 +39,7 @@ describe('KickoffAudit', () => {
       }
       if (url === '/api/applications/1/audits') {
         return Promise.resolve({
-          data: [{ id: 11, year: 2026, status: 'SUBMITTED', projectId: 8, projectName: 'PCI 2026', assignedToEmail: 'owner@example.com' }]
+          data: [{ id: 11, year: 2026, status: 'AUDITOR_APPROVED', projectId: 8, projectName: 'PCI 2026', assignedToEmail: 'owner@example.com' }]
         })
       }
       return Promise.resolve({ data: [] })

@@ -23,7 +23,6 @@ public class ComplianceService {
     private final PolicyRequirementMappingRepository policyRequirementMappingRepository;
     private final ControlRepository controlRepository;
     private final PolicyRepository policyRepository;
-    private final PolicyAcknowledgementRepository policyAcknowledgementRepository;
 
     public static RegulationDto toDto(Regulation row) {
         return RegulationDto.builder()
@@ -185,8 +184,6 @@ public class ComplianceService {
         long totalRequirements = complianceRequirementRepository.count();
         long mappedRequirementsToControls = requirementControlMappingRepository.countDistinctRequirementIds();
         long mappedRequirementsToPolicies = policyRequirementMappingRepository.countDistinctRequirementIds();
-        long pendingAttestations = policyAcknowledgementRepository.countByStatus(PolicyAcknowledgementStatus.PENDING);
-        long overdueAttestations = policyAcknowledgementRepository.countByStatusAndDueAtBefore(PolicyAcknowledgementStatus.PENDING, java.time.Instant.now());
         double controlCoveragePct = pct(mappedRequirementsToControls, totalRequirements);
         double policyCoveragePct = pct(mappedRequirementsToPolicies, totalRequirements);
         return ComplianceKpiDto.builder()
@@ -197,8 +194,6 @@ public class ComplianceService {
                 .mappedRequirementsToPolicies(mappedRequirementsToPolicies)
                 .controlCoveragePct(controlCoveragePct)
                 .policyCoveragePct(policyCoveragePct)
-                .pendingAttestations(pendingAttestations)
-                .overdueAttestations(overdueAttestations)
                 .build();
     }
 
