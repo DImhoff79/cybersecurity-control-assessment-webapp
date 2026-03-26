@@ -4,6 +4,8 @@ import com.cyberassessment.dto.ControlExceptionCreateRequest;
 import com.cyberassessment.dto.ControlExceptionDecisionRequest;
 import com.cyberassessment.dto.ControlExceptionDto;
 import com.cyberassessment.entity.*;
+import com.cyberassessment.repository.ApprovalDelegateRepository;
+import com.cyberassessment.repository.AuditAssignmentRepository;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditRepository;
 import com.cyberassessment.repository.ControlExceptionRepository;
@@ -25,6 +27,9 @@ public class ControlExceptionService {
     private final FindingRepository findingRepository;
     private final CurrentUserService currentUserService;
     private final AuditActivityLogService auditActivityLogService;
+    private final AuditService auditService;
+    private final AuditAssignmentRepository auditAssignmentRepository;
+    private final ApprovalDelegateRepository approvalDelegateRepository;
 
     @Transactional
     public List<ControlExceptionDto> list(Long auditId, Long findingId) {
@@ -40,6 +45,24 @@ public class ControlExceptionService {
             items = controlExceptionRepository.findAllByOrderByRequestedAtDesc();
         }
         return items.stream().map(ControlExceptionService::toDto).toList();
+    }
+
+    @Transactional
+    public List<ControlExceptionDto> listForWorkspace() {
+        expireElapsedApprovals();
+        List<Long> auditIds = auditService.findAccessibleAuditIdsForCurrentUser();
+        if (auditIds.isEmpty()) {
+            return List.of();
+        }
+        return controlExceptionRepository.findByAudit_IdInOrderByRequestedAtDesc(auditIds).stream()
+                .map(ControlExceptionService::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public ControlExceptionDto requestForWorkspace(ControlExceptionCreateRequest request) {
+        auditService.assertCanAccessAudit(request.getAuditId());
+        return request(request);
     }
 
     @Transactional
@@ -74,6 +97,7 @@ public class ControlExceptionService {
     public ControlExceptionDto approve(Long exceptionId, ControlExceptionDecisionRequest request) {
         ControlExceptionRequest row = controlExceptionRepository.findById(exceptionId)
                 .orElseThrow(() -> new IllegalArgumentException("Control exception not found"));
+        assertCanDecideControlException(row);
         if (row.getStatus() != ControlExceptionStatus.REQUESTED) {
             throw new IllegalArgumentException("Only requested exceptions can be approved");
         }
@@ -93,6 +117,7 @@ public class ControlExceptionService {
     public ControlExceptionDto reject(Long exceptionId, ControlExceptionDecisionRequest request) {
         ControlExceptionRequest row = controlExceptionRepository.findById(exceptionId)
                 .orElseThrow(() -> new IllegalArgumentException("Control exception not found"));
+        assertCanDecideControlException(row);
         if (row.getStatus() != ControlExceptionStatus.REQUESTED) {
             throw new IllegalArgumentException("Only requested exceptions can be rejected");
         }
@@ -118,6 +143,37 @@ public class ControlExceptionService {
             auditActivityLogService.log(row.getAudit(), AuditActivityType.EXCEPTION_EXPIRED, "Control exception expired");
         }
         controlExceptionRepository.saveAll(expired);
+    }
+
+    private void assertCanDecideControlException(ControlExceptionRequest row) {
+        if (!canDecideControlException(row)) {
+            throw new IllegalArgumentException("Not authorized to approve or reject this exception");
+        }
+    }
+
+    private boolean canDecideControlException(ControlExceptionRequest row) {
+        User u = currentUserService.getCurrentUserOrThrow();
+        if (currentUserService.isAdmin()) {
+            return true;
+        }
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            return true;
+        }
+        if (approvalDelegateRepository.existsByUser_Id(u.getId())) {
+            return true;
+        }
+        Audit audit = row.getAudit();
+        if (u.getRole() == UserRole.AUDITOR) {
+            return auditorParticipatesInAudit(u, audit);
+        }
+        return false;
+    }
+
+    private boolean auditorParticipatesInAudit(User u, Audit audit) {
+        if (audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(u.getId())) {
+            return true;
+        }
+        return auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), u.getId());
     }
 
     private Finding resolveFindingForException(Long findingId, Audit audit) {

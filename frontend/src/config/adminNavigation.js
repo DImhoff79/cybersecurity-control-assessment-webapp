@@ -3,9 +3,11 @@ export const adminSections = [
     key: 'workspace',
     label: 'My workspace',
     items: [
+      { label: 'Home', to: '/start' },
       { label: 'My Audits', to: '/admin/my-audits' },
       { label: 'My Tasks', to: '/admin/my-tasks' },
       { label: 'My Policies', to: '/admin/my-policies' },
+      { label: 'My Exceptions', to: '/admin/my-exceptions' },
       { label: 'Profile', to: '/admin/profile' }
     ]
   },
@@ -35,6 +37,11 @@ export const adminSections = [
       { label: 'Issue Program Hub', to: '/admin/issue-program', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Findings', to: '/admin/findings', permission: 'AUDIT_MANAGEMENT' },
       { label: 'Control Exceptions', to: '/admin/control-exceptions', permission: 'AUDIT_MANAGEMENT' },
+      {
+        label: 'My control exceptions',
+        to: '/admin/workspace-exceptions',
+        roles: ['AUDITOR']
+      },
       { label: 'Risk Register', to: '/admin/risk-register', permission: 'RISK_MANAGEMENT' },
       { label: 'Remediation Plans', to: '/admin/remediation-plans', permission: 'REMEDIATION_MANAGEMENT' }
     ]
@@ -56,6 +63,12 @@ export const adminSections = [
         label: 'Questionnaire Governance',
         to: '/admin/questionnaire-templates',
         permission: 'AUDIT_MANAGEMENT',
+        roles: ['ADMIN', 'AUDIT_MANAGER']
+      },
+      {
+        label: 'Approval delegates',
+        to: '/admin/approval-delegates',
+        permission: 'USER_MANAGEMENT',
         roles: ['ADMIN', 'AUDIT_MANAGER']
       }
     ]

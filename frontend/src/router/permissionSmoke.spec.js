@@ -32,6 +32,8 @@ describe('permission smoke checks', () => {
     expect(canAccessRoute('/admin/findings', auditor)).toBe(false)
     expect(canAccessRoute('/admin/issue-program', auditor)).toBe(false)
     expect(canAccessRoute('/admin/risk-register', auditor)).toBe(false)
+    expect(canAccessRoute('/admin/workspace-exceptions', auditor)).toBe(true)
+    expect(canAccessRoute('/admin/approval-delegates', auditor)).toBe(false)
   })
 
   it('audit manager can access audit-management program and issue hub routes', () => {
@@ -52,6 +54,7 @@ describe('permission smoke checks', () => {
     expect(canAccessRoute('/admin/control-exceptions', manager)).toBe(true)
     expect(canAccessRoute('/admin/risk-register', manager)).toBe(true)
     expect(canAccessRoute('/admin/remediation-plans', manager)).toBe(true)
+    expect(canAccessRoute('/admin/approval-delegates', manager)).toBe(true)
   })
 
   it('application owner cannot access admin routes', () => {

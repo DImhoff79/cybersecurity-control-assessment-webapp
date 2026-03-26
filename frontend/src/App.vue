@@ -8,6 +8,7 @@
           <div class="small text-white-50">Workspace</div>
         </div>
         <nav class="workspace-nav">
+          <router-link to="/start" class="workspace-nav-item">Home</router-link>
           <router-link id="tour-nav-my-audits" to="/my-audits" class="workspace-nav-item">My Audits</router-link>
           <router-link id="tour-nav-my-tasks" to="/my-tasks" class="workspace-nav-item">My Tasks</router-link>
           <router-link id="tour-nav-my-policies" to="/my-policies" class="workspace-nav-item">My Policies</router-link>
@@ -86,6 +87,7 @@ const didAdminTour = ref(false)
 
 function scheduleProductTour() {
   if (!authStore.user || route.name === 'Login') return
+  if (route.path === '/start' || route.name === 'RoleHub') return
   nextTick(() => {
     setTimeout(() => {
       if (route.path.startsWith('/admin')) {

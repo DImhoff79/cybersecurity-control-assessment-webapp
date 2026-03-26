@@ -5,8 +5,14 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', name: 'Login', component: () => import('../views/Login.vue'), meta: { public: true } },
-    { path: '/', redirect: '/my-audits' },
+    { path: '/start', name: 'RoleHub', component: () => import('../views/RoleHub.vue') },
+    { path: '/', redirect: '/start' },
     { path: '/my-audits', name: 'MyAudits', component: () => import('../views/selfservice/MyAudits.vue') },
+    {
+      path: '/my-exceptions',
+      name: 'MyExceptions',
+      component: () => import('../views/selfservice/MyExceptions.vue')
+    },
     { path: '/my-tasks', name: 'MyTasks', component: () => import('../views/selfservice/MyTasks.vue') },
     { path: '/my-policies', name: 'MyPolicies', component: () => import('../views/selfservice/MyPolicies.vue') },
     { path: '/audits/:auditId/respond', name: 'AuditRespond', component: () => import('../views/selfservice/AuditRespond.vue') },
@@ -33,6 +39,12 @@ const router = createRouter({
           name: 'AdminWorkspaceMyPolicies',
           component: () => import('../views/selfservice/MyPolicies.vue'),
           meta: { section: 'Workspace', pageTitle: 'My Policies' }
+        },
+        {
+          path: 'my-exceptions',
+          name: 'AdminWorkspaceMyExceptions',
+          component: () => import('../views/selfservice/MyExceptions.vue'),
+          meta: { section: 'Workspace', pageTitle: 'My Exceptions' }
         },
         {
           path: 'profile',
@@ -81,6 +93,23 @@ const router = createRouter({
           name: 'AdminControlExceptions',
           component: () => import('../views/admin/ControlExceptions.vue'),
           meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Control Exceptions' }
+        },
+        {
+          path: 'workspace-exceptions',
+          name: 'AdminWorkspaceExceptions',
+          component: () => import('../views/admin/AdminWorkspaceExceptions.vue'),
+          meta: { roles: ['AUDITOR'], section: 'Risk & Remediation', pageTitle: 'My control exceptions' }
+        },
+        {
+          path: 'approval-delegates',
+          name: 'AdminApprovalDelegates',
+          component: () => import('../views/admin/ApprovalDelegates.vue'),
+          meta: {
+            roles: ['ADMIN', 'AUDIT_MANAGER'],
+            permission: 'USER_MANAGEMENT',
+            section: 'Admin Ops',
+            pageTitle: 'Approval delegates'
+          }
         },
         {
           path: 'reports',
@@ -183,7 +212,7 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'Login' })
   }
   // Keep admins in the Admin shell for self-service pages (same sidebar as other admin routes)
-  const adminWorkspacePaths = ['/my-audits', '/my-tasks', '/my-policies', '/profile']
+  const adminWorkspacePaths = ['/my-audits', '/my-tasks', '/my-policies', '/my-exceptions', '/profile']
   if (authStore.canAccessAdmin && adminWorkspacePaths.includes(to.path)) {
     return next({ path: `/admin${to.path}`, query: to.query, hash: to.hash, replace: true })
   }

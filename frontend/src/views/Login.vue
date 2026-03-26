@@ -76,7 +76,7 @@ const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN || 'http://localhost:8
 onMounted(() => {
   loadProviders()
   handleOauthCallbackState()
-  if (authStore.user) router.replace(route.query.redirect || '/my-audits')
+  if (authStore.user) router.replace(route.query.redirect || '/start')
 })
 
 async function submit() {
@@ -129,7 +129,6 @@ function startSocialLogin(providerKey) {
 }
 
 function defaultLandingRoute() {
-  if (authStore.canAccessAdmin) return '/admin'
-  return '/my-audits'
+  return '/start'
 }
 </script>

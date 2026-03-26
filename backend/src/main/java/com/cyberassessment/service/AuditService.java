@@ -278,10 +278,35 @@ public class AuditService {
                 .stream()
                 .map(AuditAssignment::getAudit)
                 .toList();
-        return java.util.stream.Stream.concat(direct.stream(), collaboratorAudits.stream())
+        List<Audit> ownedAppAudits = auditRepository.findByApplicationOwnerId(current.getId());
+        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream())
+                .flatMap(s -> s)
                 .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
                 .values().stream()
                 .map(AuditService::toDto)
+                .toList();
+    }
+
+    /**
+     * Audit IDs the current user may access for workspace features (exceptions, etc.).
+     */
+    @Transactional(readOnly = true)
+    public List<Long> findAccessibleAuditIdsForCurrentUser() {
+        User current = currentUserService.getCurrentUserOrThrow();
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            return auditRepository.findAll().stream().map(Audit::getId).toList();
+        }
+        List<Audit> direct = auditRepository.findByAssignedTo(current);
+        List<Audit> collaboratorAudits = auditAssignmentRepository.findByUserIdAndActiveTrue(current.getId())
+                .stream()
+                .map(AuditAssignment::getAudit)
+                .toList();
+        List<Audit> ownedAppAudits = auditRepository.findByApplicationOwnerId(current.getId());
+        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream())
+                .flatMap(s -> s)
+                .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
+                .values().stream()
+                .map(Audit::getId)
                 .toList();
     }
 
@@ -503,7 +528,9 @@ public class AuditService {
         if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) return;
         boolean direct = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
         boolean collaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-        if (!direct && !collaborator) {
+        boolean appOwner = audit.getApplication().getOwner() != null
+                && audit.getApplication().getOwner().getId().equals(current.getId());
+        if (!direct && !collaborator && !appOwner) {
             throw new IllegalArgumentException("You do not have access to this audit");
         }
     }
@@ -514,7 +541,9 @@ public class AuditService {
         }
         User current = currentUserService.getCurrentUserOrThrow();
         boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
-        if (isPrimary) {
+        boolean isAppOwner = audit.getApplication().getOwner() != null
+                && audit.getApplication().getOwner().getId().equals(current.getId());
+        if (isPrimary || isAppOwner) {
             return auditControlRepository.findByAudit(audit).stream().map(ac -> ac.getControl().getId()).collect(Collectors.toSet());
         }
         Set<Long> controlIds = new HashSet<>();

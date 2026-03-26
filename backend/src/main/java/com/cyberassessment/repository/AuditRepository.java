@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,4 +39,7 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
     List<Audit> findTop12ByDueAtBeforeAndStatusNotOrderByDueAtAsc(java.time.Instant dueAt, AuditStatus status);
 
     List<Audit> findByAuditProjectId(Long auditProjectId);
+
+    @Query("SELECT a FROM Audit a WHERE a.application.owner.id = :ownerId")
+    List<Audit> findByApplicationOwnerId(@Param("ownerId") Long ownerId);
 }

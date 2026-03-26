@@ -23,4 +23,6 @@ public interface ControlExceptionRepository extends JpaRepository<ControlExcepti
     List<Object[]> countGroupedByFindingId(@Param("ids") Collection<Long> ids);
 
     long countByReasonContaining(String fragment);
+
+    List<ControlExceptionRequest> findByAudit_IdInOrderByRequestedAtDesc(Collection<Long> auditIds);
 }
