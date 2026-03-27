@@ -119,6 +119,87 @@ describe('AuditRespond', () => {
     expect(api.post).toHaveBeenCalledWith('/api/audits/1/submit')
   })
 
+  it('shows questionnaire read-only when audit is submitted or in review', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/audits/1') {
+        return Promise.resolve({ data: { id: 1, applicationName: 'App', year: 2026, status: 'PENDING_APPROVAL' } })
+      }
+      if (url === '/api/audits/1/questions') {
+        return Promise.resolve({
+          data: [
+            {
+              questionId: 101,
+              auditControlId: 201,
+              controlId: 11,
+              controlControlId: 'AC-1',
+              controlName: 'Access Policy',
+              questionText: 'Do you review access annually?',
+              helpText: '',
+              displayOrder: 0,
+              existingAnswerText: 'YES'
+            }
+          ]
+        })
+      }
+      if (url === '/api/audits/1/controls') {
+        return Promise.resolve({ data: [] })
+      }
+      if (/^\/api\/audit-controls\/\d+\/evidences$/.test(url)) {
+        return Promise.resolve({ data: [] })
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    const wrapper = mount(AuditRespond)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Do you review access annually')
+    expect(wrapper.text()).toContain('view only')
+    expect(wrapper.find('select.form-select').attributes('disabled')).toBeDefined()
+    expect(wrapper.findAll('button').find((b) => b.text() === 'Save draft')).toBeUndefined()
+  })
+
+  it('shows revisions-requested banner and remains editable', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/api/audits/1') {
+        return Promise.resolve({ data: { id: 1, applicationName: 'App', year: 2026, status: 'REVISIONS_REQUESTED' } })
+      }
+      if (url === '/api/audits/1/questions') {
+        return Promise.resolve({
+          data: [
+            {
+              questionId: 101,
+              auditControlId: 201,
+              controlId: 11,
+              controlControlId: 'AC-1',
+              controlName: 'Access Policy',
+              questionText: 'Do you review access annually?',
+              helpText: '',
+              displayOrder: 0,
+              existingAnswerText: 'YES'
+            }
+          ]
+        })
+      }
+      if (url === '/api/audits/1/controls') {
+        return Promise.resolve({ data: [] })
+      }
+      if (/^\/api\/audit-controls\/\d+\/evidences$/.test(url)) {
+        return Promise.resolve({ data: [] })
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    const wrapper = mount(AuditRespond)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Revisions requested')
+    expect(wrapper.text()).toContain('auditor has requested changes')
+    expect(wrapper.find('.respond-revisions-banner').exists()).toBe(true)
+    expect(wrapper.find('select.form-select').attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('button').find((b) => b.text() === 'Save draft')).toBeDefined()
+  })
+
   it('groups similar guided questions into the same section', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/api/audits/1') {

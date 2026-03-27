@@ -77,7 +77,7 @@ app:
     demo-dataset: ${APP_SEED_DEMO_DATASET:true}
     test-policies: ${APP_SEED_TEST_POLICIES:true}
     test-policies-refresh: ${APP_SEED_TEST_POLICIES_REFRESH:true}
-  cors-allowed-origins: http://localhost:5173,http://localhost:3000
+  cors-allowed-origins: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000
   frontend-base-url: http://localhost:5173
   evidence-storage-path: ./data/evidence
   evidence-storage-mode: ${EVIDENCE_STORAGE_MODE:db}

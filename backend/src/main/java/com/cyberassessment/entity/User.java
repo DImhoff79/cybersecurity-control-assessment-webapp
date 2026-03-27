@@ -34,6 +34,12 @@ public class User {
 
     private String displayName;
 
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;

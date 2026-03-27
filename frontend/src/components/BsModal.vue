@@ -31,21 +31,32 @@ import Modal from 'bootstrap/js/dist/modal'
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   title: { type: String, default: '' },
-  size: { type: String, default: '' } // '', 'sm', 'lg', 'xl'
+  size: { type: String, default: '' }, // '', 'sm', 'lg', 'xl'
+  /** Long forms: scroll body inside dialog instead of growing past the viewport */
+  scrollable: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue', 'hidden'])
 
 const modalEl = ref(null)
 let modalInstance = null
-const hiddenHandler = () => {
-  emit('update:modelValue', false)
+
+/** Sync v-model when hide starts (backdrop, Esc, programmatic). Do not emit false from hidden.bs.modal — that can fire after a new show() if the user reopened before the previous hide animation finished, which would incorrectly close the modal. */
+function hideHandler(event) {
+  if (event.defaultPrevented) return
+  if (props.modelValue) {
+    emit('update:modelValue', false)
+  }
+}
+
+function hiddenHandler() {
   emit('hidden')
 }
 
 const dialogClass = computed(() => {
   const sizeClass = props.size ? ` modal-${props.size}` : ''
-  return `modal-dialog${sizeClass}`
+  const scrollClass = props.scrollable ? ' modal-dialog-scrollable' : ''
+  return `modal-dialog${sizeClass}${scrollClass}`
 })
 
 onMounted(async () => {
@@ -56,6 +67,7 @@ onMounted(async () => {
     keyboard: true,
     focus: true
   })
+  modalEl.value.addEventListener('hide.bs.modal', hideHandler)
   modalEl.value.addEventListener('hidden.bs.modal', hiddenHandler)
   if (props.modelValue) {
     modalInstance.show()
@@ -73,6 +85,7 @@ watch(
 
 onBeforeUnmount(() => {
   if (modalEl.value) {
+    modalEl.value.removeEventListener('hide.bs.modal', hideHandler)
     modalEl.value.removeEventListener('hidden.bs.modal', hiddenHandler)
   }
   if (modalInstance) {

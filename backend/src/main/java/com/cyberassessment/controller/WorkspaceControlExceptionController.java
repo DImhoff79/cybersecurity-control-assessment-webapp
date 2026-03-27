@@ -26,6 +26,13 @@ public class WorkspaceControlExceptionController {
         return controlExceptionService.listForWorkspace();
     }
 
+    /** Single row for the detail modal — dedicated path so it never collides with list() or PUT /{id}. */
+    @GetMapping("/detail")
+    public ResponseEntity<ControlExceptionDto> getById(@RequestParam Long id) {
+        ControlExceptionDto dto = controlExceptionService.findForWorkspace(id);
+        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
+    }
+
     @PostMapping
     public ResponseEntity<ControlExceptionDto> request(@RequestBody ControlExceptionCreateRequest request) {
         return ResponseEntity.ok(controlExceptionService.requestForWorkspace(request));

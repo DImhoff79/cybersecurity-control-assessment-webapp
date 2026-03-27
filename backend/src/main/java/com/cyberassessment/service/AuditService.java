@@ -191,7 +191,48 @@ public class AuditService {
             return null;
         }
         ensureCanAccessAudit(audit);
-        return toDto(audit);
+        return enrichAuditDto(audit);
+    }
+
+    private AuditDto enrichAuditDto(Audit audit) {
+        AuditDto dto = AuditService.toDto(audit);
+        enrichPendingAuditor(audit.getId(), dto);
+        return dto;
+    }
+
+    private void enrichPendingAuditor(Long auditId, AuditDto dto) {
+        List<AuditApprovalStep> pending = auditApprovalStepRepository
+                .findByAuditIdAndStepStatusOrderByStepOrderAsc(auditId, AuditApprovalStepStatus.PENDING);
+        User u = null;
+        if (!pending.isEmpty()) {
+            u = pending.get(0).getAssignedTo();
+        } else if (dto.getStatus() == AuditStatus.PENDING_APPROVAL) {
+            u = resolveReviewerAuditorForPendingApproval(auditId);
+        }
+        if (u == null) {
+            return;
+        }
+        dto.setPendingAuditorUserId(u.getId());
+        dto.setPendingAuditorEmail(u.getEmail());
+        dto.setPendingAuditorFirstName(u.getFirstName());
+        dto.setPendingAuditorLastName(u.getLastName());
+        dto.setPendingAuditorDisplayName(u.getDisplayName());
+    }
+
+    /**
+     * When an audit is awaiting approval but has no approval-step rows (legacy data or repair),
+     * use the first active REVIEWER assignment with role AUDITOR — same rule as workflow seeding.
+     */
+    private User resolveReviewerAuditorForPendingApproval(Long auditId) {
+        List<AuditAssignment> reviewers = auditAssignmentRepository
+                .findByAuditIdAndAssignmentRoleAndActiveTrueOrderByAssignedAtAsc(auditId, AuditAssignmentRole.REVIEWER);
+        for (AuditAssignment ar : reviewers) {
+            User candidate = ar.getUser();
+            if (candidate != null && candidate.getRole() == UserRole.AUDITOR) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     @Transactional
@@ -452,7 +493,7 @@ public class AuditService {
         }
         audit = auditRepository.save(audit);
         auditActivityLogService.log(audit, AuditActivityType.AUDIT_SUBMITTED, "Audit submitted by owner");
-        return toDto(audit);
+        return enrichAuditDto(audit);
     }
 
     @Transactional

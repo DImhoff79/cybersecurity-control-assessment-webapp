@@ -58,6 +58,10 @@ export const useAuthStore = defineStore('auth', {
       this.authMode = null
       this.user = null
     },
+    /** Replace session user (e.g. after profile update). */
+    setUser(user) {
+      this.user = user?.id != null ? user : null
+    },
     async fetchUser() {
       if (this._fetchUserPromise) {
         return this._fetchUserPromise

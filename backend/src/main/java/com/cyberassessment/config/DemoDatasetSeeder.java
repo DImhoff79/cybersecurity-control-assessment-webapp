@@ -8,6 +8,7 @@ import com.cyberassessment.dto.FindingUpsertRequest;
 import com.cyberassessment.dto.RemediationPlanDto;
 import com.cyberassessment.dto.RiskRegisterItemDto;
 import com.cyberassessment.entity.Application;
+import com.cyberassessment.entity.AuditAssignmentRole;
 import com.cyberassessment.entity.ApplicationCriticality;
 import com.cyberassessment.entity.ApplicationLifecycleStatus;
 import com.cyberassessment.entity.Audit;
@@ -143,7 +144,7 @@ public class DemoDatasetSeeder implements ApplicationRunner {
             return;
         }
 
-        ensureAuditsAndStatuses(apps);
+        ensureAuditsAndStatuses(apps, auditor);
         ensureAuditProject(apps);
         ensureFindings(apps, owner, auditor);
         ensureControlExceptions(apps);
@@ -193,7 +194,7 @@ public class DemoDatasetSeeder implements ApplicationRunner {
         return out;
     }
 
-    private void ensureAuditsAndStatuses(List<Application> apps) {
+    private void ensureAuditsAndStatuses(List<Application> apps, User auditor) {
         Instant baseDue = Instant.now().plus(45, ChronoUnit.DAYS);
         AuditStatus[] targets = {
                 AuditStatus.IN_PROGRESS,
@@ -210,6 +211,10 @@ public class DemoDatasetSeeder implements ApplicationRunner {
                             baseDue.plus(idx, ChronoUnit.DAYS), null));
             if (!Objects.equals(dto.getStatus(), targets[i])) {
                 auditService.update(dto.getId(), targets[i], dto.getDueAt());
+            }
+            // Pending-approval demo must name an auditor in the UI (approval workflow + REVIEWER fallback).
+            if (targets[i] == AuditStatus.PENDING_APPROVAL && auditor != null) {
+                auditService.addAssignment(dto.getId(), auditor.getId(), AuditAssignmentRole.REVIEWER);
             }
         }
     }

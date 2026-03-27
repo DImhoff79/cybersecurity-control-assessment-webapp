@@ -4,6 +4,7 @@ import com.cyberassessment.dto.AccessRequestDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.AccessRequestRepository;
 import com.cyberassessment.repository.UserRepository;
+import com.cyberassessment.util.UserNameFormatting;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -112,10 +113,13 @@ public class AccessRequestService {
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
         if (user == null) {
             UserRole effectiveRole = role != null ? role : UserRole.APPLICATION_OWNER;
+            String[] nameParts = UserNameFormatting.splitLegacyDisplayName(request.getDisplayName());
             user = userRepository.save(User.builder()
                     .email(request.getEmail())
                     .passwordHash(passwordEncoderProvider.getObject().encode(UUID.randomUUID().toString()))
                     .displayName(request.getDisplayName())
+                    .firstName(nameParts[0])
+                    .lastName(nameParts[1])
                     .role(effectiveRole)
                     .permissions(effectiveRole.defaultPermissions())
                     .build());

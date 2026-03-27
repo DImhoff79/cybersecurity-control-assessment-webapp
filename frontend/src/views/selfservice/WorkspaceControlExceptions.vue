@@ -170,9 +170,9 @@
       </div>
     </div>
 
-    <BsModal v-model="showDetailModal" title="Exception details" size="lg">
+    <BsModal v-model="showDetailModal" title="Exception details" size="xl" scrollable>
       <div v-if="detailItem" class="exception-detail">
-        <dl class="row mb-0 small">
+        <dl class="row g-3 mb-0">
           <dt class="col-sm-3 text-muted">Application</dt>
           <dd class="col-sm-9">
             {{ detailItem.applicationName }} ({{ detailItem.auditYear }})
@@ -233,9 +233,9 @@
       </template>
     </BsModal>
 
-    <BsModal v-model="showModal" :title="modalTitle">
+    <BsModal v-model="showModal" :title="modalTitle" size="xl" scrollable>
       <form id="workspace-exception-form" @submit.prevent="save">
-        <div class="row g-3">
+        <div class="row g-4">
           <div class="col-md-6">
             <label class="form-label">Audit</label>
             <select
@@ -297,7 +297,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import { useTableSort } from '../../composables/useTableSort'
@@ -423,13 +423,44 @@ watch(showModal, (open) => {
   if (!open) editingId.value = null
 })
 
-watch(showDetailModal, (open) => {
-  if (!open) detailItem.value = null
-})
+function cloneExceptionRowFallback(item) {
+  if (!item) return null
+  try {
+    return JSON.parse(JSON.stringify(toRaw(item)))
+  } catch {
+    return { ...toRaw(item) }
+  }
+}
 
-function openView(item) {
-  detailItem.value = item
-  showDetailModal.value = true
+function normalizeDetailPayload(data, id, fallbackItem) {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data
+  }
+  if (Array.isArray(data)) {
+    const row = data.find((r) => r.id === id)
+    if (row) return row
+  }
+  return cloneExceptionRowFallback(fallbackItem)
+}
+
+async function openView(item) {
+  const id = item?.id
+  if (id == null) return
+  try {
+    const res = await api.get(`${API}/detail`, { params: { id } })
+    detailItem.value = normalizeDetailPayload(res.data, id, item)
+    await nextTick()
+    showDetailModal.value = true
+  } catch (e) {
+    const status = e.response?.status
+    if (status === 405 || status === 404) {
+      detailItem.value = cloneExceptionRowFallback(item)
+      await nextTick()
+      showDetailModal.value = true
+      return
+    }
+    toastError(e.response?.data?.error || e.message || 'Failed to load exception details.')
+  }
 }
 
 function openRow(item) {
@@ -442,7 +473,6 @@ function openRow(item) {
 
 function closeDetailModal() {
   showDetailModal.value = false
-  detailItem.value = null
 }
 
 async function loadAudits() {
@@ -514,6 +544,7 @@ function toDatetimeLocalValue(iso) {
 }
 
 async function openEdit(item) {
+  detailItem.value = null
   editingId.value = item.id
   form.auditId = item.auditId
   form.auditControlId = item.auditControlId ?? null
@@ -645,6 +676,36 @@ async function reject(exceptionId) {
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : '-'
+}
+
+function statusTextClass(status) {
+  switch (status) {
+    case 'APPROVED':
+      return 'text-success'
+    case 'REJECTED':
+      return 'text-danger'
+    case 'EXPIRED':
+      return 'text-secondary'
+    case 'REQUESTED':
+      return 'text-warning'
+    default:
+      return 'text-body-secondary'
+  }
+}
+
+function slaTextClass(state) {
+  switch (state) {
+    case 'BREACHED':
+      return 'text-danger'
+    case 'AT_RISK':
+      return 'text-warning'
+    case 'ON_TRACK':
+      return 'text-success'
+    case 'PENDING_DECISION':
+      return 'text-warning'
+    default:
+      return 'text-body-secondary'
+  }
 }
 
 </script>

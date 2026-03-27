@@ -7,7 +7,19 @@
         <span class="mx-1">·</span>
         Due {{ audit.dueAt ? new Date(audit.dueAt).toLocaleDateString() : '—' }}
       </p>
-      <p class="text-muted mb-0">
+      <p v-if="pendingAuditorDisplay" class="text-muted small mb-2 respond-header__meta">
+        <span class="fw-semibold text-secondary">Assigned auditor</span>
+        {{ pendingAuditorDisplay }}
+      </p>
+      <p v-if="readOnly" class="text-muted mb-0">
+        This assessment is <strong>view only</strong> while it is submitted, in review, or closed. Use
+        <strong>Next</strong> to move through your answers and supporting files.
+      </p>
+      <p v-else-if="revisionsRequested" class="text-muted mb-0">
+        The auditor has requested changes. Update your answers and evidence as needed, then use
+        <strong>Submit for review</strong> when you are ready to send it back.
+      </p>
+      <p v-else class="text-muted mb-0">
         Answer each question, then use <strong>Save draft</strong> anytime. Optional notes and files can be added under each question.
       </p>
     </header>
@@ -16,14 +28,22 @@
     <div v-else-if="totalSteps === 0" class="card shadow-sm border-0">
       <div class="card-body">No questions are configured for this audit. Contact your administrator.</div>
     </div>
-    <div v-else-if="isSubmitted" class="card shadow-sm border-0">
-      <div class="card-body">
-        <p class="mb-2 fw-semibold">This assessment was already submitted.</p>
-        <p class="text-muted mb-0">It is in the auditor approval or attestation process.</p>
-      </div>
-    </div>
 
     <div v-else>
+      <div
+        v-if="revisionsRequested"
+        class="alert alert-warning border-0 respond-revisions-banner mb-4"
+        role="status"
+      >
+        <span class="fw-semibold">Revisions requested.</span>
+        <span class="text-muted">
+          The auditor returned this assessment for updates. Review any comments you received, change answers or evidence below, then submit again when complete.
+        </span>
+      </div>
+      <div v-else-if="readOnly" class="alert alert-light border respond-readonly-banner mb-4" role="status">
+        <span class="fw-semibold">Submitted or locked.</span>
+        <span class="text-muted"> You can review responses below; editing is disabled.</span>
+      </div>
       <!-- Progress -->
       <div class="respond-progress card respond-surface--progress mb-4">
         <div class="card-body px-3 py-3 px-sm-4">
@@ -83,6 +103,7 @@
               :id="'answer-' + question.questionId"
               v-model="answers[questionKey(question.questionId)]"
               class="form-select mb-0"
+              :disabled="readOnly"
             >
               <option v-for="opt in answerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
@@ -109,7 +130,7 @@
                     :audit-control-id="m.auditControlId"
                     :control-label="`${m.controlControlId} — ${m.controlName}`"
                     :notes="notesForControl(m.auditControlId)"
-                    :read-only="isSubmitted"
+                    :read-only="readOnly"
                     compact
                     @control-updated="refreshControls"
                   />
@@ -145,6 +166,7 @@
                 id="additional-status"
                 v-model="additionalResponses[currentAdditionalControl.id].status"
                 class="form-select"
+                :disabled="readOnly"
               >
                 <option value="NOT_STARTED">I have not started this yet</option>
                 <option value="IN_PROGRESS">This is in progress</option>
@@ -167,7 +189,7 @@
                 :audit-control-id="currentAdditionalControl.id"
                 :control-label="`${currentAdditionalControl.controlControlId} — ${currentAdditionalControl.controlName}`"
                 :notes="additionalResponses[currentAdditionalControl.id]?.notes ?? ''"
-                :read-only="isSubmitted"
+                :read-only="readOnly"
                 :show-title="false"
                 compact
                 @control-updated="refreshControls"
@@ -193,6 +215,7 @@
                 Back
               </button>
               <button
+                v-if="!readOnly"
                 type="button"
                 class="btn btn-outline-primary btn-sm ws-btn-modal-secondary"
                 :disabled="saving"
@@ -223,7 +246,7 @@
               </button>
 
               <button
-                v-else
+                v-else-if="!readOnly"
                 type="button"
                 class="btn btn-success btn-sm ws-btn-respond-forward"
                 :disabled="saving"
@@ -435,7 +458,30 @@ const completionPct = computed(() => {
 })
 
 const humanComplete = computed(() => humanAnsweredCount.value === guidedQuestions.value.length)
-const isSubmitted = computed(() => isAuditOwnerAnswerLocked(audit.value?.status))
+/** Owner cannot edit answers (submitted, in approval pipeline, attested, or complete). */
+const readOnly = computed(() => isAuditOwnerAnswerLocked(audit.value?.status))
+
+/** Auditor sent the assessment back for owner updates (editable). */
+const revisionsRequested = computed(() => audit.value?.status === 'REVISIONS_REQUESTED')
+
+/** Pending approval-step assignee (from API), with assignment fallback when needed. */
+const pendingAuditorDisplay = computed(() => {
+  const a = audit.value
+  if (!a) return ''
+  const f = a.pendingAuditorFirstName?.trim()
+  const l = a.pendingAuditorLastName?.trim()
+  if (f && l) return `${f} ${l}`
+  if (f) return f
+  if (l) return l
+  if (a.pendingAuditorDisplayName?.trim()) return a.pendingAuditorDisplayName.trim()
+  if (a.pendingAuditorEmail) return a.pendingAuditorEmail
+  if (a.status === 'PENDING_APPROVAL' && a.assignments?.length) {
+    const rev = a.assignments.find((x) => x.assignmentRole === 'REVIEWER')
+    if (rev?.userDisplayName?.trim()) return rev.userDisplayName.trim()
+    if (rev?.userEmail) return rev.userEmail
+  }
+  return ''
+})
 
 const isLastHumanStep = computed(() => {
   return currentHumanIndex.value >= guidedSections.value.length - 1
@@ -538,6 +584,24 @@ function goBack() {
 }
 
 function goNext() {
+  if (readOnly.value) {
+    if (currentStage.value === 'human') {
+      if (!isLastHumanStep.value) {
+        currentHumanIndex.value += 1
+        return
+      }
+      if (additionalControls.value.length > 0) {
+        currentStage.value = 'additional'
+        currentAdditionalIndex.value = 0
+      }
+      return
+    }
+    if (currentStage.value === 'additional' && !isLastAdditionalStep.value) {
+      currentAdditionalIndex.value += 1
+    }
+    return
+  }
+
   if (currentStage.value === 'human') {
     const hasUnansweredInSection = currentSectionQuestions.value.some((question) =>
       !isHumanAnswered(answers[questionKey(question.questionId)])
@@ -570,10 +634,12 @@ function goNext() {
 }
 
 async function saveDraft() {
+  if (readOnly.value) return
   await saveAllProgress()
 }
 
 async function finishAudit() {
+  if (readOnly.value) return
   await saveAllProgress()
 
   if (completionPct.value < 100) {
@@ -591,6 +657,7 @@ async function finishAudit() {
 }
 
 async function saveAllProgress() {
+  if (readOnly.value) return
   saving.value = true
   try {
     await saveHumanAnswers()

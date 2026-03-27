@@ -74,6 +74,27 @@ public class ControlExceptionService {
         return rows.stream().map(ControlExceptionService::toDto).toList();
     }
 
+    /**
+     * Single exception for workspace UI, using the same visibility rules as {@link #listForWorkspace()}.
+     */
+    @Transactional(readOnly = true)
+    public ControlExceptionDto findForWorkspace(Long exceptionId) {
+        expireElapsedApprovals();
+        return controlExceptionRepository.findById(exceptionId)
+                .filter(this::canViewInWorkspace)
+                .map(ControlExceptionService::toDto)
+                .orElse(null);
+    }
+
+    private boolean canViewInWorkspace(ControlExceptionRequest row) {
+        User current = currentUserService.getCurrentUserOrThrow();
+        List<Long> auditIds = auditService.findAccessibleAuditIdsForCurrentUser();
+        if (auditIds.contains(row.getAudit().getId())) {
+            return true;
+        }
+        return row.getRequestedBy().getId().equals(current.getId());
+    }
+
     @Transactional
     public ControlExceptionDto requestForWorkspace(ControlExceptionCreateRequest request) {
         auditService.assertCanAccessAudit(request.getAuditId());
@@ -89,7 +110,8 @@ public class ControlExceptionService {
         expireElapsedApprovals();
         ControlExceptionRequest row = controlExceptionRepository.findById(exceptionId)
                 .orElseThrow(() -> new IllegalArgumentException("Control exception not found"));
-        auditService.assertCanAccessAudit(row.getAudit().getId());
+        // Do not call assertCanAccessAudit here: ensureCanAccessAudit is stricter than who may edit a
+        // pending request (e.g. the requesting auditor is not always assignee/collaborator/owner).
         if (!canEditPendingException(row)) {
             throw new IllegalArgumentException("Not authorized to edit this exception");
         }

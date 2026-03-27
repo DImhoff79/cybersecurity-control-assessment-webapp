@@ -44,6 +44,8 @@ class AuditServiceIntegrationTest {
     private AuditControlAnswerRepository auditControlAnswerRepository;
     @Autowired
     private FindingService findingService;
+    @Autowired
+    private AuditApprovalStepRepository auditApprovalStepRepository;
 
     @AfterEach
     void clearSecurity() {
@@ -202,6 +204,18 @@ class AuditServiceIntegrationTest {
         AuditDto submitted = auditService.submitAudit(created.getId());
         assertThat(submitted.getStatus()).isEqualTo(AuditStatus.PENDING_APPROVAL);
         assertThat(submitted.getCompletedAt()).isNotNull();
+        assertThat(submitted.getPendingAuditorUserId()).isEqualTo(auditor.getId());
+        assertThat(submitted.getPendingAuditorEmail()).isEqualTo(auditor.getEmail());
+        assertThat(submitted.getPendingAuditorDisplayName()).isEqualTo(auditor.getDisplayName());
+
+        AuditDto loaded = auditService.findById(created.getId());
+        assertThat(loaded.getPendingAuditorUserId()).isEqualTo(auditor.getId());
+        assertThat(loaded.getPendingAuditorEmail()).isEqualTo(auditor.getEmail());
+
+        auditApprovalStepRepository.deleteByAudit_Id(created.getId());
+        AuditDto legacyNoSteps = auditService.findById(created.getId());
+        assertThat(legacyNoSteps.getPendingAuditorUserId()).isEqualTo(auditor.getId());
+        assertThat(legacyNoSteps.getPendingAuditorEmail()).isEqualTo(auditor.getEmail());
     }
 
     @Test

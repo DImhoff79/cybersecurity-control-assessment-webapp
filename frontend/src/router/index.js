@@ -192,10 +192,17 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   if (to.meta.public) return next()
   if (!authStore.hasCredentials) return next({ name: 'Login', query: { redirect: to.fullPath } })
-  try {
-    await authStore.fetchUser()
-  } catch {
-    return next({ name: 'Login' })
+  // Load session user once per page load (Pinia resets on refresh). Refetching /me on every route
+  // change caused slow navigation and flaky clicks when the request lagged or failed.
+  if (!authStore.user) {
+    try {
+      await authStore.fetchUser()
+    } catch {
+      return next({ name: 'Login' })
+    }
+    if (!authStore.user) {
+      return next({ name: 'Login', query: { redirect: to.fullPath } })
+    }
   }
   // Keep admins in the Admin shell for self-service pages (same sidebar as other admin routes)
   const adminWorkspacePaths = ['/my-audits', '/my-exceptions', '/profile']

@@ -11,7 +11,9 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -37,6 +39,16 @@ public class AuthController {
                 .map(UserService::toDto)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Profile name update. Both PUT and POST are supported so older clients and strict proxies still work.
+     */
+    @RequestMapping(value = "/profile", method = { RequestMethod.PUT, RequestMethod.POST })
+    public ResponseEntity<UserDto> updateProfile(@RequestBody(required = false) Map<String, String> body) {
+        String firstName = body != null ? body.get("firstName") : null;
+        String lastName = body != null ? body.get("lastName") : null;
+        return ResponseEntity.ok(userService.updateMyProfile(firstName, lastName));
     }
 
     @GetMapping("/providers")

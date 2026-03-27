@@ -5,6 +5,7 @@ import com.cyberassessment.entity.User;
 import com.cyberassessment.entity.UserPermission;
 import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.UserRepository;
+import com.cyberassessment.util.UserNameFormatting;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,9 +31,27 @@ public class UserService {
                 .id(u.getId())
                 .email(u.getEmail())
                 .displayName(u.getDisplayName())
+                .firstName(u.getFirstName())
+                .lastName(u.getLastName())
                 .role(u.getRole())
                 .permissions(u.getPermissions())
                 .build();
+    }
+
+    /**
+     * Current user may edit their own first and last name; {@code displayName} is kept in sync.
+     */
+    @Transactional
+    public UserDto updateMyProfile(String firstName, String lastName) {
+        User user = currentUserService.getCurrentUserOrThrow();
+        user.setFirstName(UserNameFormatting.blankToNull(firstName));
+        user.setLastName(UserNameFormatting.blankToNull(lastName));
+        String combined = UserNameFormatting.formatDisplayName(user.getFirstName(), user.getLastName());
+        if (combined != null) {
+            user.setDisplayName(combined);
+        }
+        user = userRepository.save(user);
+        return toDto(user);
     }
 
     @Transactional(readOnly = true)
@@ -68,10 +87,13 @@ public class UserService {
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("User already exists with email: " + normalizedEmail);
         }
+        String[] parts = UserNameFormatting.splitLegacyDisplayName(displayName);
         User user = User.builder()
                 .email(normalizedEmail)
                 .passwordHash(passwordEncoder.encode(plainPassword))
                 .displayName(displayName)
+                .firstName(parts[0])
+                .lastName(parts[1])
                 .role(effectiveRole)
                 .permissions(resolvePermissions(effectiveRole))
                 .build();

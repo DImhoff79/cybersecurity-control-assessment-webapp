@@ -43,4 +43,11 @@ public class AuditDto {
     private Integer completionPct;
     @Builder.Default
     private List<AuditAssignmentDto> assignments = new ArrayList<>();
+
+    /** First pending approval-step assignee (auditor), when an approval workflow exists. */
+    private Long pendingAuditorUserId;
+    private String pendingAuditorEmail;
+    private String pendingAuditorFirstName;
+    private String pendingAuditorLastName;
+    private String pendingAuditorDisplayName;
 }

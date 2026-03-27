@@ -13,6 +13,7 @@ import com.cyberassessment.repository.PolicyRepository;
 import com.cyberassessment.repository.PolicyRevisionEventRepository;
 import com.cyberassessment.repository.PolicyVersionRepository;
 import com.cyberassessment.repository.UserRepository;
+import com.cyberassessment.util.UserNameFormatting;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -83,10 +84,13 @@ public class DataLoader implements ApplicationRunner {
         if (userRepository.existsByEmail(email)) {
             return;
         }
+        String[] nameParts = UserNameFormatting.splitLegacyDisplayName(displayName);
         User user = User.builder()
                 .email(email)
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .displayName(displayName)
+                .firstName(nameParts[0])
+                .lastName(nameParts[1])
                 .role(role)
                 .permissions(role.defaultPermissions())
                 .build();
@@ -272,10 +276,13 @@ public class DataLoader implements ApplicationRunner {
     }
 
     private User ensureInlineUser(String email, String rawPassword, String displayName, UserRole role) {
+        String[] nameParts = UserNameFormatting.splitLegacyDisplayName(displayName);
         User user = User.builder()
                 .email(email)
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .displayName(displayName)
+                .firstName(nameParts[0])
+                .lastName(nameParts[1])
                 .role(role)
                 .permissions(role.defaultPermissions())
                 .build();
