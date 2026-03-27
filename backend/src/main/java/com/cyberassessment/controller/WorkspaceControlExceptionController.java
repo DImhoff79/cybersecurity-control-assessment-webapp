@@ -3,6 +3,7 @@ package com.cyberassessment.controller;
 import com.cyberassessment.dto.ControlExceptionCreateRequest;
 import com.cyberassessment.dto.ControlExceptionDecisionRequest;
 import com.cyberassessment.dto.ControlExceptionDto;
+import com.cyberassessment.dto.ControlExceptionUpdateRequest;
 import com.cyberassessment.service.ControlExceptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,12 @@ public class WorkspaceControlExceptionController {
     @PostMapping
     public ResponseEntity<ControlExceptionDto> request(@RequestBody ControlExceptionCreateRequest request) {
         return ResponseEntity.ok(controlExceptionService.requestForWorkspace(request));
+    }
+
+    @PutMapping("/{exceptionId}")
+    public ResponseEntity<ControlExceptionDto> update(@PathVariable Long exceptionId,
+                                                      @RequestBody ControlExceptionUpdateRequest request) {
+        return ResponseEntity.ok(controlExceptionService.updateForWorkspace(exceptionId, request));
     }
 
     @PostMapping("/{exceptionId}/approve")

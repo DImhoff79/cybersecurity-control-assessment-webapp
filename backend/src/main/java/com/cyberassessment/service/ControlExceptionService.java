@@ -3,6 +3,7 @@ package com.cyberassessment.service;
 import com.cyberassessment.dto.ControlExceptionCreateRequest;
 import com.cyberassessment.dto.ControlExceptionDecisionRequest;
 import com.cyberassessment.dto.ControlExceptionDto;
+import com.cyberassessment.dto.ControlExceptionUpdateRequest;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.ApprovalDelegateRepository;
 import com.cyberassessment.repository.AuditAssignmentRepository;
@@ -15,7 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -50,19 +55,85 @@ public class ControlExceptionService {
     @Transactional
     public List<ControlExceptionDto> listForWorkspace() {
         expireElapsedApprovals();
+        User current = currentUserService.getCurrentUserOrThrow();
         List<Long> auditIds = auditService.findAccessibleAuditIdsForCurrentUser();
-        if (auditIds.isEmpty()) {
-            return List.of();
+        List<ControlExceptionRequest> byAudits = auditIds.isEmpty()
+                ? List.of()
+                : controlExceptionRepository.findByAudit_IdInOrderByRequestedAtDesc(auditIds);
+        List<ControlExceptionRequest> requestedByMe =
+                controlExceptionRepository.findByRequestedBy_IdOrderByRequestedAtDesc(current.getId());
+        Map<Long, ControlExceptionRequest> merged = new LinkedHashMap<>();
+        for (ControlExceptionRequest row : byAudits) {
+            merged.put(row.getId(), row);
         }
-        return controlExceptionRepository.findByAudit_IdInOrderByRequestedAtDesc(auditIds).stream()
-                .map(ControlExceptionService::toDto)
-                .toList();
+        for (ControlExceptionRequest row : requestedByMe) {
+            merged.putIfAbsent(row.getId(), row);
+        }
+        List<ControlExceptionRequest> rows = new ArrayList<>(merged.values());
+        rows.sort(Comparator.comparing(ControlExceptionRequest::getRequestedAt).reversed());
+        return rows.stream().map(ControlExceptionService::toDto).toList();
     }
 
     @Transactional
     public ControlExceptionDto requestForWorkspace(ControlExceptionCreateRequest request) {
         auditService.assertCanAccessAudit(request.getAuditId());
         return request(request);
+    }
+
+    /**
+     * Update a pending (REQUESTED) exception for workspace users: requester, application owner,
+     * assignee, or collaborator. Auditors may only edit exceptions they requested.
+     */
+    @Transactional
+    public ControlExceptionDto updateForWorkspace(Long exceptionId, ControlExceptionUpdateRequest request) {
+        expireElapsedApprovals();
+        ControlExceptionRequest row = controlExceptionRepository.findById(exceptionId)
+                .orElseThrow(() -> new IllegalArgumentException("Control exception not found"));
+        auditService.assertCanAccessAudit(row.getAudit().getId());
+        if (!canEditPendingException(row)) {
+            throw new IllegalArgumentException("Not authorized to edit this exception");
+        }
+        if (row.getStatus() != ControlExceptionStatus.REQUESTED) {
+            throw new IllegalArgumentException("Only pending exception requests can be edited");
+        }
+        if (request.getReason() == null || request.getReason().isBlank()) {
+            throw new IllegalArgumentException("reason is required");
+        }
+        Audit audit = row.getAudit();
+        Finding finding = resolveFindingForException(request.getFindingId(), audit);
+        AuditControl auditControl = resolveAuditControlForException(request.getAuditControlId(), audit, finding);
+        row.setReason(request.getReason().trim());
+        row.setCompensatingControl(request.getCompensatingControl());
+        row.setExpiresAt(request.getExpiresAt());
+        row.setFinding(finding);
+        row.setAuditControl(auditControl);
+        row = controlExceptionRepository.save(row);
+        auditActivityLogService.log(audit, AuditActivityType.EXCEPTION_UPDATED, "Control exception request updated");
+        return toDto(row);
+    }
+
+    private boolean canEditPendingException(ControlExceptionRequest row) {
+        if (row.getStatus() != ControlExceptionStatus.REQUESTED) {
+            return false;
+        }
+        User u = currentUserService.getCurrentUserOrThrow();
+        if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            return true;
+        }
+        if (u.getRole() == UserRole.AUDITOR) {
+            return row.getRequestedBy().getId().equals(u.getId());
+        }
+        Audit audit = row.getAudit();
+        if (row.getRequestedBy().getId().equals(u.getId())) {
+            return true;
+        }
+        if (audit.getApplication().getOwner() != null && audit.getApplication().getOwner().getId().equals(u.getId())) {
+            return true;
+        }
+        if (audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(u.getId())) {
+            return true;
+        }
+        return auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), u.getId());
     }
 
     @Transactional

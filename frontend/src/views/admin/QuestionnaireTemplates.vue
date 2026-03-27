@@ -12,7 +12,7 @@
       </router-link>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
           <h2 class="h5 mb-0">Governance Workflow</h2>
@@ -71,18 +71,18 @@
       </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <div v-if="loading" class="text-muted">Loading...</div>
         <div v-else class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleTemplateSort('versionNo')">Version {{ templateSortIndicator('versionNo') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleTemplateSort('status')">Status {{ templateSortIndicator('status') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleTemplateSort('itemCount')">Items {{ templateSortIndicator('itemCount') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleTemplateSort('createdAt')">Created {{ templateSortIndicator('createdAt') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleTemplateSort('publishedAt')">Published {{ templateSortIndicator('publishedAt') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleTemplateSort('versionNo')">Version {{ templateSortIndicator('versionNo') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleTemplateSort('status')">Status {{ templateSortIndicator('status') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleTemplateSort('itemCount')">Items {{ templateSortIndicator('itemCount') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleTemplateSort('createdAt')">Created {{ templateSortIndicator('createdAt') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleTemplateSort('publishedAt')">Published {{ templateSortIndicator('publishedAt') }}</button></th>
                 <th></th>
               </tr>
             </thead>
@@ -119,13 +119,13 @@
 
     <BsModal v-model="showItems" title="Template Items" size="xl">
       <div class="table-responsive">
-        <table class="table table-sm table-striped mb-0">
+        <table class="table table-sm workspace-table mb-0">
           <thead>
             <tr>
-              <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleItemSort('controlControlId')">Control {{ itemSortIndicator('controlControlId') }}</button></th>
-              <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleItemSort('questionText')">Question {{ itemSortIndicator('questionText') }}</button></th>
-              <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleItemSort('mappingWeight')">Weight {{ itemSortIndicator('mappingWeight') }}</button></th>
-              <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleItemSort('mappingRationale')">Rationale {{ itemSortIndicator('mappingRationale') }}</button></th>
+              <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('controlControlId')">Control {{ itemSortIndicator('controlControlId') }}</button></th>
+              <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('questionText')">Question {{ itemSortIndicator('questionText') }}</button></th>
+              <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('mappingWeight')">Weight {{ itemSortIndicator('mappingWeight') }}</button></th>
+              <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('mappingRationale')">Rationale {{ itemSortIndicator('mappingRationale') }}</button></th>
             </tr>
           </thead>
           <tbody>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from './auditStatus'
+import { auditStageLabel, auditStatusLabel, isAuditCompleted } from './auditStatus'
 
 describe('auditStatus helpers', () => {
   it('maps status into user-facing labels and stage', () => {
@@ -10,8 +10,9 @@ describe('auditStatus helpers', () => {
     expect(auditStageLabel('COMPLETE')).toBe('Closed')
   })
 
-  it('maps status into consistent badge classes', () => {
-    expect(auditStatusBadgeClass('ATTESTED')).toBe('text-bg-primary')
-    expect(auditStatusBadgeClass('UNKNOWN')).toBe('text-bg-secondary')
+  it('detects completed (closed) audits', () => {
+    expect(isAuditCompleted('COMPLETE')).toBe(true)
+    expect(isAuditCompleted('IN_PROGRESS')).toBe(false)
+    expect(isAuditCompleted('ATTESTED')).toBe(false)
   })
 })

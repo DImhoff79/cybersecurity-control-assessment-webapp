@@ -13,7 +13,7 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end mb-3">
           <div class="col-md-4">
@@ -41,7 +41,7 @@
         <div v-else-if="!exceptions.length" class="text-muted">No exceptions match the current filter.</div>
         <div v-else class="table-responsive">
           <div class="small text-muted mb-2">Showing {{ exceptions.length }} exceptions</div>
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
                 <th>Application</th>

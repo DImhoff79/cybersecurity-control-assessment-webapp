@@ -4,6 +4,7 @@ import com.cyberassessment.dto.AuditDto;
 import com.cyberassessment.dto.ControlExceptionCreateRequest;
 import com.cyberassessment.dto.ControlExceptionDecisionRequest;
 import com.cyberassessment.dto.ControlExceptionDto;
+import com.cyberassessment.dto.ControlExceptionUpdateRequest;
 import com.cyberassessment.dto.FindingDto;
 import com.cyberassessment.dto.FindingUpsertRequest;
 import com.cyberassessment.entity.Application;
@@ -216,6 +217,108 @@ class FindingAndExceptionServiceIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(expired.getStatus()).isEqualTo(ControlExceptionStatus.EXPIRED);
+    }
+
+    @Test
+    void applicationOwnerCanUpdatePendingWorkspaceException() {
+        User admin = userRepository.save(User.builder()
+                .email("ex-upd-admin@test.com")
+                .passwordHash("x")
+                .displayName("Ex Upd Admin")
+                .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("ex-upd-owner@test.com")
+                .passwordHash("x")
+                .displayName("Ex Upd Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Ex Upd App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2048);
+        auditService.assign(audit.getId(), owner.getId());
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+
+        authenticate(owner.getEmail());
+        ControlExceptionDto requested = controlExceptionService.request(ControlExceptionCreateRequest.builder()
+                .auditId(audit.getId())
+                .auditControlId(auditControlId)
+                .reason("Original reason")
+                .compensatingControl("Original cc")
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build());
+        assertThat(requested.getStatus()).isEqualTo(ControlExceptionStatus.REQUESTED);
+
+        ControlExceptionDto updated = controlExceptionService.updateForWorkspace(requested.getId(), ControlExceptionUpdateRequest.builder()
+                .auditControlId(auditControlId)
+                .findingId(null)
+                .reason("Updated reason text")
+                .compensatingControl("Updated compensating")
+                .expiresAt(Instant.now().plusSeconds(7200))
+                .build());
+
+        assertThat(updated.getReason()).isEqualTo("Updated reason text");
+        assertThat(updated.getCompensatingControl()).isEqualTo("Updated compensating");
+        assertThat(updated.getStatus()).isEqualTo(ControlExceptionStatus.REQUESTED);
+    }
+
+    @Test
+    void applicationOwnerSeesApprovedExceptionInWorkspaceList() {
+        User admin = userRepository.save(User.builder()
+                .email("ex-appr-admin@test.com")
+                .passwordHash("x")
+                .displayName("Ex Appr Admin")
+                .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
+                .build());
+        User owner = userRepository.save(User.builder()
+                .email("ex-appr-owner@test.com")
+                .passwordHash("x")
+                .displayName("Ex Appr Owner")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Ex Appr App")
+                .description("test")
+                .owner(owner)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2049);
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+
+        authenticate(owner.getEmail());
+        ControlExceptionDto requested = controlExceptionService.request(ControlExceptionCreateRequest.builder()
+                .auditId(audit.getId())
+                .auditControlId(auditControlId)
+                .reason("Need waiver")
+                .compensatingControl("Monitoring")
+                .expiresAt(Instant.now().plusSeconds(86400))
+                .build());
+        assertThat(requested.getStatus()).isEqualTo(ControlExceptionStatus.REQUESTED);
+
+        authenticate(admin.getEmail());
+        controlExceptionService.approve(requested.getId(), ControlExceptionDecisionRequest.builder()
+                .decisionNotes("OK")
+                .expiresAt(Instant.now().plusSeconds(86400))
+                .build());
+
+        authenticate(owner.getEmail());
+        List<ControlExceptionDto> workspace = controlExceptionService.listForWorkspace();
+        ControlExceptionDto approvedRow = workspace.stream()
+                .filter(e -> e.getId().equals(requested.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(approvedRow.getStatus()).isEqualTo(ControlExceptionStatus.APPROVED);
+        assertThat(approvedRow.getDecisionNotes()).isEqualTo("OK");
     }
 
     private void authenticate(String email) {

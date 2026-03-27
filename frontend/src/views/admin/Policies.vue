@@ -18,7 +18,7 @@
       Lifecycle: <strong>Draft</strong> for authoring, then <strong>Publish Draft</strong> to activate a version.
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Policies</h2>
         <p v-if="!policies.length" class="text-muted mb-0">No policies created yet.</p>
@@ -213,7 +213,7 @@
         <div class="card-body">
           <h2 class="h5 mb-3">Revision History - {{ historyModal.policy?.code }}</h2>
           <div class="table-responsive">
-            <table class="table table-sm table-striped align-middle mb-0">
+            <table class="table table-sm workspace-table align-middle mb-0">
               <thead>
                 <tr>
                   <th>When</th>

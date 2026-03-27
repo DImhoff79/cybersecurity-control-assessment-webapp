@@ -8,6 +8,7 @@
       <nav class="workspace-nav">
         <router-link to="/start" class="workspace-nav-item">Home</router-link>
         <router-link id="tour-nav-my-audits" to="/my-audits" class="workspace-nav-item">My Audits</router-link>
+        <router-link to="/my-exceptions" class="workspace-nav-item">My control exceptions</router-link>
         <router-link to="/profile" class="workspace-nav-item">Profile</router-link>
         <router-link v-if="authStore.canAccessAdmin" to="/admin" class="workspace-nav-item">Admin Workspace</router-link>
       </nav>
@@ -42,7 +43,9 @@
               </button>
             </div>
           </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm" @click="logout">Log out</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm ws-btn-modal-secondary" @click="logout">
+            Log out
+          </button>
         </div>
       </header>
       <main id="tour-workspace-content" class="container py-4 flex-grow-1">

@@ -1,0 +1,146 @@
+/**
+ * Shared app data tables (My Audits, admin lists, workspace exceptions).
+ * Add `workspace-table` to `<table class="table ...">` and use `workspace-table-sort` for sortable headers.
+ * Use with Bootstrap .btn utilities (typically .btn-sm).
+ *
+ * Table cells: avoid fixed min-widths on narrow viewports — they force horizontal scroll.
+ */
+
+/* Let long text wrap instead of widening the table */
+.workspace-table th,
+.workspace-table td {
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.exception-actions {
+  white-space: normal;
+}
+
+/* Polished workspace tables (My Audits, Control exceptions) */
+.workspace-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.workspace-table thead th {
+  background: linear-gradient(180deg, #f4f7ff 0%, #e9effc 100%);
+  border-bottom: 2px solid rgba(33, 64, 154, 0.14);
+  color: #2c3b5c;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.875rem 0.65rem;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.workspace-table tbody td {
+  border-color: rgba(15, 31, 82, 0.08);
+  padding: 0.85rem 0.65rem;
+  vertical-align: middle;
+}
+
+.workspace-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.workspace-table tbody tr:hover {
+  background-color: rgba(33, 64, 154, 0.045);
+}
+
+/* Dense lists (reports, nested pickers) — same look, tighter padding */
+.workspace-table.table-sm thead th {
+  font-size: 0.625rem;
+  padding: 0.65rem 0.5rem;
+}
+
+.workspace-table.table-sm tbody td {
+  padding: 0.55rem 0.5rem;
+}
+
+.workspace-table-sort {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+  line-height: 1.25;
+  padding: 0;
+  text-align: left;
+  text-transform: inherit;
+  transition: color 0.15s ease;
+  width: 100%;
+}
+
+.workspace-table-sort:hover,
+.workspace-table-sort:focus-visible {
+  color: var(--brand-primary, #21409a);
+}
+
+.workspace-table-sort:focus-visible {
+  border-radius: 0.25rem;
+  outline: 2px solid rgba(33, 64, 154, 0.35);
+  outline-offset: 2px;
+}
+
+.workspace-card {
+  border: 1px solid rgba(33, 64, 154, 0.1) !important;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.workspace-toolbar {
+  background: rgba(248, 250, 255, 0.85);
+  border-bottom: 1px solid rgba(15, 31, 82, 0.08);
+}
+
+.ws-btn-row {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Equal-width row actions only when there is room (lg+). */
+@media (min-width: 992px) {
+  .ws-btn-row {
+    min-width: 9rem;
+  }
+}
+
+/* Page toolbar primary solid CTA (e.g. Request exception) */
+.ws-btn-cta {
+  min-width: 10rem;
+}
+
+.ws-btn-inline-action {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 992px) {
+  .ws-btn-inline-action {
+    min-width: 5.25rem;
+  }
+}
+
+/* Modal footer — primary / confirm */
+.ws-btn-modal-primary {
+  min-width: 6.5rem;
+}
+
+/* Modal footer — cancel / secondary */
+.ws-btn-modal-secondary {
+  min-width: 5.5rem;
+}
+
+/* Audit respond: forward / submit (variable label length) */
+.ws-btn-respond-forward {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 12rem;
+}

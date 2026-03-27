@@ -1,92 +1,167 @@
 <template>
-  <div>
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div class="workspace-exceptions-page">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
       <div>
-        <h1 class="h3 mb-1">{{ pageTitle }}</h1>
-        <p class="text-muted mb-0">{{ pageSubtitle }}</p>
+        <h1 class="h3 mb-2 fw-semibold text-dark">{{ pageTitle }}</h1>
+        <p class="text-muted mb-0 lh-base">{{ pageSubtitle }}</p>
       </div>
       <div v-if="showAdminShortcuts" class="d-flex gap-2 flex-wrap">
-        <router-link :to="issueHubLink" class="btn btn-outline-secondary btn-sm">Issue program hub</router-link>
-        <router-link to="/admin/findings" class="btn btn-outline-secondary btn-sm">Go to Findings</router-link>
+        <router-link :to="issueHubLink" class="btn btn-outline-secondary btn-sm rounded-pill">Issue program hub</router-link>
+        <router-link to="/admin/findings" class="btn btn-outline-secondary btn-sm rounded-pill">Go to Findings</router-link>
       </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
-      <div class="card-body">
-        <div class="row g-2 align-items-end mb-3">
-          <div class="col-md-4">
-            <label class="form-label small mb-1">Audit</label>
-            <select v-model="filters.auditId" class="form-select">
-              <option :value="null">All audits</option>
-              <option v-for="audit in audits" :key="audit.id" :value="audit.id">
-                {{ audit.applicationName }} ({{ audit.year }})
-              </option>
-            </select>
-          </div>
-          <div class="col-md-auto">
-            <button class="btn btn-primary" @click="openModal()">Request exception</button>
-          </div>
-          <div class="col-md-auto">
-            <button type="button" class="btn btn-outline-secondary btn-sm" @click="resetFilters">Reset</button>
+    <div class="card workspace-card border-0 shadow-sm mb-3">
+      <div class="card-body p-0">
+        <div class="workspace-toolbar px-3 px-md-4 py-3">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold text-secondary mb-1">Audit</label>
+              <select v-model="filters.auditId" class="form-select form-select-sm rounded-3 shadow-sm">
+                <option :value="null">All audits</option>
+                <option v-for="audit in audits" :key="audit.id" :value="audit.id">
+                  {{ audit.applicationName }} ({{ audit.year }})
+                </option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+              <select v-model="filters.status" class="form-select form-select-sm rounded-3 shadow-sm">
+                <option value="">All statuses</option>
+                <option value="REQUESTED">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="EXPIRED">Expired</option>
+              </select>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-primary btn-sm ws-btn-cta rounded-pill px-4" @click="openModal()">
+                Request exception
+              </button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-secondary btn-sm ws-btn-modal-secondary" @click="resetFilters">
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
-        <div v-if="loadError" class="alert alert-danger py-2 d-flex justify-content-between align-items-center gap-2">
+        <div v-if="loadError" class="alert alert-danger py-2 mx-3 mx-md-4 mb-3 d-flex justify-content-between align-items-center gap-2">
           <span>{{ loadError }}</span>
-          <button type="button" class="btn btn-outline-danger btn-sm" @click="load">Retry</button>
+          <button type="button" class="btn btn-outline-danger btn-sm ws-btn-modal-secondary" @click="load">Retry</button>
         </div>
-        <div v-if="loading" class="text-muted">Loading exceptions...</div>
-        <div v-else-if="!filteredRows.length" class="text-muted">No exceptions match the current filter.</div>
+        <div v-if="loading" class="text-muted px-3 px-md-4 py-4">Loading exceptions…</div>
+        <div v-else-if="!filteredRows.length" class="text-muted px-3 px-md-4 py-4">No exceptions match the current filter.</div>
         <div v-else class="table-responsive">
-          <div class="small text-muted mb-2">Showing {{ filteredRows.length }} exceptions</div>
-          <table class="table table-striped table-hover align-middle mb-0">
+          <div class="small text-secondary fw-medium px-3 px-md-4 pt-2 pb-1">
+            Showing {{ sortedRows.length }} exception{{ sortedRows.length === 1 ? '' : 's' }}
+          </div>
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th>Application</th>
-                <th>Control</th>
-                <th>Linked finding</th>
-                <th>Status</th>
-                <th>SLA</th>
-                <th>Requested by</th>
-                <th>Expires</th>
-                <th>Reason</th>
-                <th></th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('applicationSort')">
+                    Application {{ sortIndicator('applicationSort') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('controlSort')">
+                    Control {{ sortIndicator('controlSort') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('findingSort')">
+                    Linked finding {{ sortIndicator('findingSort') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('status')">
+                    Status {{ sortIndicator('status') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('slaState')">
+                    SLA {{ sortIndicator('slaState') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('requestedBySort')">
+                    Requested by {{ sortIndicator('requestedBySort') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('expiresAt')">
+                    Expires {{ sortIndicator('expiresAt') }}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleSort('reason')">
+                    Reason {{ sortIndicator('reason') }}
+                  </button>
+                </th>
+                <th class="text-end"><span class="visually-hidden">Actions</span></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in filteredRows" :key="item.id">
-                <td>{{ item.applicationName }} ({{ item.auditYear }})</td>
-                <td>{{ item.controlId ? `${item.controlId} - ${item.controlName}` : 'General exception' }}</td>
+              <tr
+                v-for="item in sortedRows"
+                :key="item.id"
+                class="exception-table-row"
+                role="button"
+                tabindex="0"
+                :aria-label="
+                  (canEditException(item) ? 'Edit' : 'View') +
+                  ' exception for ' +
+                  (item.controlId || 'general')
+                "
+                @click="openRow(item)"
+                @keydown.enter.prevent="openRow(item)"
+                @keydown.space.prevent="openRow(item)"
+              >
+                <td class="fw-medium text-dark">{{ item.applicationName }} ({{ item.auditYear }})</td>
+                <td class="text-secondary small">{{ item.controlId ? `${item.controlId} - ${item.controlName}` : 'General exception' }}</td>
                 <td class="small">
-                  <span v-if="item.findingId" class="text-wrap d-inline-block" style="max-width: 14rem">
+                  <span v-if="item.findingId" class="d-inline-block finding-cell text-secondary" style="max-width: 14rem">
                     <span class="text-muted">#{{ item.findingId }}</span>
                     <span v-if="item.findingTitle"> — {{ item.findingTitle }}</span>
                   </span>
                   <span v-else class="text-muted">—</span>
                 </td>
-                <td><span class="badge" :class="statusClass(item.status)">{{ item.status }}</span></td>
-                <td><span class="badge" :class="slaClass(item.slaState)">{{ item.slaState || '-' }}</span></td>
-                <td>{{ item.requestedByDisplayName || item.requestedByEmail || '-' }}</td>
-                <td>{{ formatDate(item.expiresAt) }}</td>
-                <td class="small">
-                  <div>{{ item.reason }}</div>
-                  <div v-if="item.compensatingControl" class="text-muted">Compensating: {{ item.compensatingControl }}</div>
+                <td class="small text-secondary">{{ item.status }}</td>
+                <td class="small text-secondary">{{ item.slaState || '—' }}</td>
+                <td class="small">{{ item.requestedByDisplayName || item.requestedByEmail || '—' }}</td>
+                <td class="small text-secondary tabular-nums">{{ formatDate(item.expiresAt) }}</td>
+                <td class="small text-truncate" style="max-width: 12rem" :title="item.reason">
+                  <div class="text-truncate">{{ item.reason }}</div>
+                  <div v-if="item.compensatingControl" class="text-muted text-truncate">Compensating: {{ item.compensatingControl }}</div>
                 </td>
-                <td class="text-nowrap">
-                  <button
-                    v-if="item.status === 'REQUESTED' && canShowDecisionButtons"
-                    class="btn btn-success btn-sm me-2"
-                    @click="approve(item.id)"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    v-if="item.status === 'REQUESTED' && canShowDecisionButtons"
-                    class="btn btn-outline-danger btn-sm"
-                    @click="reject(item.id)"
-                  >
-                    Reject
-                  </button>
+                <td class="exception-actions align-top" @click.stop>
+                  <div class="d-flex flex-wrap gap-1 align-items-center justify-content-end">
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary btn-sm ws-btn-row rounded-pill px-3"
+                      @click="canEditException(item) ? openEdit(item) : openView(item)"
+                    >
+                      {{ canEditException(item) ? 'Edit' : 'View' }}
+                    </button>
+                    <button
+                      v-if="item.status === 'REQUESTED' && canShowDecisionButtons"
+                      type="button"
+                      class="btn btn-success btn-sm ws-btn-inline-action rounded-pill"
+                      @click="approve(item.id)"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      v-if="item.status === 'REQUESTED' && canShowDecisionButtons"
+                      type="button"
+                      class="btn btn-outline-danger btn-sm ws-btn-inline-action rounded-pill"
+                      @click="reject(item.id)"
+                    >
+                      Reject
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -95,12 +170,81 @@
       </div>
     </div>
 
-    <BsModal v-model="showModal" title="Request Control Exception">
+    <BsModal v-model="showDetailModal" title="Exception details" size="lg">
+      <div v-if="detailItem" class="exception-detail">
+        <dl class="row mb-0 small">
+          <dt class="col-sm-3 text-muted">Application</dt>
+          <dd class="col-sm-9">
+            {{ detailItem.applicationName }} ({{ detailItem.auditYear }})
+          </dd>
+          <dt class="col-sm-3 text-muted">Control</dt>
+          <dd class="col-sm-9">
+            {{
+              detailItem.controlId ? `${detailItem.controlId} — ${detailItem.controlName}` : 'General exception (no control)'
+            }}
+          </dd>
+          <dt class="col-sm-3 text-muted">Linked finding</dt>
+          <dd class="col-sm-9">
+            <template v-if="detailItem.findingId">
+              <span class="text-muted">#{{ detailItem.findingId }}</span>
+              <span v-if="detailItem.findingTitle"> — {{ detailItem.findingTitle }}</span>
+            </template>
+            <span v-else class="text-muted">—</span>
+          </dd>
+          <dt class="col-sm-3 text-muted">Status</dt>
+          <dd class="col-sm-9">
+            <span class="fw-medium" :class="statusTextClass(detailItem.status)">{{ detailItem.status }}</span>
+            <span v-if="detailItem.slaState" class="ms-2 fw-medium" :class="slaTextClass(detailItem.slaState)">{{
+              detailItem.slaState
+            }}</span>
+          </dd>
+          <dt class="col-sm-3 text-muted">Requested</dt>
+          <dd class="col-sm-9">
+            {{ detailItem.requestedByDisplayName || detailItem.requestedByEmail || '—' }}
+            <span v-if="detailItem.requestedAt" class="text-muted"> · {{ formatDate(detailItem.requestedAt) }}</span>
+          </dd>
+          <dt class="col-sm-3 text-muted">Expires</dt>
+          <dd class="col-sm-9">{{ formatDate(detailItem.expiresAt) }}</dd>
+          <dt class="col-sm-3 text-muted">Reason</dt>
+          <dd class="col-sm-9">
+            <div class="exception-detail-text">{{ detailItem.reason || '—' }}</div>
+          </dd>
+          <dt v-if="detailItem.compensatingControl" class="col-sm-3 text-muted">Compensating control</dt>
+          <dd v-if="detailItem.compensatingControl" class="col-sm-9">
+            <div class="exception-detail-text">{{ detailItem.compensatingControl }}</div>
+          </dd>
+          <template v-if="detailItem.status !== 'REQUESTED'">
+            <dt class="col-sm-3 text-muted">Decision</dt>
+            <dd class="col-sm-9">
+              <div v-if="detailItem.decidedByDisplayName || detailItem.decidedByEmail">
+                By {{ detailItem.decidedByDisplayName || detailItem.decidedByEmail }}
+                <span v-if="detailItem.decidedAt" class="text-muted"> · {{ formatDate(detailItem.decidedAt) }}</span>
+              </div>
+              <div v-if="detailItem.decisionNotes" class="exception-detail-text mt-1">{{ detailItem.decisionNotes }}</div>
+              <div v-if="!detailItem.decidedAt && !detailItem.decisionNotes && !detailItem.decidedByEmail" class="text-muted">
+                —
+              </div>
+            </dd>
+          </template>
+        </dl>
+      </div>
+      <template #footer>
+        <button type="button" class="btn btn-primary btn-sm ws-btn-modal-primary" @click="closeDetailModal">Close</button>
+      </template>
+    </BsModal>
+
+    <BsModal v-model="showModal" :title="modalTitle">
       <form id="workspace-exception-form" @submit.prevent="save">
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">Audit</label>
-            <select v-model="form.auditId" class="form-select" required @change="onAuditChangeInModal">
+            <select
+              v-model="form.auditId"
+              class="form-select"
+              required
+              :disabled="!!editingId"
+              @change="onAuditChangeInModal"
+            >
               <option :value="null" disabled>- Select -</option>
               <option v-for="audit in audits" :key="audit.id" :value="audit.id">
                 {{ audit.applicationName }} ({{ audit.year }})
@@ -141,8 +285,12 @@
         </div>
       </form>
       <template #footer>
-        <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
-        <button type="submit" form="workspace-exception-form" class="btn btn-primary">Submit request</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm ws-btn-modal-secondary" @click="closeModal">
+          Cancel
+        </button>
+        <button type="submit" form="workspace-exception-form" class="btn btn-primary btn-sm ws-btn-modal-primary">
+          {{ editingId ? 'Save changes' : 'Submit request' }}
+        </button>
       </template>
     </BsModal>
   </div>
@@ -152,6 +300,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
+import { useTableSort } from '../../composables/useTableSort'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useAuthStore } from '../../stores/auth'
@@ -177,10 +326,18 @@ const auditFindings = ref([])
 const loading = ref(true)
 const loadError = ref('')
 const showModal = ref(false)
+const showDetailModal = ref(false)
+/** Row selected in read-only detail dialog */
+const detailItem = ref(null)
+/** When set, modal is editing an existing pending request */
+const editingId = ref(null)
 const filters = reactive({
   auditId: null,
-  findingId: null
+  findingId: null,
+  status: ''
 })
+
+const modalTitle = computed(() => (editingId.value ? 'Edit exception request' : 'Request Control Exception'))
 
 const canShowDecisionButtons = computed(() => authStore.user?.role !== 'APPLICATION_OWNER')
 
@@ -192,7 +349,28 @@ const filteredRows = computed(() => {
   if (filters.findingId != null) {
     rows = rows.filter((e) => e.findingId === filters.findingId)
   }
+  if (filters.status) {
+    rows = rows.filter((e) => e.status === filters.status)
+  }
   return rows
+})
+
+const { sortedRows, toggleSort, sortIndicator } = useTableSort(filteredRows, {
+  initialKey: 'requestedAt',
+  initialDirection: 'desc',
+  valueGetters: {
+    applicationSort: (row) =>
+      `${row.applicationName || ''} (${row.auditYear ?? ''})`.toLowerCase(),
+    controlSort: (row) =>
+      (row.controlId ? `${row.controlId} ${row.controlName || ''}` : 'general exception').toLowerCase(),
+    findingSort: (row) => {
+      if (row.findingId == null) return ''
+      return `${row.findingId} ${row.findingTitle || ''}`.toLowerCase()
+    },
+    requestedBySort: (row) =>
+      (row.requestedByDisplayName || row.requestedByEmail || '').toLowerCase(),
+    requestedAt: (row) => row.requestedAt || ''
+  }
 })
 
 const issueHubLink = computed(() => {
@@ -241,6 +419,32 @@ watch(
   }
 )
 
+watch(showModal, (open) => {
+  if (!open) editingId.value = null
+})
+
+watch(showDetailModal, (open) => {
+  if (!open) detailItem.value = null
+})
+
+function openView(item) {
+  detailItem.value = item
+  showDetailModal.value = true
+}
+
+function openRow(item) {
+  if (canEditException(item)) {
+    openEdit(item)
+  } else {
+    openView(item)
+  }
+}
+
+function closeDetailModal() {
+  showDetailModal.value = false
+  detailItem.value = null
+}
+
 async function loadAudits() {
   try {
     const res = await api.get('/api/my-audits')
@@ -268,9 +472,11 @@ async function load() {
 function resetFilters() {
   filters.auditId = null
   filters.findingId = null
+  filters.status = ''
 }
 
 function openModal() {
+  editingId.value = null
   form.auditId = filters.auditId ?? null
   form.auditControlId = null
   form.findingId = filters.findingId ?? null
@@ -284,6 +490,40 @@ function openModal() {
     loadAuditControls()
     loadAuditFindings()
   }
+}
+
+function closeModal() {
+  showModal.value = false
+  editingId.value = null
+}
+
+function canEditException(item) {
+  if (item.status !== 'REQUESTED') return false
+  const uid = authStore.user?.id
+  if (!uid) return false
+  if (authStore.user?.role === 'AUDITOR') return item.requestedByUserId === uid
+  return true
+}
+
+function toDatetimeLocalValue(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+async function openEdit(item) {
+  editingId.value = item.id
+  form.auditId = item.auditId
+  form.auditControlId = item.auditControlId ?? null
+  form.findingId = item.findingId ?? null
+  form.reason = item.reason || ''
+  form.compensatingControl = item.compensatingControl || ''
+  form.expiresAtLocal = toDatetimeLocalValue(item.expiresAt)
+  showModal.value = true
+  await loadAuditControls()
+  await loadAuditFindings()
 }
 
 async function onAuditChangeInModal() {
@@ -313,7 +553,7 @@ async function loadAuditFindings() {
     return
   }
   try {
-    const res = await api.get('/api/findings', { params: { auditId: form.auditId } })
+    const res = await api.get('/api/workspace/findings', { params: { auditId: form.auditId } })
     auditFindings.value = res.data || []
     syncControlFromLinkedFinding()
   } catch {
@@ -345,19 +585,30 @@ function syncControlFromLinkedFinding() {
 
 async function save() {
   try {
-    await api.post(API, {
-      auditId: form.auditId,
-      auditControlId: form.auditControlId || null,
-      findingId: form.findingId || null,
-      reason: form.reason,
-      compensatingControl: form.compensatingControl || null,
-      expiresAt: form.expiresAtLocal ? new Date(form.expiresAtLocal).toISOString() : null
-    })
-    showModal.value = false
-    toastSuccess('Exception request submitted.')
+    if (editingId.value) {
+      await api.put(`${API}/${editingId.value}`, {
+        auditControlId: form.auditControlId || null,
+        findingId: form.findingId || null,
+        reason: form.reason,
+        compensatingControl: form.compensatingControl || null,
+        expiresAt: form.expiresAtLocal ? new Date(form.expiresAtLocal).toISOString() : null
+      })
+      toastSuccess('Exception updated.')
+    } else {
+      await api.post(API, {
+        auditId: form.auditId,
+        auditControlId: form.auditControlId || null,
+        findingId: form.findingId || null,
+        reason: form.reason,
+        compensatingControl: form.compensatingControl || null,
+        expiresAt: form.expiresAtLocal ? new Date(form.expiresAtLocal).toISOString() : null
+      })
+      toastSuccess('Exception request submitted.')
+    }
+    closeModal()
     await load()
   } catch (e) {
-    toastError(e.response?.data?.error || 'Failed to submit exception request.')
+    toastError(e.response?.data?.error || 'Failed to save exception request.')
   }
 }
 
@@ -396,29 +647,28 @@ function formatDate(value) {
   return value ? new Date(value).toLocaleString() : '-'
 }
 
-function statusClass(status) {
-  switch (status) {
-    case 'APPROVED':
-      return 'text-bg-success'
-    case 'REJECTED':
-      return 'text-bg-danger'
-    case 'EXPIRED':
-      return 'text-bg-secondary'
-    default:
-      return 'text-bg-warning'
-  }
+</script>
+
+<style scoped>
+.exception-table-row {
+  cursor: pointer;
 }
 
-function slaClass(state) {
-  switch (state) {
-    case 'BREACHED':
-      return 'text-bg-danger'
-    case 'AT_RISK':
-      return 'text-bg-warning'
-    case 'ON_TRACK':
-      return 'text-bg-success'
-    default:
-      return 'text-bg-secondary'
-  }
+.exception-table-row:focus-visible {
+  outline: 2px solid var(--bs-primary, #0d6efd);
+  outline-offset: -2px;
 }
-</script>
+
+.exception-detail-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.finding-cell {
+  word-break: break-word;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+</style>

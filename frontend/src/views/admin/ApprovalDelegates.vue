@@ -8,7 +8,7 @@
       </p>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <div class="row g-2 align-items-end mb-3">
           <div class="col-md-6">
@@ -28,7 +28,7 @@
         <div v-if="loading" class="text-muted">Loading…</div>
         <div v-else-if="!delegates.length" class="text-muted">No delegates yet.</div>
         <div v-else class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
                 <th>User</th>

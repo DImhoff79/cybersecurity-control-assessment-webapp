@@ -12,7 +12,7 @@
       Example: create <strong>PCI 2026</strong>, scope all in-scope apps, then track progress across one project record.
     </div>
 
-    <section class="card shadow-sm mb-3" v-if="canManageProjects">
+    <section class="card workspace-card border-0 shadow-sm mb-3" v-if="canManageProjects">
       <div class="card-body">
         <h2 class="h5 mb-3">Create project</h2>
         <form class="row g-3" @submit.prevent="createProject">
@@ -60,11 +60,11 @@
                       </button>
                     </div>
                     <div class="transfer-list border rounded">
-                      <table class="table table-sm align-middle mb-0">
+                      <table class="table table-sm workspace-table align-middle mb-0">
                         <thead>
                           <tr>
                             <th style="width: 34px;"></th>
-                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleAvailableSort()">Application {{ availableSortIndicator() }}</button></th>
+                            <th><button type="button" class="workspace-table-sort" @click="toggleAvailableSort()">Application {{ availableSortIndicator() }}</button></th>
                             <th style="width: 80px;"></th>
                           </tr>
                         </thead>
@@ -100,11 +100,11 @@
                       </button>
                     </div>
                     <div class="transfer-list border rounded">
-                      <table class="table table-sm align-middle mb-0">
+                      <table class="table table-sm workspace-table align-middle mb-0">
                         <thead>
                           <tr>
                             <th style="width: 34px;"></th>
-                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSelectedSort()">Application {{ selectedSortIndicator() }}</button></th>
+                            <th><button type="button" class="workspace-table-sort" @click="toggleSelectedSort()">Application {{ selectedSortIndicator() }}</button></th>
                             <th style="width: 90px;"></th>
                           </tr>
                         </thead>
@@ -144,7 +144,7 @@
       </div>
     </section>
 
-    <section class="card shadow-sm mb-3" v-if="canManageProjects && editingProjectId">
+    <section class="card workspace-card border-0 shadow-sm mb-3" v-if="canManageProjects && editingProjectId">
       <div class="card-body">
         <h2 class="h5 mb-3">Edit project</h2>
         <form class="row g-3" @submit.prevent="saveEdit">
@@ -191,11 +191,11 @@
                       </button>
                     </div>
                     <div class="transfer-list border rounded">
-                      <table class="table table-sm align-middle mb-0">
+                      <table class="table table-sm workspace-table align-middle mb-0">
                         <thead>
                           <tr>
                             <th style="width: 34px;"></th>
-                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEditAvailableSort()">Application {{ editAvailableSortIndicator() }}</button></th>
+                            <th><button type="button" class="workspace-table-sort" @click="toggleEditAvailableSort()">Application {{ editAvailableSortIndicator() }}</button></th>
                             <th style="width: 80px;"></th>
                           </tr>
                         </thead>
@@ -231,11 +231,11 @@
                       </button>
                     </div>
                     <div class="transfer-list border rounded">
-                      <table class="table table-sm align-middle mb-0">
+                      <table class="table table-sm workspace-table align-middle mb-0">
                         <thead>
                           <tr>
                             <th style="width: 34px;"></th>
-                            <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleEditSelectedSort()">Application {{ editSelectedSortIndicator() }}</button></th>
+                            <th><button type="button" class="workspace-table-sort" @click="toggleEditSelectedSort()">Application {{ editSelectedSortIndicator() }}</button></th>
                             <th style="width: 90px;"></th>
                           </tr>
                         </thead>
@@ -265,7 +265,7 @@
       </div>
     </section>
 
-    <section class="card shadow-sm">
+    <section class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Existing projects</h2>
         <div class="row g-2 mb-3">
@@ -288,17 +288,17 @@
           </div>
         </div>
         <div class="table-responsive">
-          <table class="table table-striped mb-0">
+          <table class="table workspace-table mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('name')">Name {{ sortIndicator('name') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('frameworkTag')">Framework {{ sortIndicator('frameworkTag') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('scopedApplications')">Scoped Apps {{ sortIndicator('scopedApplications') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('totalAudits')">Audits {{ sortIndicator('totalAudits') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completeAudits')">Completed {{ sortIndicator('completeAudits') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('name')">Name {{ sortIndicator('name') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('frameworkTag')">Framework {{ sortIndicator('frameworkTag') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('scopedApplications')">Scoped Apps {{ sortIndicator('scopedApplications') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('totalAudits')">Audits {{ sortIndicator('totalAudits') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('completeAudits')">Completed {{ sortIndicator('completeAudits') }}</button></th>
                 <th>Stage Snapshot</th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('createdAt')">Created {{ sortIndicator('createdAt') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('createdAt')">Created {{ sortIndicator('createdAt') }}</button></th>
                 <th v-if="canManageProjects"></th>
               </tr>
             </thead>

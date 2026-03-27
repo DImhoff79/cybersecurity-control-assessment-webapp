@@ -16,7 +16,7 @@
       <div class="row g-2 mb-2">
         <div class="col-6 col-lg-3" v-for="card in cards" :key="card.label">
           <div
-            class="card shadow-sm h-100"
+            class="card workspace-card border-0 shadow-sm h-100"
             :class="{
               'border-danger': card.variant === 'danger',
               'border-warning': card.variant === 'warning'
@@ -32,7 +32,7 @@
       <p class="small text-muted mb-3 border-start border-3 ps-2" :class="healthBorderClass">{{ healthMessage }}</p>
 
       <!-- Audits -->
-      <div class="card shadow-sm mb-3">
+      <div class="card workspace-card border-0 shadow-sm mb-3">
         <div class="card-body">
           <h2 class="h5 mb-2">Audits needing attention</h2>
           <p v-if="isAuditorSession" class="small text-muted mb-3">
@@ -132,7 +132,7 @@
             Showing {{ filteredAudits.length }} of {{ statusScopedAuditsCount }}
           </div>
           <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
+            <table class="table workspace-table align-middle mb-0">
               <thead>
                 <tr>
                   <th>Application</th>
@@ -150,7 +150,7 @@
                     <div class="small text-muted">{{ a.year }} · {{ a.projectName || 'No project' }}</div>
                   </td>
                   <td>
-                    <span class="badge status-badge" :class="statusBadge(a.status)">{{ auditStatusLabel(a.status) }}</span>
+                    <span class="text-secondary">{{ auditStatusLabel(a.status) }}</span>
                     <div class="small text-muted mt-1">{{ auditStageLabel(a.status) }}</div>
                   </td>
                   <td>
@@ -189,7 +189,7 @@
       </div>
 
       <!-- Evidence -->
-      <div class="card shadow-sm mb-3">
+      <div class="card workspace-card border-0 shadow-sm mb-3">
         <div class="card-body">
           <h2 class="h5 mb-3">Evidence to review</h2>
           <div class="d-flex flex-wrap gap-2 mb-3">
@@ -226,7 +226,7 @@
             Showing {{ filteredEvidence.length }} of {{ (dashboard.evidenceQueue || []).length }}
           </div>
           <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
+            <table class="table workspace-table align-middle mb-0">
               <thead>
                 <tr>
                   <th>Application</th>
@@ -296,7 +296,7 @@
       </div>
 
       <!-- Activity (collapsed by default) -->
-      <details class="card shadow-sm" data-testid="recent-activity-panel">
+      <details class="card workspace-card border-0 shadow-sm" data-testid="recent-activity-panel">
         <summary class="card-header user-select-none mb-0 list-group-item-action py-3">
           Recent activity · {{ (dashboard.recentActivity || []).length }} events
         </summary>
@@ -329,7 +329,7 @@
             Showing {{ filteredActivity.length }} of {{ (dashboard.recentActivity || []).length }}
           </div>
           <div class="table-responsive">
-            <table class="table table-striped align-middle mb-0">
+            <table class="table workspace-table align-middle mb-0">
               <thead>
                 <tr>
                   <th>When</th>
@@ -372,7 +372,7 @@ import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
 import { useAuthStore } from '../../stores/auth'
-import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from '../../utils/auditStatus'
+import { auditStageLabel, auditStatusLabel } from '../../utils/auditStatus'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -599,10 +599,6 @@ function formatDate(value) {
 function formatDateTime(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
-}
-
-function statusBadge(status) {
-  return auditStatusBadgeClass(status)
 }
 
 const frameworkOptions = computed(() => {

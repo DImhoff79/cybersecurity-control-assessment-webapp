@@ -184,14 +184,28 @@
         <div class="card-body px-3 py-3 px-sm-4">
           <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
             <div class="d-flex gap-2 flex-wrap">
-              <button type="button" class="btn btn-outline-secondary" :disabled="saving || !canGoBack" @click="goBack">Back</button>
-              <button type="button" class="btn btn-outline-primary" :disabled="saving" @click="saveDraft">Save draft</button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm ws-btn-modal-secondary"
+                :disabled="saving || !canGoBack"
+                @click="goBack"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-primary btn-sm ws-btn-modal-secondary"
+                :disabled="saving"
+                @click="saveDraft"
+              >
+                Save draft
+              </button>
             </div>
             <div class="d-flex gap-2 flex-wrap justify-content-end">
               <button
                 v-if="currentStage === 'human' && (!isLastHumanStep || additionalControls.length > 0)"
                 type="button"
-                class="btn btn-primary px-4"
+                class="btn btn-primary btn-sm ws-btn-respond-forward"
                 :disabled="saving"
                 @click="goNext"
               >
@@ -201,7 +215,7 @@
               <button
                 v-else-if="currentStage === 'additional' && !isLastAdditionalStep"
                 type="button"
-                class="btn btn-primary px-4"
+                class="btn btn-primary btn-sm ws-btn-respond-forward"
                 :disabled="saving"
                 @click="goNext"
               >
@@ -211,7 +225,7 @@
               <button
                 v-else
                 type="button"
-                class="btn btn-success px-4"
+                class="btn btn-success btn-sm ws-btn-respond-forward"
                 :disabled="saving"
                 @click="finishAudit"
               >

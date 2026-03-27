@@ -9,20 +9,20 @@
       </div>
       <button class="btn btn-primary btn-sm" @click="openModal()">Add application</button>
     </div>
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <div class="small text-muted mb-3">
           Tip: keep owner and lifecycle values current so assignments and reporting stay accurate.
         </div>
         <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('name')">Name {{ sortIndicator('name') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('description')">Description {{ sortIndicator('description') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('criticality')">Criticality {{ sortIndicator('criticality') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('lifecycle')">Lifecycle {{ sortIndicator('lifecycle') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('name')">Name {{ sortIndicator('name') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('description')">Description {{ sortIndicator('description') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('criticality')">Criticality {{ sortIndicator('criticality') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('lifecycle')">Lifecycle {{ sortIndicator('lifecycle') }}</button></th>
                 <th></th>
               </tr>
             </thead>

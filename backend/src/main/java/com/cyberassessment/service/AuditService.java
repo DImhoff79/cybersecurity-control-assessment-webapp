@@ -28,6 +28,7 @@ public class AuditService {
     private final AuditQuestionnaireSnapshotRepository auditQuestionnaireSnapshotRepository;
     private final AuditQuestionnaireItemRepository auditQuestionnaireItemRepository;
     private final AuditAssignmentRepository auditAssignmentRepository;
+    private final FindingRepository findingRepository;
     private final AuditApprovalStepRepository auditApprovalStepRepository;
     private final AuditApprovalService auditApprovalService;
     private final AuditProjectRepository auditProjectRepository;
@@ -46,6 +47,7 @@ public class AuditService {
                         AuditQuestionnaireSnapshotRepository auditQuestionnaireSnapshotRepository,
                         AuditQuestionnaireItemRepository auditQuestionnaireItemRepository,
                         AuditAssignmentRepository auditAssignmentRepository,
+                        FindingRepository findingRepository,
                         AuditApprovalStepRepository auditApprovalStepRepository,
                         AuditApprovalService auditApprovalService,
                         AuditProjectRepository auditProjectRepository,
@@ -64,6 +66,7 @@ public class AuditService {
         this.auditQuestionnaireSnapshotRepository = auditQuestionnaireSnapshotRepository;
         this.auditQuestionnaireItemRepository = auditQuestionnaireItemRepository;
         this.auditAssignmentRepository = auditAssignmentRepository;
+        this.findingRepository = findingRepository;
         this.auditApprovalStepRepository = auditApprovalStepRepository;
         this.auditApprovalService = auditApprovalService;
         this.auditProjectRepository = auditProjectRepository;
@@ -282,7 +285,9 @@ public class AuditService {
                 .map(AuditAssignment::getAudit)
                 .toList();
         List<Audit> ownedAppAudits = auditRepository.findByApplicationOwnerId(current.getId());
-        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream())
+        List<Audit> approvalAudits = auditApprovalStepRepository.findDistinctAuditsByAssignedToUserId(current.getId());
+        List<Audit> findingOwnerAudits = findingRepository.findDistinctAuditsByOwnerUserId(current.getId());
+        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream(), approvalAudits.stream(), findingOwnerAudits.stream())
                 .flatMap(s -> s)
                 .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
                 .values().stream()
@@ -305,7 +310,9 @@ public class AuditService {
                 .map(AuditAssignment::getAudit)
                 .toList();
         List<Audit> ownedAppAudits = auditRepository.findByApplicationOwnerId(current.getId());
-        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream())
+        List<Audit> approvalAudits = auditApprovalStepRepository.findDistinctAuditsByAssignedToUserId(current.getId());
+        List<Audit> findingOwnerAudits = findingRepository.findDistinctAuditsByOwnerUserId(current.getId());
+        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream(), approvalAudits.stream(), findingOwnerAudits.stream())
                 .flatMap(s -> s)
                 .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
                 .values().stream()
@@ -546,7 +553,8 @@ public class AuditService {
         boolean appOwner = audit.getApplication().getOwner() != null
                 && audit.getApplication().getOwner().getId().equals(current.getId());
         boolean approvalAssignee = auditApprovalStepRepository.existsByAuditIdAndAssignedTo_Id(audit.getId(), current.getId());
-        if (!direct && !collaborator && !appOwner && !approvalAssignee) {
+        boolean findingOwner = findingRepository.existsByAudit_IdAndOwner_Id(audit.getId(), current.getId());
+        if (!direct && !collaborator && !appOwner && !approvalAssignee && !findingOwner) {
             throw new IllegalArgumentException("You do not have access to this audit");
         }
     }
@@ -564,6 +572,15 @@ public class AuditService {
         }
         if (auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId())) {
             return auditControlRepository.findByAudit(audit).stream().map(ac -> ac.getControl().getId()).collect(Collectors.toSet());
+        }
+        if (auditApprovalStepRepository.existsByAuditIdAndAssignedTo_Id(audit.getId(), current.getId())) {
+            return auditControlRepository.findByAudit(audit).stream().map(ac -> ac.getControl().getId()).collect(Collectors.toSet());
+        }
+        if (findingRepository.existsByAudit_IdAndOwner_Id(audit.getId(), current.getId())) {
+            return findingRepository.findByAudit_IdAndOwner_Id(audit.getId(), current.getId()).stream()
+                    .filter(f -> f.getAuditControl() != null)
+                    .map(f -> f.getAuditControl().getControl().getId())
+                    .collect(Collectors.toSet());
         }
         return Collections.emptySet();
     }

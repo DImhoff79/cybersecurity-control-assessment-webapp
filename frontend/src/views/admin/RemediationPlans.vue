@@ -32,7 +32,7 @@
       <button type="button" class="btn btn-outline-secondary btn-sm" @click="clearApplicationFilter">Clear application filter</button>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Create Plan</h2>
         <div class="row g-2">
@@ -75,12 +75,12 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Plans</h2>
         <p v-if="!plansForApplication.length" class="text-muted mb-0">No remediation plans yet.</p>
         <div v-else class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
                 <th>Title</th>
@@ -145,7 +145,7 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
           <h2 class="h5 mb-0">Execution Board</h2>
@@ -187,7 +187,7 @@
     </div>
 
     <div v-if="selectedPlan" class="modal-backdrop-custom" @click.self="closePlanModal">
-      <div class="card shadow-sm modal-card-lg">
+      <div class="card workspace-card border-0 shadow-sm modal-card-lg">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
@@ -246,7 +246,7 @@
         </div>
         <p v-if="!actions.length" class="text-muted mb-0">No actions added.</p>
         <div v-else class="table-responsive">
-          <table class="table table-sm table-striped mb-0">
+          <table class="table table-sm workspace-table mb-0">
             <thead>
               <tr>
                 <th>Action</th>

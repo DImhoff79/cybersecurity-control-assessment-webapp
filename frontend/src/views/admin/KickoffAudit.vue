@@ -9,7 +9,7 @@
       </div>
     </div>
 
-    <section class="card shadow-sm mb-3">
+    <section class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-2">Kick off new audit</h2>
         <p class="text-muted mb-3">
@@ -21,7 +21,7 @@
       </div>
     </section>
 
-    <section class="card shadow-sm">
+    <section class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Audit history by application</h2>
         <div class="small text-muted mb-3">
@@ -40,18 +40,18 @@
         <div v-for="app in filteredApplications" :key="app.id" class="mb-4">
           <h3 class="h6 mb-2">{{ app.name }}</h3>
           <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle mb-0">
+            <table class="table workspace-table align-middle mb-0">
               <thead>
                 <tr>
                   <th>
                     <input type="checkbox" :checked="allSelected(app.id)" @change="toggleSelectAll(app.id, $event.target.checked)" />
                   </th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('projectName')">Project {{ sortIndicator('projectName') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Stage {{ sortIndicator('status') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('assignedTo')">Assigned to {{ sortIndicator('assignedTo') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleSort('projectName')">Project {{ sortIndicator('projectName') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleSort('status')">Stage {{ sortIndicator('status') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleSort('assignedTo')">Assigned to {{ sortIndicator('assignedTo') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
                   <th></th>
                 </tr>
               </thead>
@@ -60,12 +60,8 @@
                   <td><input type="checkbox" :checked="isSelected(a.id)" @change="toggleSelected(a.id, $event.target.checked)" /></td>
                   <td>{{ a.year }}</td>
                   <td>{{ a.projectName || '-' }}</td>
-                  <td>
-                    <span class="badge status-badge" :class="statusBadgeClass(a.status)">
-                      {{ formatAuditStatus(a.status) }}
-                    </span>
-                  </td>
-                  <td><span class="badge text-bg-light border">{{ auditStageLabel(a.status) }}</span></td>
+                  <td class="text-secondary">{{ formatAuditStatus(a.status) }}</td>
+                  <td><span class="small text-secondary">{{ auditStageLabel(a.status) }}</span></td>
                   <td>{{ a.assignedToDisplayName || a.assignedToEmail || '-' }}</td>
                   <td>{{ formatDate(a.dueAt) }}</td>
                   <td class="audit-actions-cell">
@@ -128,7 +124,7 @@ import { computed, ref, reactive, onMounted } from 'vue'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
-import { auditStageLabel, auditStatusBadgeClass, auditStatusLabel } from '../../utils/auditStatus'
+import { auditStageLabel, auditStatusLabel } from '../../utils/auditStatus'
 
 const applications = ref([])
 const projects = ref([])
@@ -275,10 +271,6 @@ function formatAuditStatus(status) {
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleDateString()
-}
-
-function statusBadgeClass(status) {
-  return auditStatusBadgeClass(status)
 }
 
 function visibleAuditsForApp(appId) {

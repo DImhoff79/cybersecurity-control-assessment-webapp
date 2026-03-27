@@ -4,6 +4,11 @@ export const AUDIT_SUBMITTED_PIPELINE = ['PENDING_APPROVAL', 'REVISIONS_REQUESTE
 /** Legacy API / cached rows may still use SUBMITTED — treat like pending approval. */
 const LEGACY_SUBMITTED = 'SUBMITTED'
 
+/** Terminal “closed” state — validated complete. */
+export function isAuditCompleted(status) {
+  return status === 'COMPLETE'
+}
+
 /** Owner may not edit questionnaire answers (revisions requested is editable). */
 export function isAuditOwnerAnswerLocked(status) {
   if (!status) return false
@@ -30,28 +35,6 @@ export function auditStatusLabel(status) {
       return 'Draft'
     default:
       return status || '-'
-  }
-}
-
-export function auditStatusBadgeClass(status) {
-  switch (status) {
-    case 'COMPLETE':
-      return 'text-bg-success'
-    case 'ATTESTED':
-      return 'text-bg-primary'
-    case LEGACY_SUBMITTED:
-    case 'PENDING_APPROVAL':
-      return 'text-bg-info'
-    case 'REVISIONS_REQUESTED':
-      return 'text-bg-warning'
-    case 'AUDITOR_APPROVED':
-      return 'text-bg-success'
-    case 'IN_PROGRESS':
-      return 'text-bg-warning'
-    case 'DRAFT':
-      return 'text-bg-secondary'
-    default:
-      return 'text-bg-secondary'
   }
 }
 

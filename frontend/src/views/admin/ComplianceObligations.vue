@@ -12,7 +12,7 @@
 
     <div class="row g-3">
       <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
+        <div class="card workspace-card border-0 shadow-sm h-100">
           <div class="card-body">
             <h2 class="h5 mb-3">Regulations</h2>
             <form class="row g-2 mb-3" @submit.prevent="createRegulation">
@@ -27,7 +27,7 @@
               </div>
             </form>
             <div class="table-responsive">
-              <table class="table table-sm table-striped mb-0">
+              <table class="table table-sm workspace-table mb-0">
                 <thead><tr><th>Code</th><th>Name</th></tr></thead>
                 <tbody>
                   <tr v-for="r in regulations" :key="r.id">
@@ -42,7 +42,7 @@
       </div>
 
       <div class="col-lg-6">
-        <div class="card shadow-sm h-100">
+        <div class="card workspace-card border-0 shadow-sm h-100">
           <div class="card-body">
             <h2 class="h5 mb-3">Requirements</h2>
             <form class="row g-2 mb-3" @submit.prevent="createRequirement">
@@ -63,7 +63,7 @@
               </div>
             </form>
             <div class="table-responsive">
-              <table class="table table-sm table-striped mb-0">
+              <table class="table table-sm workspace-table mb-0">
                 <thead><tr><th>Requirement</th><th>Regulation</th></tr></thead>
                 <tbody>
                   <tr v-for="r in requirements" :key="r.id">
@@ -78,7 +78,7 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mt-3">
+    <div class="card workspace-card border-0 shadow-sm mt-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Mappings</h2>
         <div class="row g-2 mb-3">
@@ -116,7 +116,7 @@
           <div class="col-lg-6">
             <h3 class="h6">Requirement -> Control</h3>
             <div class="table-responsive">
-              <table class="table table-sm table-striped mb-0">
+              <table class="table table-sm workspace-table mb-0">
                 <thead><tr><th>Requirement</th><th>Control</th><th>Coverage</th></tr></thead>
                 <tbody>
                   <tr v-for="row in requirementControlMappings" :key="row.id">
@@ -131,7 +131,7 @@
           <div class="col-lg-6">
             <h3 class="h6">Policy -> Requirement</h3>
             <div class="table-responsive">
-              <table class="table table-sm table-striped mb-0">
+              <table class="table table-sm workspace-table mb-0">
                 <thead><tr><th>Policy</th><th>Requirement</th></tr></thead>
                 <tbody>
                   <tr v-for="row in policyRequirementMappings" :key="row.id">

@@ -23,7 +23,7 @@
       Tip: filter by framework and enabled status to curate your active baseline quickly.
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body row g-3 align-items-end">
         <div class="col-md-4">
           <label class="form-label">Framework</label>
@@ -47,16 +47,16 @@
       </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('controlId')">ID {{ controlSortIndicator('controlId') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('name')">Name {{ controlSortIndicator('name') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('framework')">Framework {{ controlSortIndicator('framework') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleControlSort('enabled')">Enabled {{ controlSortIndicator('enabled') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('controlId')">ID {{ controlSortIndicator('controlId') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('name')">Name {{ controlSortIndicator('name') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('framework')">Framework {{ controlSortIndicator('framework') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('enabled')">Enabled {{ controlSortIndicator('enabled') }}</button></th>
                 <th></th>
               </tr>
             </thead>
@@ -146,10 +146,10 @@
 
     <BsModal v-model="isQuestionsOpen" :title="questionsTitle" size="lg">
       <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
+        <table class="table workspace-table align-middle mb-0">
           <thead>
             <tr>
-              <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
+              <th><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
               <th></th>
             </tr>
           </thead>

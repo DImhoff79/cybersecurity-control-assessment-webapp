@@ -21,7 +21,7 @@
       <div class="row g-2 mb-2">
         <div class="col-6 col-lg-3" v-for="card in healthCards" :key="card.label">
           <div
-            class="card shadow-sm h-100"
+            class="card workspace-card border-0 shadow-sm h-100"
             :class="{ 'border-danger': card.variant === 'danger', 'border-warning': card.variant === 'warning' }"
           >
             <div class="card-body py-3">
@@ -34,7 +34,7 @@
       <div class="row g-2 mb-3">
         <div class="col-md-4" v-for="card in riskComplianceCards" :key="card.label">
           <div
-            class="card shadow-sm h-100"
+            class="card workspace-card border-0 shadow-sm h-100"
             :class="{ 'border-danger': card.variant === 'danger', 'border-warning': card.variant === 'warning' }"
           >
             <div class="card-body py-3">
@@ -46,7 +46,7 @@
       </div>
       <p class="small text-muted mb-4 border-start border-3 ps-2" :class="healthBorderClass">{{ healthNarrative }}</p>
 
-      <div class="card shadow-sm mb-3">
+      <div class="card workspace-card border-0 shadow-sm mb-3">
         <div class="card-body">
           <h2 class="h5 mb-3">What to watch</h2>
           <ul v-if="actionItems.length" class="mb-0 ps-3">
@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <details class="card shadow-sm mb-3">
+      <details class="card workspace-card border-0 shadow-sm mb-3">
         <summary class="card-header user-select-none">Email schedules</summary>
         <div class="card-body border-top">
           <p class="small text-muted mb-3">Recurring exports to stakeholders. One-time downloads use the buttons above.</p>
@@ -97,7 +97,7 @@
             </div>
           </form>
           <div v-if="schedules.length" class="table-responsive">
-            <table class="table table-striped mb-0 table-sm">
+            <table class="table table-sm workspace-table mb-0">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -128,7 +128,7 @@
         </div>
       </details>
 
-      <details class="card shadow-sm mb-3">
+      <details class="card workspace-card border-0 shadow-sm mb-3">
         <summary class="card-header user-select-none">Trends &amp; breakdowns</summary>
         <div class="card-body border-top">
           <h3 class="h6 mb-2">Trend by audit year</h3>
@@ -166,16 +166,16 @@
 
           <h3 class="h6 mb-2">By year</h3>
           <div class="table-responsive mb-4">
-            <table class="table table-striped mb-0 table-sm">
+            <table class="table table-sm workspace-table mb-0">
               <thead>
                 <tr>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('year')">Year {{ byYearSortIndicator('year') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('total')">Total {{ byYearSortIndicator('total') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('draft')">Draft {{ byYearSortIndicator('draft') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('inProgress')">In Progress {{ byYearSortIndicator('inProgress') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('submitted')">Submitted {{ byYearSortIndicator('submitted') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('attested')">Attested {{ byYearSortIndicator('attested') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByYearSort('complete')">Complete {{ byYearSortIndicator('complete') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('year')">Year {{ byYearSortIndicator('year') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('total')">Total {{ byYearSortIndicator('total') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('draft')">Draft {{ byYearSortIndicator('draft') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('inProgress')">In Progress {{ byYearSortIndicator('inProgress') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('submitted')">Submitted {{ byYearSortIndicator('submitted') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('attested')">Attested {{ byYearSortIndicator('attested') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByYearSort('complete')">Complete {{ byYearSortIndicator('complete') }}</button></th>
                 </tr>
               </thead>
               <tbody>
@@ -194,18 +194,18 @@
 
           <h3 class="h6 mb-2">By audit project</h3>
           <div class="table-responsive">
-            <table class="table table-striped mb-0 table-sm">
+            <table class="table table-sm workspace-table mb-0">
               <thead>
                 <tr>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('project')">Project {{ byProjectSortIndicator('project') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('framework')">Framework {{ byProjectSortIndicator('framework') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('year')">Year {{ byProjectSortIndicator('year') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('scopedApplications')">Apps {{ byProjectSortIndicator('scopedApplications') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('totalAudits')">Total Audits {{ byProjectSortIndicator('totalAudits') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('openAudits')">Open {{ byProjectSortIndicator('openAudits') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('submittedAudits')">Submitted {{ byProjectSortIndicator('submittedAudits') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('attestedAudits')">Attested {{ byProjectSortIndicator('attestedAudits') }}</button></th>
-                  <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleByProjectSort('completeAudits')">Complete {{ byProjectSortIndicator('completeAudits') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('project')">Project {{ byProjectSortIndicator('project') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('framework')">Framework {{ byProjectSortIndicator('framework') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('year')">Year {{ byProjectSortIndicator('year') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('scopedApplications')">Apps {{ byProjectSortIndicator('scopedApplications') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('totalAudits')">Total Audits {{ byProjectSortIndicator('totalAudits') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('openAudits')">Open {{ byProjectSortIndicator('openAudits') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('submittedAudits')">Submitted {{ byProjectSortIndicator('submittedAudits') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('attestedAudits')">Attested {{ byProjectSortIndicator('attestedAudits') }}</button></th>
+                  <th><button type="button" class="workspace-table-sort" @click="toggleByProjectSort('completeAudits')">Complete {{ byProjectSortIndicator('completeAudits') }}</button></th>
                 </tr>
               </thead>
               <tbody>
@@ -226,12 +226,12 @@
         </div>
       </details>
 
-      <details class="card shadow-sm">
+      <details class="card workspace-card border-0 shadow-sm">
         <summary class="card-header user-select-none">Full program inventory</summary>
         <div class="card-body border-top">
           <p class="small text-muted mb-3">Coverage and volume metrics for deep dives.</p>
           <div class="table-responsive">
-            <table class="table table-sm mb-0">
+            <table class="table table-sm workspace-table mb-0">
               <tbody>
                 <tr v-for="row in inventoryRows" :key="row.label">
                   <td class="text-muted">{{ row.label }}</td>

@@ -1,7 +1,7 @@
 <template>
   <WorkspaceControlExceptions
     page-title="My control exceptions"
-    page-subtitle="Request and track exceptions for audits you can access."
+    page-subtitle="Request, review, and track exceptions (including approved) for audits you can access."
   />
 </template>
 

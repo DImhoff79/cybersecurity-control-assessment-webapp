@@ -23,7 +23,7 @@
       Tip: use owner visibility filters to keep owner questionnaires focused and readable.
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body row g-3 align-items-end">
         <div class="col-md-5">
           <label class="form-label">Search</label>
@@ -43,16 +43,16 @@
       </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <div v-if="loading" class="text-muted">Loading questions...</div>
         <div v-else class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th style="min-width: 420px;"><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('controls')">Mapped controls {{ questionSortIndicator('controls') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleQuestionSort('askOwner')">Ask owners {{ questionSortIndicator('askOwner') }}</button></th>
+                <th style="min-width: 420px;"><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('controls')">Mapped controls {{ questionSortIndicator('controls') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('askOwner')">Ask owners {{ questionSortIndicator('askOwner') }}</button></th>
                 <th></th>
               </tr>
             </thead>
@@ -160,14 +160,14 @@
           <button type="button" class="btn btn-outline-primary" @click="addMapping">Add mapping</button>
         </div>
         <div class="table-responsive">
-          <table class="table table-sm align-middle">
+          <table class="table table-sm workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('controlId')">Control {{ mappingSortIndicator('controlId') }}</button></th>
-                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('mappingRationale')">Rationale {{ mappingSortIndicator('mappingRationale') }}</button></th>
-                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('mappingWeight')">Weight {{ mappingSortIndicator('mappingWeight') }}</button></th>
-                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('effectiveFrom')">Effective from {{ mappingSortIndicator('effectiveFrom') }}</button></th>
-                <th><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleMappingSort('effectiveTo')">Effective to {{ mappingSortIndicator('effectiveTo') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('controlId')">Control {{ mappingSortIndicator('controlId') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('mappingRationale')">Rationale {{ mappingSortIndicator('mappingRationale') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('mappingWeight')">Weight {{ mappingSortIndicator('mappingWeight') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('effectiveFrom')">Effective from {{ mappingSortIndicator('effectiveFrom') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('effectiveTo')">Effective to {{ mappingSortIndicator('effectiveTo') }}</button></th>
                 <th></th>
               </tr>
             </thead>

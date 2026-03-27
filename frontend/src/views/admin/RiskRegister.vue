@@ -29,20 +29,20 @@
 
     <div class="row g-3 mb-3">
       <div class="col-md-3">
-        <div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Open Risks</div><div class="h4 mb-0">{{ kpis.openRisks || 0 }}</div></div></div>
+        <div class="card workspace-card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Open Risks</div><div class="h4 mb-0">{{ kpis.openRisks || 0 }}</div></div></div>
       </div>
       <div class="col-md-3">
-        <div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">High Risks</div><div class="h4 mb-0">{{ kpis.highRisks || 0 }}</div></div></div>
+        <div class="card workspace-card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">High Risks</div><div class="h4 mb-0">{{ kpis.highRisks || 0 }}</div></div></div>
       </div>
       <div class="col-md-3">
-        <div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Overdue Actions</div><div class="h4 mb-0">{{ kpis.overdueRemediationActions || 0 }}</div></div></div>
+        <div class="card workspace-card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Overdue Actions</div><div class="h4 mb-0">{{ kpis.overdueRemediationActions || 0 }}</div></div></div>
       </div>
       <div class="col-md-3">
-        <div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Plans In Progress</div><div class="h4 mb-0">{{ kpis.plansInProgress || 0 }}</div></div></div>
+        <div class="card workspace-card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Plans In Progress</div><div class="h4 mb-0">{{ kpis.plansInProgress || 0 }}</div></div></div>
       </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Create Risk</h2>
         <form class="row g-2" @submit.prevent="createRisk">
@@ -96,12 +96,12 @@
       </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-3">Risk Items</h2>
         <p v-if="!displayItems.length" class="text-muted mb-0">No risks tracked yet.</p>
         <div v-else class="table-responsive">
-          <table class="table table-striped align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
                 <th>Title</th>

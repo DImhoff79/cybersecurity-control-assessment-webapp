@@ -4,6 +4,7 @@ import com.cyberassessment.dto.AuditControlAnswerDto;
 import com.cyberassessment.dto.AuditDto;
 import com.cyberassessment.dto.AuditQuestionItemDto;
 import com.cyberassessment.dto.SubmitAnswersRequest;
+import com.cyberassessment.dto.FindingUpsertRequest;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.*;
 import org.junit.jupiter.api.AfterEach;
@@ -41,6 +42,8 @@ class AuditServiceIntegrationTest {
     private AuditControlRepository auditControlRepository;
     @Autowired
     private AuditControlAnswerRepository auditControlAnswerRepository;
+    @Autowired
+    private FindingService findingService;
 
     @AfterEach
     void clearSecurity() {
@@ -273,6 +276,47 @@ class AuditServiceIntegrationTest {
         assertThat(questions).isNotEmpty();
         List<AuditDto> myAudits = auditService.findMyAudits();
         assertThat(myAudits.stream().map(AuditDto::getId)).contains(created.getId());
+    }
+
+    @Test
+    void findingOwnerGetsMyAuditsAndWorkspaceAuditAccessWithoutBeingApplicationOwner() {
+        User admin = userRepository.save(User.builder()
+                .email("fo-admin@test.com")
+                .passwordHash("x")
+                .displayName("FO Admin")
+                .role(UserRole.ADMIN)
+                .permissions(UserRole.ADMIN.defaultPermissions())
+                .build());
+        User findingOwner = userRepository.save(User.builder()
+                .email("finding-owner-only@test.com")
+                .passwordHash("x")
+                .displayName("Finding Owner Only")
+                .role(UserRole.APPLICATION_OWNER)
+                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .build());
+        Application app = applicationRepository.save(Application.builder()
+                .name("Finding Owner Access App")
+                .description("test")
+                .owner(admin)
+                .build());
+
+        authenticate(admin.getEmail());
+        AuditDto audit = auditService.create(app.getId(), 2051);
+        Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
+        findingService.create(FindingUpsertRequest.builder()
+                .auditId(audit.getId())
+                .auditControlId(auditControlId)
+                .title("Owner finding")
+                .description("test")
+                .severity(FindingSeverity.MEDIUM)
+                .ownerUserId(findingOwner.getId())
+                .dueAt(null)
+                .build());
+
+        authenticate(findingOwner.getEmail());
+        assertThat(auditService.findMyAudits().stream().map(AuditDto::getId)).contains(audit.getId());
+        assertThat(auditService.findAccessibleAuditIdsForCurrentUser()).contains(audit.getId());
+        auditService.assertCanAccessAudit(audit.getId());
     }
 
     private void authenticate(String email) {

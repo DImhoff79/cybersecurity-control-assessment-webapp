@@ -7,7 +7,6 @@ import com.cyberassessment.dto.BulkAuditControlUpdateItemDto;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditRepository;
-import com.cyberassessment.repository.AuditAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -22,9 +21,9 @@ public class AuditControlService {
 
     private final AuditControlRepository auditControlRepository;
     private final AuditRepository auditRepository;
+    private final AuditService auditService;
     private final CurrentUserService currentUserService;
     private final AuditActivityLogService auditActivityLogService;
-    private final AuditAssignmentRepository auditAssignmentRepository;
 
     public static AuditControlDto toDto(AuditControl ac) {
         if (ac == null) return null;
@@ -59,17 +58,10 @@ public class AuditControlService {
 
     @Transactional(readOnly = true)
     public List<AuditControlDto> findByAuditId(Long auditId) {
-        Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            User current = currentUserService.getCurrentUserOrThrow();
-            boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
-            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-            boolean isAppOwner = audit.getApplication().getOwner() != null
-                    && audit.getApplication().getOwner().getId().equals(current.getId());
-            if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
-                throw new IllegalArgumentException("You do not have access to this audit");
-            }
+            auditService.assertCanAccessAudit(auditId);
         }
+        Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         return auditControlRepository.findByAudit(audit).stream().map(AuditControlService::toDto).collect(Collectors.toList());
     }
 
@@ -78,15 +70,7 @@ public class AuditControlService {
     public AuditControlDto update(Long id, ControlAssessmentStatus status, String evidence, String notes) {
         AuditControl ac = auditControlRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("AuditControl not found: " + id));
         if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            User current = currentUserService.getCurrentUserOrThrow();
-            Audit audit = ac.getAudit();
-            boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
-            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-            boolean isAppOwner = audit.getApplication().getOwner() != null
-                    && audit.getApplication().getOwner().getId().equals(current.getId());
-            if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
-                throw new IllegalArgumentException("You do not have access to this audit");
-            }
+            auditService.assertCanAccessAudit(ac.getAudit().getId());
         }
         if (status != null) ac.setStatus(status);
         if (evidence != null) ac.setEvidence(evidence);
@@ -104,14 +88,7 @@ public class AuditControlService {
     public void bulkUpdate(Long auditId, List<BulkAuditControlUpdateItemDto> updates) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         if (!currentUserService.isAdmin()) {
-            User current = currentUserService.getCurrentUserOrThrow();
-            boolean isPrimary = audit.getAssignedTo() != null && audit.getAssignedTo().getId().equals(current.getId());
-            boolean isAuditCollaborator = auditAssignmentRepository.existsByAuditIdAndUserIdAndActiveTrue(audit.getId(), current.getId());
-            boolean isAppOwner = audit.getApplication().getOwner() != null
-                    && audit.getApplication().getOwner().getId().equals(current.getId());
-            if (!isPrimary && !isAuditCollaborator && !isAppOwner) {
-                throw new IllegalArgumentException("You do not have access to this audit");
-            }
+            auditService.assertCanAccessAudit(auditId);
         }
         List<AuditControl> changed = new java.util.ArrayList<>();
         for (BulkAuditControlUpdateItemDto item : updates) {

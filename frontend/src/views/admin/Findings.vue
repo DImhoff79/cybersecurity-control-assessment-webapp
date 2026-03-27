@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end mb-3">
           <div class="col-md-4">
@@ -43,16 +43,16 @@
         <div v-else-if="!findings.length" class="text-muted">No findings match the current filter.</div>
         <div v-else class="table-responsive">
           <div class="small text-muted mb-2">Showing {{ findings.length }} findings</div>
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('title')">Title {{ sortIndicator('title') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('severity')">Severity {{ sortIndicator('severity') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('slaState')">SLA {{ sortIndicator('slaState') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('title')">Title {{ sortIndicator('title') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('severity')">Severity {{ sortIndicator('severity') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('slaState')">SLA {{ sortIndicator('slaState') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('dueAt')">Due {{ sortIndicator('dueAt') }}</button></th>
                 <th>Exceptions</th>
                 <th>Handoff</th>
                 <th></th>

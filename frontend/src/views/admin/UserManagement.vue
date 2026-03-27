@@ -5,18 +5,18 @@
       Approve access and assign roles. User identity fields are read-only after account creation.
     </p>
 
-    <section class="card shadow-sm mb-3">
+    <section class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Pending Social Access Requests</h2>
         <p v-if="!pendingRequests.length" class="text-muted mb-0">No pending requests.</p>
         <div v-else class="table-responsive">
-          <table class="table table-striped mb-0">
+          <table class="table workspace-table mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('email')">Email {{ pendingSortIndicator('email') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('displayName')">Name {{ pendingSortIndicator('displayName') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('provider')">Provider {{ pendingSortIndicator('provider') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="togglePendingSort('requestedAt')">Requested {{ pendingSortIndicator('requestedAt') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="togglePendingSort('email')">Email {{ pendingSortIndicator('email') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="togglePendingSort('displayName')">Name {{ pendingSortIndicator('displayName') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="togglePendingSort('provider')">Provider {{ pendingSortIndicator('provider') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="togglePendingSort('requestedAt')">Requested {{ pendingSortIndicator('requestedAt') }}</button></th>
                 <th class="w-role">Grant Role</th>
                 <th class="w-action"></th>
               </tr>
@@ -43,7 +43,7 @@
       </div>
     </section>
 
-    <section class="card shadow-sm">
+    <section class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <h2 class="h5 mb-2">Create User</h2>
         <p class="small text-muted mb-3">
@@ -75,11 +75,11 @@
 
         <h2 class="h5 mb-3">Users</h2>
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleUserSort('user')">User {{ userSortIndicator('user') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleUserSort('role')">Role {{ userSortIndicator('role') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleUserSort('user')">User {{ userSortIndicator('user') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleUserSort('role')">Role {{ userSortIndicator('role') }}</button></th>
                 <th class="w-action"></th>
               </tr>
             </thead>

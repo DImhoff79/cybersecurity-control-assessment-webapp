@@ -11,20 +11,20 @@
     </div>
 
     <div v-if="loading" class="text-muted">Loading...</div>
-    <div v-else-if="!submittedAudits.length" class="card shadow-sm">
+    <div v-else-if="!submittedAudits.length" class="card workspace-card border-0 shadow-sm">
       <div class="card-body text-muted mb-0">No submitted assessments are currently waiting for review.</div>
     </div>
-    <div v-else class="card shadow-sm">
+    <div v-else class="card workspace-card border-0 shadow-sm">
       <div class="card-body">
         <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+          <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('submittedBy')">Submitted by {{ sortIndicator('submittedBy') }}</button></th>
-                <th><button class="btn btn-link btn-sm p-0 text-decoration-none" @click="toggleSort('completedAt')">Submitted at {{ sortIndicator('completedAt') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('applicationName')">Application {{ sortIndicator('applicationName') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('year')">Year {{ sortIndicator('year') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('status')">Status {{ sortIndicator('status') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('submittedBy')">Submitted by {{ sortIndicator('submittedBy') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleSort('completedAt')">Submitted at {{ sortIndicator('completedAt') }}</button></th>
                 <th></th>
               </tr>
             </thead>
@@ -32,11 +32,7 @@
               <tr v-for="audit in sortedRows" :key="audit.id">
                 <td>{{ audit.applicationName }}</td>
                 <td>{{ audit.year }}</td>
-                <td>
-                  <span class="badge status-badge" :class="statusBadgeClass(audit.status)">
-                    {{ audit.status }}
-                  </span>
-                </td>
+                <td class="text-secondary">{{ audit.status }}</td>
                 <td>{{ audit.assignedToDisplayName || audit.assignedToEmail || '-' }}</td>
                 <td>{{ formatDate(audit.completedAt) }}</td>
                 <td class="text-nowrap">
@@ -124,25 +120,4 @@ function formatDate(value) {
   return new Date(value).toLocaleString()
 }
 
-function statusBadgeClass(status) {
-  switch (status) {
-    case 'COMPLETE':
-      return 'text-bg-success'
-    case 'ATTESTED':
-      return 'text-bg-primary'
-    case 'SUBMITTED':
-    case 'PENDING_APPROVAL':
-      return 'text-bg-info'
-    case 'REVISIONS_REQUESTED':
-      return 'text-bg-warning'
-    case 'AUDITOR_APPROVED':
-      return 'text-bg-success'
-    case 'IN_PROGRESS':
-      return 'text-bg-warning'
-    case 'DRAFT':
-      return 'text-bg-secondary'
-    default:
-      return 'text-bg-secondary'
-  }
-}
 </script>
