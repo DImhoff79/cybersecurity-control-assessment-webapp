@@ -49,8 +49,8 @@ jobs:
       - name: Frontend build
         run: npm run build
         working-directory: frontend
-      # npm run test:coverage runs the full Vitest suite with coverage thresholds (vite.config / vitest).
-      - name: Frontend tests with coverage gate
+      # npm run test:coverage runs the full Vitest suite and emits coverage under frontend/coverage.
+      - name: Frontend tests with coverage report
         run: npm run test:coverage
         working-directory: frontend
       - name: Upload frontend coverage artifact

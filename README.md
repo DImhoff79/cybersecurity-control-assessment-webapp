@@ -10,7 +10,7 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - `AUDIT_MANAGER`
   - `AUDITOR`
   - `APPLICATION_OWNER`
-- **Role-default permissions only** (no granular per-user overrides in UI/admin APIs).
+- **Role-default permissions** stored per user; the UI does not expose granular per-user permission editing. Spring Security method guards use **`PERM_*`** authorities derived from the user’s role defaults (and stored permission set) so `@PreAuthorize` matches service-layer checks.
 - **User management** for create/update/delete with guardrails:
   - Existing user email/display name are read-only after creation.
   - Role changes automatically apply role defaults.
@@ -21,7 +21,9 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - Create working snapshot from current mappings
   - Review items
   - Publish
-  - Delete working snapshots (`DRAFT`) by admin/audit manager
+  - Bootstrap initial published template from current mappings
+- **Question–control mapping studio** (admin): unmapped question library, link to controls, maintenance helpers — route **`/admin/question-control-mapping-studio`** (requires `AUDIT_MANAGEMENT`).
+- **Branching workflow (demo)** (admin): server-resolved conditional questionnaire graph, seeded demo data (Flyway **V36**), interactive “try run” — route **`/admin/branching-workflow-demo`** (requires `AUDIT_MANAGEMENT`).
 - **Audit operations**:
   - Audit projects and kickoff workflows
   - Audit project scope editing with linked-audit reconciliation (add/remove scoped apps)
@@ -57,11 +59,14 @@ Supports role-based administration, audit execution, governance snapshots, and r
 ```bash
 cd backend
 ./mvnw spring-boot:run
+# Skip test compilation (e.g. if working on main-only changes): ./mvnw spring-boot:run -Dmaven.test.skip=true
+# Windows PowerShell: .\mvnw.cmd spring-boot:run "-Dmaven.test.skip=true"
 ```
 
 - API: [http://localhost:8080](http://localhost:8080)
 - H2 console: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
-- Local DB URL: `jdbc:h2:file:./data/assessment`
+- Default local DB URL (file + multi-process): `jdbc:h2:file:./data/assessment;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1`  
+  (`DB_CLOSE_ON_EXIT=FALSE` is **not** combined with `AUTO_SERVER` on H2 2.2+.)
 
 Default users (ensured at startup if missing):
 
@@ -69,6 +74,11 @@ Default users (ensured at startup if missing):
 - `audit.manager@example.com` / `manager123` (AUDIT_MANAGER)
 - `auditor@example.com` / `auditor123` (AUDITOR)
 - `owner@example.com` / `owner123` (APPLICATION_OWNER)
+
+### Authentication notes
+
+- **HTTP Basic** and **OAuth2 login** (when configured) both load **`ROLE_*`** and **`PERM_*`** into the security context so API calls match `@PreAuthorize` rules. If you change roles or permissions in the database, **log out and back in** (or clear the session) so a new authentication picks up authorities.
+- If you see **403 Forbidden** on APIs while `/api/auth/me` looks correct, ensure you are not using a stale session from before this model was aligned.
 
 ## Frontend (Vue 3 + Vite)
 
@@ -79,16 +89,18 @@ npm run dev -- --host
 ```
 
 - App: [http://localhost:5173](http://localhost:5173)
-- In development, API requests are proxied to backend on port `8080`.
+- In development, API requests are proxied to backend on port **8080** (`vite.config.js`).
+- Optional: set **`VITE_API_ORIGIN`** (e.g. another host/port) when not using the dev proxy.
 
 ## Quick Start
 
 1. Start backend, then frontend.
 2. Log in as `admin@example.com` / `admin123`.
-3. Open **Admin Workspace -> Applications** to create/manage applications.
-4. Open **Admin Workspace -> Questionnaire** to maintain controls/questions and governance versions.
-5. Open **Admin Workspace -> Audit Projects** to create projects and scope applications.
-6. Open **Admin Workspace -> Audit Queue** for triage and submitted review workflows.
+3. Open **Admin Workspace → Applications** to create/manage applications.
+4. Open **Admin Workspace → Questionnaire** to maintain controls/questions and governance versions.
+5. Open **Admin Workspace → Audit Projects** to create projects and scope applications.
+6. Open **Admin Workspace → Audit Queue** for triage and submitted review workflows.
+7. Optional: **Questionnaire → Branching workflow (demo)** or **Mapping studio** from the questionnaire hub (audit-manager/admin permissions).
 
 ## Architecture Overview
 
@@ -101,38 +113,44 @@ npm run dev -- --host
   - `router/index.js`: route definitions, auth checks, permission/role guards, and admin-role access redirects
 - **State and API**
   - `stores/auth.js`: current user session, credentials, permission helpers
-  - `services/api.js`: axios client, auth header injection, 401 handling
+  - `services/api.js`: axios client, auth header injection, 401 handling; optional `VITE_API_ORIGIN`
   - `composables/useNotificationsMenu.js`: shared notifications menu loading/read interactions
+  - `utils/loadErrorFormat.js`: shared API error messages for admin screens (e.g. branching demo)
 - **Primary views**
   - `views/admin/UserManagement.vue`: role-driven user administration
   - `views/admin/Applications.vue`: application inventory CRUD
-  - `views/admin/QuestionnaireHub.vue`: questionnaire entry point for builder + governance
+  - `views/admin/QuestionnaireHub.vue`: questionnaire entry point for builder, governance, mapping studio, branching demo
   - `views/admin/OperationsQueue.vue`: triage + submitted reviews shell
   - `views/admin/QuestionnaireBuilder.vue`: controls + questions maintenance
   - `views/admin/QuestionnaireTemplates.vue`: governance workflow and working snapshot lifecycle
+  - `views/admin/QuestionControlMappingStudio.vue`: library + control linking
+  - `views/admin/BranchingWorkflowDemo.vue`: demo branching graph + try run
   - `views/admin/KickoffAudit.vue`, `AuditProjects.vue`: audit operations and project scoping
-  - `views/admin/OperationsQueue.vue`: consolidated triage and submitted reviews
   - `views/admin/Reports.vue`: reporting and export surfaces
   - `views/selfservice/MyAudits.vue`, `AuditRespond.vue`: owner and assignee workflows
 - **Shared UI behavior**
   - `composables/useTableSort.js`: reusable sortable table heading behavior used across tables
+  - `utils/adminNavMatch.js`: longest-prefix match for sidebar highlighting
   - `styles/theme.css`: global theme, sortable header visual treatment
 
 ### Backend (`backend/src/main/java/com/cyberassessment`)
 
 - **Web/API layer**
-  - `controller/*Controller.java`: REST endpoints for auth, users, governance, audits, reports, evidence
+  - `controller/*Controller.java`: REST endpoints for auth, users, governance, audits, reports, evidence, demo branching (`DemoBranchingWorkflowController`)
 - **Business layer**
   - `service/*Service.java`: core domain logic (role constraints, snapshot lifecycle, reporting, task flows)
+  - `service/DemoBranchingWorkflowService.java`: demo graph load/save/resolve
 - **Persistence layer**
-  - `entity/*`: JPA entities and enums (`UserRole`, `UserPermission`, audit/questionnaire models)
+  - `entity/*`: JPA entities and enums (`UserRole`, `UserPermission`, audit/questionnaire models, `demo_branching_*` demo tables)
   - `repository/*Repository.java`: data access via Spring Data JPA
 - **Security**
-  - `security/CustomUserDetailsService.java`: role + permission authorities into Spring Security context
-  - `service/CurrentUserService.java`: centralized role/permission checks used by services
+  - `security/CustomUserDetailsService.java`: loads **`ROLE_*`** and **`PERM_*`** from the database user for HTTP Basic / form-style authentication
+  - `security/AppOAuth2UserService.java`: after OAuth2 user-info load, merges the same **`PERM_*`** authorities when a local user exists for the email
+  - `config/SecurityConfig.java`: CORS, CSRF off, OAuth2 user service wiring
+  - `service/CurrentUserService.java`: resolves current user from security context for service-layer permission checks
 - **Database migration**
-  - `resources/db/migration`: Flyway migrations for schema and data changes
-  - Current schema evolution includes governance, GRC, audit automation, and related migrations through **`V30`** (run automatically on startup when Flyway is enabled)
+  - `resources/db/migration`: Flyway migrations (schema + seeds), current through **`V36`** (includes demo branching workflow tables/seed)
+  - Run automatically on startup when Flyway is enabled
 
 ## Test Commands
 
@@ -141,7 +159,7 @@ npm run dev -- --host
 ```bash
 cd frontend
 npm run test:unit
-npm run test:coverage   # same gate as CI (thresholds in vitest.config.js)
+npm run test:coverage   # LCOV/HTML under frontend/coverage (no global threshold gate by default)
 npm run build
 ```
 
@@ -151,7 +169,7 @@ npm run build
 cd backend
 ./mvnw test
 # Windows: .\mvnw.cmd test
-# CI parity (tests + JaCoCo rules): ./mvnw verify  (Windows: .\mvnw.cmd verify)
+# Tests + JaCoCo coverage rules: ./mvnw verify  (Windows: .\mvnw.cmd verify)
 ```
 
 ## Mail (Optional)
@@ -179,13 +197,14 @@ Typical deployment is **Java Spring Boot backend + static Vue `dist/`** in front
 - Flyway runs migrations on startup when `spring.flyway.enabled=true` (default).
 - Ensure the database user can create/update schema (first deploy) and that you **back up before upgrades** when moving between application versions.
 - **Never** use the embedded H2 file store for production.
+- If a migration file is edited **after** it was already applied locally, Flyway may report a **checksum mismatch**. Use `flyway repair` against that environment, or fix the checksum entry in `flyway_schema_history` in line with your team policy—**do not** rewrite applied migration files in shared environments.
 
 ### Backend JAR
 
 ```bash
 cd backend
 ./mvnw -q -DskipTests package
-# Windows: .\mvnw.cmd -DskipTests package
+# Windows: .\mvnw.cmd -q -DskipTests package
 # Artifact: backend/target/cybersecurity-assessment-0.0.1-SNAPSHOT.jar
 ```
 

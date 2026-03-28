@@ -1,0 +1,33 @@
+# Backend — Cybersecurity Assessment API
+
+Spring Boot 3 application (Java 17). See the **[repository root README](../README.md)** for full architecture, auth model, and production notes.
+
+## Run locally
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+- API: `http://localhost:8080`
+- H2 console: `http://localhost:8080/h2-console`
+- Default JDBC (dev): `jdbc:h2:file:./data/assessment;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1`
+
+## Tests and coverage
+
+```bash
+./mvnw test
+./mvnw verify          # includes JaCoCo coverage checks
+```
+
+On **Windows PowerShell**, quote JVM/Maven flags that contain dots, e.g. `.\mvnw.cmd spring-boot:run "-Dmaven.test.skip=true"`.
+
+## Key packages
+
+| Package | Role |
+|--------|------|
+| `controller` | REST endpoints |
+| `service` | Domain logic |
+| `repository` / `entity` | JPA |
+| `security` | `CustomUserDetailsService`, `AppOAuth2UserService` |
+| `resources/db/migration` | Flyway SQL (through **V36**, includes demo branching seed) |
