@@ -9,17 +9,17 @@ import com.cyberassessment.repository.DemoBranchingEdgeRepository;
 import com.cyberassessment.repository.DemoBranchingNodeRepository;
 import com.cyberassessment.repository.DemoBranchingWorkflowRepository;
 import com.cyberassessment.repository.DemoBranchingWorkflowVersionRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +52,7 @@ public class DemoBranchingWorkflowService {
     private BranchingWorkflowGraphDto toGraphDto(DemoBranchingWorkflowVersion v) {
         DemoBranchingWorkflow wf = v.getWorkflow();
         List<DemoBranchingNode> nodes = nodeRepository.findByVersion_Id(v.getId());
+        nodes.sort(Comparator.comparing(DemoBranchingNode::getId));
         List<DemoBranchingEdge> edges = edgeRepository.findByVersion_IdWithEndpoints(v.getId());
         List<BranchingNodeDto> nodeDtos = nodes.stream().map(this::toNodeDto).toList();
         List<BranchingEdgeDto> edgeDtos = edges.stream()
@@ -64,13 +65,17 @@ public class DemoBranchingWorkflowService {
                         .conditionValue(e.getConditionValue())
                         .build())
                 .toList();
+        Long startId = v.getStartNodeId();
+        if (startId == null && !nodes.isEmpty()) {
+            startId = nodes.stream().map(DemoBranchingNode::getId).min(Long::compareTo).orElse(null);
+        }
         return BranchingWorkflowGraphDto.builder()
                 .workflowId(wf.getId())
                 .workflowName(wf.getName())
                 .workflowDescription(wf.getDescription())
                 .versionId(v.getId())
                 .versionLabel(v.getVersionLabel())
-                .startNodeId(v.getStartNodeId())
+                .startNodeId(startId)
                 .nodes(nodeDtos)
                 .edges(edgeDtos)
                 .build();
@@ -94,14 +99,24 @@ public class DemoBranchingWorkflowService {
             return List.of();
         }
         try {
-            List<Map<String, String>> raw = objectMapper.readValue(json, new TypeReference<>() {});
+            JsonNode arr = objectMapper.readTree(json);
+            if (!arr.isArray()) {
+                return List.of();
+            }
             List<BranchingChoiceDto> out = new ArrayList<>();
-            for (Map<String, String> m : raw) {
-                String id = m.get("id");
-                String label = Optional.ofNullable(m.get("label")).orElse(id);
-                if (id != null) {
-                    out.add(new BranchingChoiceDto(id, label));
+            for (JsonNode el : arr) {
+                if (el == null || !el.isObject()) {
+                    continue;
                 }
+                String id = el.has("id") && !el.get("id").isNull() ? el.get("id").asText().trim() : null;
+                if (id == null || id.isEmpty()) {
+                    continue;
+                }
+                String label =
+                        el.has("label") && !el.get("label").isNull()
+                                ? el.get("label").asText().trim()
+                                : id;
+                out.add(new BranchingChoiceDto(id, label.isEmpty() ? id : label));
             }
             return out;
         } catch (Exception e) {
@@ -147,7 +162,10 @@ public class DemoBranchingWorkflowService {
             case "ALWAYS" -> true;
             case "YES" -> "yes".equalsIgnoreCase(value) || "true".equalsIgnoreCase(value);
             case "NO" -> "no".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value);
-            case "OPTION" -> e.getConditionValue() != null && e.getConditionValue().equals(value);
+            case "OPTION" -> {
+                String cv = e.getConditionValue();
+                yield cv != null && cv.trim().equals(value.trim());
+            }
             default -> false;
         };
     }

@@ -54,6 +54,7 @@ class ApplicationApiSmokeIntegrationTest {
         mockMvc.perform(get("/api/demo/branching-workflows/graph").with(httpBasic("audit.manager@example.com", "manager123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionId").value(1))
+                .andExpect(jsonPath("$.startNodeId").value(1))
                 .andExpect(jsonPath("$.nodes.length()").value(4))
                 .andExpect(jsonPath("$.edges.length()").value(7));
     }
