@@ -160,6 +160,18 @@ const router = createRouter({
           meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Questionnaire Builder' }
         },
         {
+          path: 'question-control-mapping-studio',
+          name: 'AdminQuestionControlMappingStudio',
+          component: () => import('../views/admin/QuestionControlMappingStudio.vue'),
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Mapping studio' }
+        },
+        {
+          path: 'branching-workflow-demo',
+          name: 'AdminBranchingWorkflowDemo',
+          component: () => import('../views/admin/BranchingWorkflowDemo.vue'),
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Branching workflow (demo)' }
+        },
+        {
           path: 'audits/:auditId',
           name: 'AuditDetail',
           component: () => import('../views/audits/Assessment.vue'),

@@ -28,8 +28,17 @@ public class QuestionController {
     @PostMapping
     @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<QuestionDto> create(@PathVariable Long controlId, @RequestBody Map<String, Object> body) {
-        String questionText = (String) body.get("questionText");
+        Long questionId = body.get("questionId") != null ? ((Number) body.get("questionId")).longValue() : null;
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
+        if (questionId != null) {
+            try {
+                QuestionDto linked = questionService.linkQuestionToControl(controlId, questionId, displayOrder);
+                return ResponseEntity.status(HttpStatus.CREATED).body(linked);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
+        String questionText = (String) body.get("questionText");
         String helpText = (String) body.get("helpText");
         Boolean askOwner = body.containsKey("askOwner") ? (Boolean) body.get("askOwner") : null;
         if (questionText == null || questionText.isBlank()) {

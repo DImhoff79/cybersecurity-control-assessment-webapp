@@ -1,7 +1,13 @@
 import axios from 'axios'
 
+function resolveApiBaseURL() {
+  const o = import.meta.env.VITE_API_ORIGIN
+  if (o != null && String(o).trim() !== '') return String(o).replace(/\/$/, '')
+  return import.meta.env.DEV ? '' : ''
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.DEV ? '' : '',
+  baseURL: resolveApiBaseURL(),
   timeout: 15000,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' }

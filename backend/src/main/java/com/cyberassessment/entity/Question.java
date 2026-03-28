@@ -17,8 +17,9 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Nullable: library-only questions use mappings only; legacy rows may still set a primary control. */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "control_id", nullable = false)
+    @JoinColumn(name = "control_id", nullable = true)
     private Control control;
 
     @NotBlank

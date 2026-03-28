@@ -16,7 +16,17 @@ export const adminSections = [
       { label: 'Audit Queue', to: '/admin/operations', permission: 'REPORT_VIEW' },
       { label: 'Audit Projects', to: '/admin/audit-projects', permission: 'REPORT_VIEW' },
       { label: 'Audits', to: '/admin/audits', permission: 'AUDIT_MANAGEMENT' },
-      { label: 'Questionnaire', to: '/admin/questionnaire', permission: 'AUDIT_MANAGEMENT' }
+      { label: 'Questionnaire', to: '/admin/questionnaire', permission: 'AUDIT_MANAGEMENT' },
+      {
+        label: 'Mapping studio',
+        to: '/admin/question-control-mapping-studio',
+        permission: 'AUDIT_MANAGEMENT'
+      },
+      {
+        label: 'Branching workflow (demo)',
+        to: '/admin/branching-workflow-demo',
+        permission: 'AUDIT_MANAGEMENT'
+      }
     ]
   },
   {

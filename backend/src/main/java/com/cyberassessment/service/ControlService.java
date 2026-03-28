@@ -37,6 +37,9 @@ public class ControlService {
     }
 
     public static QuestionDto questionToDto(Question q) {
+        if (q.getControl() == null) {
+            return questionToDto(q, null, null);
+        }
         return questionToDto(q, q.getControl().getId(), null);
     }
 

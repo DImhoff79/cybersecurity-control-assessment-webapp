@@ -6,7 +6,7 @@
     </p>
 
     <div class="row g-3">
-      <div class="col-lg-6">
+      <div class="col-lg-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <h2 class="h5">Library Builder</h2>
@@ -20,7 +20,7 @@
         </div>
       </div>
 
-      <div class="col-lg-6">
+      <div class="col-lg-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <h2 class="h5">Governance Versions</h2>
@@ -32,6 +32,30 @@
               :to="{ name: 'AdminQuestionnaireTemplates' }"
             >
               Open Governance
+            </router-link>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-primary border-opacity-25">
+          <div class="card-body">
+            <h2 class="h5">Mapping studio</h2>
+            <p class="text-muted small mb-2">Drag questions onto controls, library API, and detail modal with unmap.</p>
+            <router-link class="btn btn-outline-primary btn-sm" :to="{ name: 'AdminQuestionControlMappingStudio' }">
+              Open mapping studio
+            </router-link>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-info">
+          <div class="card-body">
+            <h2 class="h5">Branching workflow <span class="badge text-bg-info">Demo</span></h2>
+            <p class="text-muted small mb-2">Visual graph and a live run-through resolved on the server.</p>
+            <router-link class="btn btn-outline-primary btn-sm" :to="{ name: 'AdminBranchingWorkflowDemo' }">
+              Open branching demo
             </router-link>
           </div>
         </div>

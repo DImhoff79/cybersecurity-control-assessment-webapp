@@ -3,7 +3,6 @@ package com.cyberassessment.service;
 import com.cyberassessment.dto.AuditorSavedFilterDto;
 import com.cyberassessment.entity.AuditorSavedFilter;
 import com.cyberassessment.entity.User;
-import com.cyberassessment.entity.UserPermission;
 import com.cyberassessment.repository.AuditorSavedFilterRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,8 +23,8 @@ public class AuditorSavedFilterService {
     @Transactional(readOnly = true)
     public List<AuditorSavedFilterDto> listForCurrentUser() {
         User current = currentUserService.getCurrentUserOrThrow();
-        if (!currentUserService.hasPermission(UserPermission.REPORT_VIEW)) {
-            throw new IllegalArgumentException("Missing permission: REPORT_VIEW");
+        if (!currentUserService.isAdmin()) {
+            throw new IllegalArgumentException("Only admins can manage auditor saved filters");
         }
         return auditorSavedFilterRepository.findBySharedTrueOrCreatedByIdOrderByCreatedAtDesc(current.getId())
                 .stream()
@@ -36,8 +35,8 @@ public class AuditorSavedFilterService {
     @Transactional
     public AuditorSavedFilterDto create(String name, boolean shared, Map<String, Object> filterState) {
         User current = currentUserService.getCurrentUserOrThrow();
-        if (!currentUserService.hasPermission(UserPermission.REPORT_VIEW)) {
-            throw new IllegalArgumentException("Missing permission: REPORT_VIEW");
+        if (!currentUserService.isAdmin()) {
+            throw new IllegalArgumentException("Only admins can manage auditor saved filters");
         }
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name is required");
@@ -60,8 +59,8 @@ public class AuditorSavedFilterService {
     @Transactional
     public void delete(Long id) {
         User current = currentUserService.getCurrentUserOrThrow();
-        if (!currentUserService.hasPermission(UserPermission.REPORT_VIEW)) {
-            throw new IllegalArgumentException("Missing permission: REPORT_VIEW");
+        if (!currentUserService.isAdmin()) {
+            throw new IllegalArgumentException("Only admins can manage auditor saved filters");
         }
         AuditorSavedFilter row = auditorSavedFilterRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Saved filter not found"));
