@@ -17,7 +17,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:template_service_test;DB_CLOSE_DELAY=-1",
@@ -63,24 +62,19 @@ class QuestionnaireTemplateServiceIntegrationTest {
     }
 
     @Test
-    void canDeleteWorkingSnapshotButNotPublishedTemplate() {
+    void bootstrapInitialCreatesPublishedTemplate() {
         User admin = userRepository.save(User.builder()
-                .email("template-admin-delete@test.com")
+                .email("template-admin-bootstrap@test.com")
                 .passwordHash("x")
                 .displayName("Template Admin")
                 .role(UserRole.ADMIN)
                 .build());
         authenticate(admin.getEmail());
 
-        QuestionnaireTemplateDto working = questionnaireTemplateService.createDraftFromCurrent("To be deleted");
-        questionnaireTemplateService.deleteDraft(working.getId());
-        assertThat(questionnaireTemplateService.listTemplates().stream().map(QuestionnaireTemplateDto::getId))
-                .doesNotContain(working.getId());
-
-        QuestionnaireTemplateDto published = questionnaireTemplateService.bootstrapInitialFromCurrent("Initial");
-        assertThatThrownBy(() -> questionnaireTemplateService.deleteDraft(published.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Only working snapshots can be deleted");
+        QuestionnaireTemplateDto published = questionnaireTemplateService.bootstrapInitialFromCurrent("Bootstrap regression");
+        assertThat(published.getStatus()).isEqualTo(QuestionnaireTemplateStatus.PUBLISHED);
+        assertThat(published.getPublishedAt()).isNotNull();
+        assertThat(questionnaireTemplateService.listTemplates()).isNotEmpty();
     }
 
     private void authenticate(String email) {

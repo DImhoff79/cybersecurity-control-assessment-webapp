@@ -25,7 +25,7 @@
             >
               <svg class="position-absolute top-0 start-0" :width="canvasW" :height="canvasH" aria-hidden="true" style="pointer-events: none">
                 <defs>
-                  <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                  <marker :id="arrowMarkerId" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
                     <path d="M0,0 L8,4 L0,8 z" fill="currentColor" />
                   </marker>
                 </defs>
@@ -39,7 +39,7 @@
                   stroke="currentColor"
                   stroke-width="1.2"
                   opacity="0.5"
-                  marker-end="url(#arr)"
+                  :marker-end="`url(#${arrowMarkerId})`"
                 />
               </svg>
               <div
@@ -114,30 +114,25 @@
         </div>
       </div>
     </div>
+
+    <div v-else class="alert alert-secondary small mb-0">
+      No graph to display. If this persists after Reload, open DevTools → Network and check
+      <code>GET /api/demo/branching-workflows/graph</code> (expect 200 and a JSON body with
+      <code>nodes</code>).
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import api from '../../services/api'
+import { formatLoadError } from '../../utils/loadErrorFormat'
+
+const arrowMarkerId = useId().replace(/:/g, '_')
 
 const NODE_W = 176
 const NODE_H = 76
 const PAD = 24
-
-function formatLoadError(err) {
-  const d = err.response?.data
-  if (typeof d === 'string' && d.trim()) return d
-  if (d && typeof d === 'object') {
-    const parts = [d.message, d.detail, d.error].filter(Boolean)
-    if (parts.length) return parts.join(' — ')
-  }
-  if (err.response?.status === 404) return 'Demo not found. Run Flyway through V36.'
-  if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-    return 'Cannot reach API (port 8080). Use npm run dev or set VITE_API_ORIGIN=http://localhost:8080'
-  }
-  return err.message || 'Failed to load.'
-}
 
 const loading = ref(true)
 const loadError = ref('')
@@ -215,7 +210,13 @@ async function loadGraph() {
   try {
     const { data } = await api.get('/api/demo/branching-workflows/graph')
     if (!data?.versionId || !Array.isArray(data.nodes)) {
-      loadError.value = 'Invalid graph response.'
+      loadError.value = 'Invalid graph response from the API (missing versionId or nodes array).'
+      graph.value = null
+      return
+    }
+    if (data.nodes.length === 0) {
+      loadError.value =
+        'Demo workflow has no steps in the database. Apply Flyway migration V36 and restart the backend, then reload.'
       graph.value = null
       return
     }

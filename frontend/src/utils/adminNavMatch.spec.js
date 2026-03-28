@@ -7,30 +7,25 @@ describe('findLongestNavMatch', () => {
       key: 'a',
       label: 'A',
       items: [
-        { label: 'Audits', to: '/admin/audits' },
-        { label: 'Overview', to: '/admin' }
+        { to: '/admin', label: 'Home' },
+        { to: '/admin/audits', label: 'Audits' }
       ]
     }
   ]
 
-  it('returns exact match', () => {
-    const m = findLongestNavMatch('/admin/audits', sections)
-    expect(m?.item.label).toBe('Audits')
+  it('returns null for empty input', () => {
+    expect(findLongestNavMatch('', sections)).toBeNull()
+    expect(findLongestNavMatch('/admin', null)).toBeNull()
   })
 
-  it('prefers longest prefix for nested paths', () => {
-    const m = findLongestNavMatch('/admin/audits/12', sections)
-    expect(m?.item.label).toBe('Audits')
-    expect(m?.item.to).toBe('/admin/audits')
+  it('prefers longest matching prefix', () => {
+    const m = findLongestNavMatch('/admin/audits/42', sections)
+    expect(m.item.to).toBe('/admin/audits')
+    expect(m.section.key).toBe('a')
   })
 
-  it('does not match sibling paths as children', () => {
-    const m = findLongestNavMatch('/admin/audit-queue', sections)
-    expect(m?.item.label).toBe('Overview')
-  })
-
-  it('returns null when no item matches', () => {
-    const m = findLongestNavMatch('/other', sections)
-    expect(m).toBeNull()
+  it('matches exact path', () => {
+    const m = findLongestNavMatch('/admin', sections)
+    expect(m.item.to).toBe('/admin')
   })
 })

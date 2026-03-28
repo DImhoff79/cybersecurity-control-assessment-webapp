@@ -26,11 +26,15 @@ class UserServiceUnitTest {
     private UserRepository userRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private CurrentUserService currentUserService;
     @InjectMocks
     private UserService userService;
 
     @Test
     void createAndFindBranchesWork() {
+        when(currentUserService.isAdmin()).thenReturn(true);
+        when(currentUserService.isAuditManager()).thenReturn(true);
         when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
         when(passwordEncoder.encode("pw")).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(i -> {
@@ -48,7 +52,7 @@ class UserServiceUnitTest {
                 User.builder().id(7L).email("new@test.com").displayName("New").role(UserRole.ADMIN).build()
         ));
 
-        UserDto created = userService.create("new@test.com", "pw", "New", UserRole.ADMIN);
+        UserDto created = userService.create("new@test.com", "pw", "New", UserRole.ADMIN, null);
         assertThat(created.getId()).isEqualTo(7L);
         assertThat(userService.findAll()).hasSize(1);
         assertThat(userService.findById(7L).getEmail()).isEqualTo("new@test.com");
@@ -57,16 +61,18 @@ class UserServiceUnitTest {
 
     @Test
     void duplicateAndUpdateBranchesWork() {
+        when(currentUserService.isAdmin()).thenReturn(true);
+        when(currentUserService.isAuditManager()).thenReturn(true);
         when(userRepository.existsByEmail("dup@test.com")).thenReturn(true);
-        assertThatThrownBy(() -> userService.create("dup@test.com", "pw", "Dup", UserRole.APPLICATION_OWNER))
+        assertThatThrownBy(() -> userService.create("dup@test.com", "pw", "Dup", UserRole.APPLICATION_OWNER, null))
                 .isInstanceOf(IllegalArgumentException.class);
 
         User existing = User.builder().id(2L).email("u@test.com").displayName("Old").role(UserRole.APPLICATION_OWNER).build();
         when(userRepository.findById(2L)).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        UserDto updated = userService.update(2L, "Updated", UserRole.ADMIN);
-        assertThat(updated.getDisplayName()).isEqualTo("Updated");
+        UserDto updated = userService.update(2L, null, null, null, UserRole.ADMIN, null);
+        assertThat(updated.getDisplayName()).isEqualTo("Old");
         assertThat(updated.getRole()).isEqualTo(UserRole.ADMIN);
     }
 }

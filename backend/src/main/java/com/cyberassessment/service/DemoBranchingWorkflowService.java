@@ -45,7 +45,7 @@ public class DemoBranchingWorkflowService {
                 .findFirstByOrderByIdAsc()
                 .orElseThrow(() -> new IllegalStateException("No demo workflow"));
         return versionRepository
-                .findFirstByWorkflowIdOrderByIdDesc(wf.getId())
+                .findFirstByWorkflow_IdOrderByIdDesc(wf.getId())
                 .orElseThrow(() -> new IllegalStateException("No demo workflow version"));
     }
 

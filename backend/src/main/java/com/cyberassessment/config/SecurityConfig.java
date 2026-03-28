@@ -1,6 +1,6 @@
 package com.cyberassessment.config;
 
-import com.cyberassessment.security.CustomUserDetailsService;
+import com.cyberassessment.security.AppOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomUserDetailsService userDetailsService;
+    private final AppOAuth2UserService appOAuth2UserService;
     private final OAuth2LoginHandlers oAuth2LoginHandlers;
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
     @Value("${app.auth.allow-basic:true}")
@@ -57,6 +57,7 @@ public class SecurityConfig {
         }
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
             http.oauth2Login(oauth -> oauth
+                    .userInfoEndpoint(userInfo -> userInfo.userService(appOAuth2UserService))
                     .successHandler(oAuth2LoginHandlers)
                     .failureHandler(oAuth2LoginHandlers)
             );

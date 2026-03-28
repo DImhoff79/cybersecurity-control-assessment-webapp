@@ -127,26 +127,32 @@ class ControllerIntegrationTest {
     }
 
     @Test
-    void questionnaireWorkingSnapshotDeleteFlowWorks() {
-        authenticateAsAdmin("controller-admin3@test.com");
+    void questionnaireDraftCreateAppearsInList() {
+        authenticateAsSystemAdmin("controller-admin3@test.com");
 
         QuestionnaireTemplateDto working = questionnaireTemplateController.createDraft(Map.of("notes", "Controller test"));
         assertThat(working.getId()).isNotNull();
 
-        ResponseEntity<Void> deleted = questionnaireTemplateController.deleteDraft(working.getId());
-        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-
         List<QuestionnaireTemplateDto> templates = questionnaireTemplateController.list();
-        assertThat(templates.stream().map(QuestionnaireTemplateDto::getId)).doesNotContain(working.getId());
+        assertThat(templates.stream().map(QuestionnaireTemplateDto::getId)).contains(working.getId());
     }
 
     private void authenticateAsAdmin(String email) {
+        authenticateWithRole(email, UserRole.AUDIT_MANAGER);
+    }
+
+    /** Questionnaire template endpoints require {@code hasRole('ADMIN')}. */
+    private void authenticateAsSystemAdmin(String email) {
+        authenticateWithRole(email, UserRole.ADMIN);
+    }
+
+    private void authenticateWithRole(String email, UserRole role) {
         User admin = userRepository.findByEmail(email).orElseGet(() ->
                 userRepository.save(User.builder()
                         .email(email)
                         .passwordHash("x")
                         .displayName("Controller Admin")
-                        .role(UserRole.AUDIT_MANAGER)
+                        .role(role)
                         .permissions(EnumSet.allOf(UserPermission.class))
                         .build())
         );

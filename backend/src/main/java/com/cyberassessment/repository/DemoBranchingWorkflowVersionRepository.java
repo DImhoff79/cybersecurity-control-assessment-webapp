@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface DemoBranchingWorkflowVersionRepository extends JpaRepository<DemoBranchingWorkflowVersion, Long> {
 
-    List<DemoBranchingWorkflowVersion> findByWorkflowIdOrderByIdDesc(Long workflowId);
+    List<DemoBranchingWorkflowVersion> findByWorkflow_IdOrderByIdDesc(Long workflowId);
 
-    Optional<DemoBranchingWorkflowVersion> findFirstByWorkflowIdOrderByIdDesc(Long workflowId);
+    Optional<DemoBranchingWorkflowVersion> findFirstByWorkflow_IdOrderByIdDesc(Long workflowId);
 }
