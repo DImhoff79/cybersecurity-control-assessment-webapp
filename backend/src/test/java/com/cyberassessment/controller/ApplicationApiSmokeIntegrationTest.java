@@ -21,7 +21,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.url=jdbc:h2:mem:api_smoke_test;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=validate"
+        "spring.jpa.hibernate.ddl-auto=validate",
+        // No SMTP in test JVM; mail health would make aggregate status DOWN and break this smoke check.
+        "management.health.mail.enabled=false"
 })
 @AutoConfigureMockMvc
 class ApplicationApiSmokeIntegrationTest {
@@ -42,6 +44,18 @@ class ApplicationApiSmokeIntegrationTest {
         mockMvc.perform(get("/actuator/health").with(httpBasic("admin@example.com", "admin123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").exists());
+    }
+
+    @Test
+    void authMeRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authMeReturnsUserForOwnerBasicAuth() throws Exception {
+        mockMvc.perform(get("/api/auth/me").with(httpBasic("owner@example.com", "owner123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("owner@example.com"));
     }
 
     @Test

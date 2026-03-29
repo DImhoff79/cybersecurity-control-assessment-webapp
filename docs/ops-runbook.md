@@ -10,7 +10,7 @@ Run these **before** tagging or promoting a build; they mirror `.github/workflow
 
 2. **Frontend**  
    `cd frontend` → `npm ci` → `npm run build` → `npm run test:coverage`  
-   Confirms production build, Vitest suite, and coverage report output (`frontend/coverage/`; see `frontend/vitest.config.js`).
+   Confirms production build, Vitest suite (including `src/integration/*.integration.spec.js`), and coverage report output (`frontend/coverage/`; see `frontend/vitest.config.js`). Playwright E2E (`npm run test:e2e`) is optional for releases and is **not** run in `.github/workflows/ci.yml` yet.
 
 3. **Manual full-stack** (local): start backend (`.\mvnw.cmd spring-boot:run`), start frontend (`npm run dev`), log in, open **Admin → Audit Queue** and one **GRC** screen (e.g. **Findings** or **Risk Register**) to confirm API + migrations on your target DB.
 
@@ -24,8 +24,9 @@ Artifacts: CI uploads `backend-jacoco-report` and `frontend-coverage-report` for
 - Coverage reports are uploaded as build artifacts for regression triage.
 
 ### Local parity (before push)
-- Backend: `cd backend && ./mvnw test` (or `mvnw.cmd test` on Windows); use `./mvnw verify` for the same JaCoCo rules as CI.
-- Frontend: `cd frontend && npm run test:unit` for a quick run; `npm run test:coverage` matches CI (tests + coverage artifacts).
+- Backend: `cd backend && ./mvnw test` (or `mvnw.cmd test` on Windows); use `./mvnw verify` for the same JaCoCo rules as CI. Optional smoke subset: `./mvnw test -Dtest=ApplicationApiSmokeIntegrationTest`.
+- Frontend: `cd frontend && npm run test:unit` for a quick run; `npm run test:coverage` matches CI (tests + coverage artifacts). Integration-only: `npm run test:integration`.
+- **Optional Playwright E2E** (local): `cd frontend` → `npx playwright install chromium` (once) → `npm run test:e2e`. If Vite is already listening on **5173**, use `PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e`. Combine with Vitest: `npm run test:full`.
 - Dependabot opens **weekly** PRs for `frontend` (npm) and `backend` (Maven), and **monthly** for GitHub Actions (see `.github/dependabot.yml`). Review guidance: **`docs/dependency-upgrades.md`**.
 
 ## Service health checks

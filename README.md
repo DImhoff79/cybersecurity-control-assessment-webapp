@@ -158,10 +158,24 @@ npm run dev -- --host
 
 ```bash
 cd frontend
-npm run test:unit
-npm run test:coverage   # LCOV/HTML under frontend/coverage (no global threshold gate by default)
+npm run test:unit          # Vitest: all specs (unit + src/integration/*.integration.spec.js)
+npm run test:integration   # Vitest: only src/integration/
+npm run test:smoke         # Same as test:unit (fast local smoke)
+npm run test:coverage      # LCOV/HTML under frontend/coverage (no global threshold gate by default)
 npm run build
 ```
+
+**Browser smoke (Playwright)** — optional; not part of CI until browsers are installed in the pipeline.
+
+```bash
+cd frontend
+npx playwright install chromium   # once per machine / after @playwright/test upgrades
+npm run test:e2e                  # starts Vite on 5173 unless CI=1 or you set PLAYWRIGHT_SKIP_WEBSERVER=1
+npm run test:full                 # Vitest + Playwright
+```
+
+- E2E specs live under **`frontend/e2e/`** (see **`frontend/playwright.config.ts`**). Vitest excludes **`e2e/**`** so Playwright and Vitest do not double-run the same files.
+- If a dev server is already on port **5173**, run: `PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e` (Windows PowerShell: `$env:PLAYWRIGHT_SKIP_WEBSERVER=1; npm run test:e2e`).
 
 ### Backend
 
@@ -171,6 +185,15 @@ cd backend
 # Windows: .\mvnw.cmd test
 # Tests + JaCoCo coverage rules: ./mvnw verify  (Windows: .\mvnw.cmd verify)
 ```
+
+**HTTP smoke / integration (subset)** — Spring **`MockMvc`** against an in-memory H2 database with Flyway migrations:
+
+```bash
+cd backend
+./mvnw test -Dtest=ApplicationApiSmokeIntegrationTest
+```
+
+Covers public auth metadata, **`/api/auth/me`** (unauthenticated vs basic-auth user), actuator health (mail health disabled in-test so aggregate status is not DOWN without SMTP), and demo branching API rules.
 
 ## Mail (Optional)
 

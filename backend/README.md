@@ -20,6 +20,14 @@ cd backend
 ./mvnw verify          # includes JaCoCo coverage checks
 ```
 
+**Focused HTTP smoke / integration** (in-memory H2, Flyway, `MockMvc`):
+
+```bash
+./mvnw test -Dtest=ApplicationApiSmokeIntegrationTest
+```
+
+Class: `com.cyberassessment.controller.ApplicationApiSmokeIntegrationTest` — auth providers, **`/api/auth/me`**, actuator health (mail health indicator disabled in-test), and demo branching workflow endpoints.
+
 On **Windows PowerShell**, quote JVM/Maven flags that contain dots, e.g. `.\mvnw.cmd spring-boot:run "-Dmaven.test.skip=true"`.
 
 ## Key packages

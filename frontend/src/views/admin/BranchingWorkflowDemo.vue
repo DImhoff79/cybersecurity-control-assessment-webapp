@@ -1,45 +1,96 @@
 <template>
-  <div class="branching-demo">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">
-      <h1 class="h4 mb-0">Branching demo</h1>
-      <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="loading" @click="loadGraph">Reload</button>
-    </div>
-    <p class="text-muted small mb-3">
-      Use the <strong>map</strong> to add steps, edit the selected step, and draw branches. The question list below stays in sync.
-      For Yes/No and list choices, a dialog asks which branch a new link is.
-      <strong>Preview</strong> uses the last saved version. Save your draft with the bar that stays at the top of the screen while you scroll.
-    </p>
+  <div class="branching-demo branching-demo--wide branching-demo--shell">
+    <header class="branching-demo__page-head d-flex flex-wrap gap-3 justify-content-between align-items-start mb-3">
+      <div>
+        <p class="branching-demo__eyebrow text-uppercase small fw-semibold mb-1">Demo workspace</p>
+        <h1 class="h3 mb-0 branching-demo__title">Branching workflow</h1>
+        <p class="text-body-secondary small mb-0 mt-2 branching-demo__lede">
+          Design steps on the map, wire branches, and edit details in the list. Open preview from the bar to walk the
+          <strong>last saved</strong> version in a modal.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm align-self-start rounded-pill px-3"
+        :disabled="loading"
+        @click="loadGraph"
+      >
+        Reload graph
+      </button>
+    </header>
 
-    <div v-if="loadError" class="alert alert-warning">
+    <div class="branching-demo__intro callout small mb-4">
+      <p class="mb-0">
+        Use the <strong>map</strong> to add steps and draw branches; the question list stays in sync. For Yes/No and list
+        choices, a dialog picks which branch a new link uses.
+        <strong>Preview</strong> opens in a modal from <strong>Start preview</strong> in the sticky bar. Save drafts with the same bar.
+      </p>
+    </div>
+
+    <div v-if="loadError" class="alert alert-warning border-0 shadow-sm rounded-3">
       <div class="fw-semibold mb-1">Could not load demo workflow</div>
       <div class="small mb-0">{{ loadError }}</div>
     </div>
-    <div v-else-if="loading" class="text-muted py-4">Loading…</div>
+    <div v-else-if="loading" class="branching-demo__loading text-body-secondary py-5 text-center rounded-3">
+      <span class="branching-demo__spinner d-inline-block rounded-circle me-2" aria-hidden="true" />
+      Loading workflow…
+    </div>
 
-    <div v-else-if="hasGraph" class="d-flex flex-column gap-4">
+    <div v-else-if="hasGraph" class="d-flex flex-column gap-4 branching-demo__main">
       <div
-        class="branching-demo__save-bar sticky-top d-flex flex-wrap align-items-center gap-2 gap-md-3 py-2 px-3 rounded border shadow-sm"
+        class="branching-demo__save-bar sticky-top d-flex flex-wrap align-items-center gap-3 py-3 px-3 px-md-4 rounded-3"
       >
-        <span class="small fw-semibold text-body-secondary me-auto">Workflow draft</span>
-        <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
-          <p v-if="saveSuccess" class="small text-success mb-0">{{ saveSuccess }}</p>
-          <p v-if="saveError" class="small text-danger mb-0">{{ saveError }}</p>
-          <button type="button" class="btn btn-outline-secondary" :disabled="saving" @click="resetDraft">Discard edits</button>
-          <button type="button" class="btn btn-primary branching-demo__save-btn" :disabled="saving" @click="saveWorkflow">
-            {{ saving ? 'Saving…' : 'Save workflow' }}
-          </button>
+        <div class="d-flex align-items-center gap-2 me-auto">
+          <span class="branching-demo__save-bar-icon rounded-2 d-none d-sm-flex" aria-hidden="true" />
+          <div class="d-flex flex-column lh-sm">
+            <span class="small fw-semibold text-body">Draft</span>
+            <span class="text-body-secondary" style="font-size: 0.75rem">Unsaved map and list edits</span>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2 gap-md-3 ms-sm-auto">
+          <div v-if="!runStarted" class="d-flex flex-wrap align-items-center gap-2 branching-demo__save-bar-preview">
+            <span class="small text-body-secondary d-none d-md-inline">Preview <span class="text-muted">(saved)</span></span>
+            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" @click="startRun">Start preview</button>
+            <p v-if="startRunError" class="small text-danger mb-0">{{ startRunError }}</p>
+          </div>
+          <span v-if="saveSuccess" class="small text-success mb-0">{{ saveSuccess }}</span>
+          <span v-if="saveError" class="small text-danger mb-0">{{ saveError }}</span>
+          <div class="vr d-none d-md-block text-muted opacity-25 align-self-stretch my-1" />
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="saving" @click="resetDraft">
+              Discard
+            </button>
+            <button type="button" class="btn btn-primary branching-demo__save-btn px-4" :disabled="saving" @click="saveWorkflow">
+              {{ saving ? 'Saving…' : 'Save workflow' }}
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="row g-4">
-        <div class="col-xl-7">
-          <div class="card shadow-sm">
-            <div class="card-header py-2 small fw-semibold d-flex flex-wrap gap-2 justify-content-between align-items-center">
-              <span>Map</span>
-              <span v-if="!draftStartStableKey" class="text-warning small">Pick a start step in the panel below</span>
+        <div class="col-12">
+          <div class="card branching-demo__surface border-0 shadow-sm h-100">
+            <div
+              class="card-header py-3 px-3 px-md-4 branching-demo__card-head d-flex flex-wrap gap-2 justify-content-between align-items-center border-0"
+            >
+              <div class="d-flex align-items-center gap-2">
+                <span class="branching-demo__section-dot rounded-circle flex-shrink-0" aria-hidden="true" />
+                <span class="fw-semibold">Flow map</span>
+              </div>
+              <span v-if="!draftStartStableKey" class="badge rounded-pill text-bg-warning text-dark">Pick a start step below</span>
             </div>
             <div class="card-body p-0">
-              <div class="branching-demo__flow-wrap border rounded">
+              <div
+                ref="flowWrapRef"
+                class="branching-demo__flow-wrap border-0 rounded-0 position-relative"
+                @pointerdown.capture="onFlowWrapPointerDownCapture"
+              >
+                <div
+                  v-if="!flowMapActivated"
+                  class="branching-demo__map-activate-hint position-absolute top-0 start-50 translate-middle-x mt-3 px-3 py-2 rounded-pill small shadow"
+                >
+                  Click the map to pan, zoom, and drag steps
+                </div>
                 <VueFlow
                   v-model:nodes="flowVueNodes"
                   v-model:edges="flowVueEdges"
@@ -49,7 +100,18 @@
                   :min-zoom="0.15"
                   :max-zoom="2"
                   :is-valid-connection="isFlowValidConnection"
-                  class="branching-demo__vue-flow"
+                  :zoom-on-scroll="flowMapActivated"
+                  :pan-on-drag="flowMapActivated"
+                  :pan-on-scroll="flowMapActivated"
+                  :zoom-on-pinch="flowMapActivated"
+                  :zoom-on-double-click="flowMapActivated"
+                  :nodes-draggable="flowMapActivated"
+                  :nodes-connectable="flowMapActivated"
+                  :class="[
+                    'branching-demo__vue-flow',
+                    { 'branching-demo--card-editing': !!editingCardStableKey },
+                    { 'branching-demo--map-inactive': !flowMapActivated }
+                  ]"
                   @node-drag-start="onFlowDragStart"
                   @node-drag-stop="onFlowDragStop"
                   @node-click="onFlowNodeClick"
@@ -57,18 +119,49 @@
                   @connect="onFlowConnect"
                   @edges-change="onFlowEdgesChange"
                 >
-                  <Background variant="dots" :gap="14" />
-                  <Controls position="top-left" />
-                  <MiniMap pannable zoomable class="branching-demo__minimap" />
-                  <BranchingFlowMapTools @add-step="addDraftNode" />
+                  <Background variant="dots" :gap="14" color="#94a3b8" />
+                  <Controls position="top-left" :show-interactive="false">
+                    <template #icon-zoom-in>
+                      <span class="branching-demo__map-control" title="Zoom in — enlarge the map">
+                        <span class="visually-hidden">Zoom in</span>
+                        <span class="branching-demo__map-control-glyph" aria-hidden="true">+</span>
+                        <span class="branching-demo__map-control-label" aria-hidden="true">Zoom in</span>
+                      </span>
+                    </template>
+                    <template #icon-zoom-out>
+                      <span class="branching-demo__map-control" title="Zoom out — shrink the map">
+                        <span class="visually-hidden">Zoom out</span>
+                        <span class="branching-demo__map-control-glyph" aria-hidden="true">−</span>
+                        <span class="branching-demo__map-control-label" aria-hidden="true">Zoom out</span>
+                      </span>
+                    </template>
+                    <template #icon-fit-view>
+                      <span class="branching-demo__map-control branching-demo__map-control--fit" title="Fit view — show all steps">
+                        <span class="visually-hidden">Fit all steps in view</span>
+                        <span class="branching-demo__map-control-glyph branching-demo__map-control-glyph--fit" aria-hidden="true">⤢</span>
+                        <span class="branching-demo__map-control-label" aria-hidden="true">Fit all</span>
+                      </span>
+                    </template>
+                  </Controls>
+                  <MiniMap
+                    :pannable="flowMapActivated"
+                    :zoomable="flowMapActivated"
+                    class="branching-demo__minimap"
+                  />
+                  <BranchingFlowMapTools
+                    :layout-fit-tick="layoutFitTick"
+                    @add-step="addDraftNode"
+                    @auto-layout="runAutoLayout"
+                  />
                 </VueFlow>
               </div>
-              <p class="small text-muted mb-0 px-2 py-2 border-bottom">
-                <span class="text-body">Q1, Q2…</span> matches the list order. The id under each box is the
-                <strong>internal key</strong>. Select an arrow and press <kbd class="small">Delete</kbd> or
-                <kbd class="small">Backspace</kbd> to remove it.
+              <p class="branching-demo__map-footnote small text-body-secondary mb-0 px-3 py-3">
+                <span class="text-body fw-medium">Q1, Q2…</span> matches list order. The id on each box is the
+                <strong>internal key</strong>. Click the map once to enable pan, zoom, and handles; click outside to
+                disable. Select an arrow and press <kbd class="branching-demo__map-footnote-kbd">Delete</kbd> or
+                <kbd class="branching-demo__map-footnote-kbd">Backspace</kbd> to remove it.
               </p>
-              <div ref="mapEditorEl" class="branching-demo__map-editor px-3 py-3 small">
+              <div ref="mapEditorEl" class="branching-demo__map-editor px-3 px-md-4 py-4 small border-top">
                 <div class="row g-2 align-items-end mb-3">
                   <div class="col-md-6 col-lg-5">
                     <label class="form-label mb-0">Start of flow</label>
@@ -261,92 +354,49 @@
             </div>
           </div>
         </div>
-        <div class="col-xl-5">
-          <div class="card shadow-sm h-100">
-            <div class="card-header py-2 small fw-semibold">Preview <span class="text-muted fw-normal">(saved flow)</span></div>
-            <div class="card-body">
-              <div v-if="!runStarted">
-                <button type="button" class="btn btn-primary btn-sm" @click="startRun">Start preview</button>
-                <p v-if="startRunError" class="small text-danger mt-2 mb-0">{{ startRunError }}</p>
-              </div>
-              <template v-else>
-                <div v-if="runFinished" class="alert alert-success small mb-0">
-                  <div class="fw-semibold">{{ endTitle }}</div>
-                  <div v-if="endBody" class="mt-1">{{ endBody }}</div>
-                  <button type="button" class="btn btn-outline-secondary btn-sm mt-2" @click="resetRun">Start over</button>
-                </div>
-                <template v-else-if="currentRunNode">
-                  <p class="fw-medium mb-1">{{ currentRunNode.title }}</p>
-                  <p v-if="currentRunNode.body" class="small text-muted mb-3">{{ currentRunNode.body }}</p>
-                  <div v-if="currentRunNode.questionType === 'YES_NO'" class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-sm" @click="submitAnswer('yes')">Yes</button>
-                    <button type="button" class="btn btn-outline-primary btn-sm" @click="submitAnswer('no')">No</button>
-                  </div>
-                  <div v-else-if="currentRunNode.questionType === 'CHOICE'" class="d-grid gap-1">
-                    <template v-if="currentRunNode.choices?.length">
-                      <button
-                        v-for="c in currentRunNode.choices"
-                        :key="c.id"
-                        type="button"
-                        class="btn btn-outline-primary btn-sm text-start"
-                        @click="submitAnswer(c.id)"
-                      >
-                        {{ c.label }}
-                      </button>
-                    </template>
-                    <p v-else class="small text-warning mb-0">No answers configured for this question.</p>
-                  </div>
-                  <div v-else-if="currentRunNode.questionType === 'TEXT'">
-                    <textarea v-model="textAnswer" class="form-control form-control-sm mb-2" rows="3" placeholder="Type something…" />
-                    <button type="button" class="btn btn-primary btn-sm" :disabled="resolving" @click="submitText">Continue</button>
-                  </div>
-                  <div v-else class="alert alert-warning small py-2 mb-0">
-                    This step type cannot be previewed here.
-                  </div>
-                  <p v-if="resolveError" class="small text-danger mt-2 mb-0">{{ resolveError }}</p>
-                  <button type="button" class="btn btn-link btn-sm px-0 mt-2" @click="resetRun">Cancel</button>
-                </template>
-              </template>
-              <div v-if="runStarted && pathLabels.length" class="mt-3 pt-3 border-top small text-muted">
-                <div class="text-uppercase mb-1" style="font-size: 0.65rem; letter-spacing: 0.04em">Path so far</div>
-                <ol class="mb-0 ps-3">
-                  <li v-for="(p, i) in pathLabels" :key="i">{{ p }}</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div class="card shadow-sm">
-        <div class="card-header py-2 small fw-semibold">
-          <span>Questions</span>
-          <span class="text-muted fw-normal small ms-1">List view (save from the bar at the top)</span>
+      <div class="card branching-demo__surface border-0 shadow-sm">
+        <div class="card-header py-3 px-3 px-md-4 branching-demo__card-head border-0">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <span class="branching-demo__section-dot rounded-circle flex-shrink-0" aria-hidden="true" />
+            <span class="fw-semibold">Questions</span>
+          </div>
+          <p class="text-body-secondary small mb-1 fw-normal">
+            Expand a row to edit wording, answers, and branching. Order matches Q1, Q2… on the map.
+          </p>
+          <p class="text-body-secondary mb-0" style="font-size: 0.8rem">Save from the sticky bar at the top.</p>
         </div>
-        <div class="card-body">
+        <div class="card-body px-3 px-md-4 pb-4">
           <div class="vstack gap-3 mb-3">
-            <div
+            <details
               v-for="(node, idx) in draftNodes"
               :key="'dn' + idx"
               :id="'branching-q-' + idx"
-              class="border rounded p-3 bg-body-tertiary branching-demo__question-card"
+              class="border rounded-3 bg-body-tertiary branching-demo__question-card branching-demo__question-details"
               :class="{ 'branching-demo__question-card--active': selectedStableKey === String(node.stableKey ?? '').trim() }"
-              role="button"
-              tabindex="0"
               @click="selectQuestionForMap(node)"
-              @keydown.enter.prevent="selectQuestionForMap(node)"
             >
-              <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                <span class="fw-semibold">Question {{ idx + 1 }} <span class="text-muted fw-normal small">(Q{{ idx + 1 }} on map)</span></span>
+              <summary class="branching-demo__question-summary d-flex justify-content-between align-items-center gap-2 px-3 py-2 small rounded-top">
+                <div class="d-flex flex-wrap align-items-center gap-2 min-w-0 flex-grow-1">
+                  <span class="fw-semibold text-nowrap">Question {{ idx + 1 }}</span>
+                  <span class="text-muted">·</span>
+                  <span class="text-truncate" :title="(node.title || '').trim() || 'Untitled'">
+                    {{ (node.title || '').trim() || 'Untitled' }}
+                  </span>
+                  <span class="badge text-bg-secondary text-truncate" style="max-width: 12rem">{{ questionTypeLabel(node.questionType) }}</span>
+                  <span class="text-muted fw-normal small text-nowrap">(Q{{ idx + 1 }} on map)</span>
+                </div>
                 <button
                   type="button"
-                  class="btn btn-outline-danger btn-sm py-0"
+                  class="btn btn-outline-danger btn-sm py-0 flex-shrink-0"
                   @click.stop="removeDraftNode(idx)"
                 >
                   Remove
                 </button>
-              </div>
-              <div class="row g-3 small">
+              </summary>
+              <div class="px-3 pb-3 pt-0 small">
+                <div class="row g-3 pt-3">
                 <div class="col-12">
                   <label class="form-label mb-0">What to ask</label>
                   <input v-model="node.title" type="text" class="form-control form-control-sm" placeholder="Question title" />
@@ -451,6 +501,7 @@
                 </details>
               </div>
             </div>
+            </details>
           </div>
 
           <details class="small">
@@ -599,20 +650,79 @@
         </div>
       </div>
     </div>
+
+    <BsModal
+      v-model="previewModalOpen"
+      title="Preview saved flow"
+      size="lg"
+      scrollable
+      @hidden="onPreviewModalHidden"
+    >
+      <div>
+      <p class="small text-muted mb-3 mb-md-4">
+        Walks through the <strong>last saved</strong> version from the server — not your unsaved draft.
+      </p>
+      <div v-if="runFinished" class="alert alert-success small mb-0">
+        <div class="fw-semibold">{{ endTitle }}</div>
+        <div v-if="endBody" class="mt-1">{{ endBody }}</div>
+        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" @click="closePreviewModal">Start over</button>
+      </div>
+      <template v-else-if="currentRunNode">
+        <p class="fw-medium mb-1">{{ currentRunNode.title }}</p>
+        <p v-if="currentRunNode.body" class="small text-muted mb-3">{{ currentRunNode.body }}</p>
+        <div v-if="currentRunNode.questionType === 'YES_NO'" class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-outline-primary btn-sm" @click="submitAnswer('yes')">Yes</button>
+          <button type="button" class="btn btn-outline-primary btn-sm" @click="submitAnswer('no')">No</button>
+        </div>
+        <div v-else-if="currentRunNode.questionType === 'CHOICE'" class="d-grid gap-1">
+          <template v-if="currentRunNode.choices?.length">
+            <button
+              v-for="c in currentRunNode.choices"
+              :key="c.id"
+              type="button"
+              class="btn btn-outline-primary btn-sm text-start"
+              @click="submitAnswer(c.id)"
+            >
+              {{ c.label }}
+            </button>
+          </template>
+          <p v-else class="small text-warning mb-0">No answers configured for this question.</p>
+        </div>
+        <div v-else-if="currentRunNode.questionType === 'TEXT'">
+          <textarea v-model="textAnswer" class="form-control form-control-sm mb-2" rows="3" placeholder="Type something…" />
+          <button type="button" class="btn btn-primary btn-sm" :disabled="resolving" @click="submitText">Continue</button>
+        </div>
+        <div v-else class="alert alert-warning small py-2 mb-0">This step type cannot be previewed here.</div>
+        <p v-if="resolveError" class="small text-danger mt-2 mb-0">{{ resolveError }}</p>
+        <button type="button" class="btn btn-link btn-sm px-0 mt-2" @click="closePreviewModal">Cancel</button>
+      </template>
+      <div v-if="runStarted && pathLabels.length" class="mt-3 pt-3 border-top border-secondary-subtle small text-body-secondary">
+        <div class="text-uppercase mb-2 branching-demo__path-label">Path so far</div>
+        <ol class="mb-0 ps-3">
+          <li v-for="(p, i) in pathLabels" :key="i">{{ p }}</li>
+        </ol>
+      </div>
+      </div>
+      <template #footer>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @click="closePreviewModal">Close</button>
+      </template>
+    </BsModal>
   </div>
 </template>
 
 <script setup>
-import { VueFlow } from '@vue-flow/core'
+import { MarkerType, VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, markRaw, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/minimap/dist/style.css'
+import dagre from '@dagrejs/dagre'
 import api from '../../services/api'
 import { formatLoadError } from '../../utils/loadErrorFormat'
+import BsModal from '../../components/BsModal.vue'
 import BranchingFlowNode from './BranchingFlowNode.vue'
 import BranchingFlowMapTools from './BranchingFlowMapTools.vue'
 
@@ -661,6 +771,15 @@ const draftNodes = ref([])
 /** @type {import('vue').Ref<Array<{ fromStableKey: string, toStableKey: string, sortOrder: number, conditionKind: string, conditionValue: string }>>} */
 const draftEdges = ref([])
 
+/** Apply field updates from map cards; mutates draft so the flow list and save payload stay in sync. */
+function patchDraftNode(stableKey, patch) {
+  const k = String(stableKey ?? '').trim()
+  if (!k || !patch || typeof patch !== 'object') return
+  const n = draftNodes.value.find((x) => String(x.stableKey ?? '').trim() === k)
+  if (!n) return
+  Object.assign(n, patch)
+}
+
 const saving = ref(false)
 const saveError = ref('')
 const saveSuccess = ref('')
@@ -669,6 +788,10 @@ const flowVueNodes = ref([])
 const flowVueEdges = ref([])
 const selectedStableKey = ref('')
 const isFlowDragging = ref(false)
+/** Incremented after auto-layout so the map toolbar can fit the view to the new positions. */
+const layoutFitTick = ref(0)
+/** Map card inline editor: which step is being edited (elevates node, sends panels behind canvas). */
+const editingCardStableKey = ref('')
 
 const connectModalOpen = ref(false)
 /** @type {import('vue').Ref<{ fk: string, tk: string } | null>} */
@@ -678,6 +801,11 @@ const connectModalChoiceValue = ref('')
 const connectModalEl = ref(null)
 /** Map column "Selected step" panel — scroll into view on map click, not the list below. */
 const mapEditorEl = ref(null)
+/** Saved-flow preview modal (Bootstrap modal via BsModal). */
+const previewModalOpen = ref(false)
+/** Bordered map area (Vue Flow); pan/zoom/minimap controls require a click inside here first. */
+const flowWrapRef = ref(null)
+const flowMapActivated = ref(false)
 
 const nodeTypes = { branching: markRaw(BranchingFlowNode) }
 
@@ -764,16 +892,49 @@ function edgeRouteLabel(e) {
   return ck || '—'
 }
 
+/** Distinct stroke colors for draft edges (deterministic from endpoints + index). */
+const BRANCHING_EDGE_COLORS = [
+  '#2563eb',
+  '#dc2626',
+  '#059669',
+  '#d97706',
+  '#7c3aed',
+  '#db2777',
+  '#0891b2',
+  '#ca8a04',
+  '#4f46e5',
+  '#ea580c',
+  '#0d9488',
+  '#be185d'
+]
+
+function hashStringToSeed(str) {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
+function strokeColorForDraftEdge(i, fk, tk) {
+  const seed = hashStringToSeed(`${fk}\0${tk}\0${i}`)
+  return BRANCHING_EDGE_COLORS[seed % BRANCHING_EDGE_COLORS.length]
+}
+
 function rebuildFlowFromDraft() {
+  const editingSk = String(editingCardStableKey.value ?? '').trim()
   const nodes = draftNodes.value
     .map((n, idx) => {
       const sk = String(n.stableKey ?? '').trim()
       if (!sk) return null
       const start = String(draftStartStableKey.value ?? '').trim()
+      const isCardEditing = editingSk !== '' && editingSk === sk
       return {
         id: sk,
         type: 'branching',
         position: { x: Number(n.posX) || 0, y: Number(n.posY) || 0 },
+        zIndex: isCardEditing ? 50000 : undefined,
+        class: isCardEditing ? 'branching-vue-node--card-editing' : undefined,
         data: {
           num: idx + 1,
           title: (n.title || '').trim() || 'Untitled',
@@ -793,12 +954,25 @@ function rebuildFlowFromDraft() {
     const fk = String(e.fromStableKey ?? '').trim()
     const tk = String(e.toStableKey ?? '').trim()
     if (!fk || !tk) return
+    const stroke = strokeColorForDraftEdge(i, fk, tk)
     edges.push({
       id: `draftedge-${i}`,
       source: fk,
       target: tk,
       label: edgeRouteLabel(e),
-      type: 'smoothstep'
+      type: 'smoothstep',
+      style: (ed) => ({
+        stroke,
+        strokeWidth: ed.selected ? 6 : 2.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round'
+      }),
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: stroke,
+        width: 22,
+        height: 22
+      }
     })
   })
   flowVueNodes.value = nodes
@@ -831,6 +1005,7 @@ function onFlowDragStop({ node }) {
 function onFlowNodeClick({ node, event }) {
   event?.stopPropagation?.()
   if (!node?.id) return
+  flowMapActivated.value = true
   selectedStableKey.value = String(node.id)
   nextTick(() => {
     mapEditorEl.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -838,7 +1013,21 @@ function onFlowNodeClick({ node, event }) {
 }
 
 function onFlowPaneClick() {
+  flowMapActivated.value = true
   selectedStableKey.value = ''
+}
+
+function onFlowWrapPointerDownCapture() {
+  flowMapActivated.value = true
+}
+
+function onDocumentPointerDownDeactivateMap(e) {
+  const el = flowWrapRef.value
+  const t = e.target
+  if (!(el instanceof HTMLElement) || !(t instanceof Node)) return
+  if (!el.contains(t)) {
+    flowMapActivated.value = false
+  }
 }
 
 function isFlowValidConnection(connection) {
@@ -996,8 +1185,14 @@ function onConnectModalEscape(e) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onConnectModalEscape))
-onUnmounted(() => window.removeEventListener('keydown', onConnectModalEscape))
+onMounted(() => {
+  window.addEventListener('keydown', onConnectModalEscape)
+  document.addEventListener('pointerdown', onDocumentPointerDownDeactivateMap, true)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onConnectModalEscape)
+  document.removeEventListener('pointerdown', onDocumentPointerDownDeactivateMap, true)
+})
 
 function onFlowConnect(connection) {
   const fk = String(connection?.source ?? '').trim()
@@ -1197,6 +1392,92 @@ function onQuestionTypeChange(node) {
   }
 }
 
+function getDraftNode(stableKey) {
+  const k = String(stableKey ?? '').trim()
+  if (!k) return null
+  return draftNodes.value.find((n) => String(n.stableKey ?? '').trim() === k) ?? null
+}
+
+function setEditingCardStableKey(sk) {
+  editingCardStableKey.value = String(sk ?? '').trim()
+  const k = editingCardStableKey.value
+  const nodes = flowVueNodes.value
+  if (!nodes.length) return
+  /* Patch z-index/class only — do not run a full draft rebuild here, or the custom node remounts and loses local edit state. */
+  flowVueNodes.value = nodes.map((node) => {
+    const is = Boolean(k) && String(node.id) === k
+    return {
+      ...node,
+      zIndex: is ? 50000 : undefined,
+      class: is ? 'branching-vue-node--card-editing' : undefined
+    }
+  })
+}
+
+/** Snapshot draft fields + outgoing edges for inline card edit cancel. */
+function captureEditSnapshot(stableKey) {
+  const n = getDraftNode(stableKey)
+  if (!n) return null
+  const sk = String(stableKey ?? '').trim()
+  return {
+    node: {
+      title: n.title,
+      body: n.body,
+      questionType: n.questionType,
+      choicesJson: n.choicesJson,
+      choiceRows: JSON.parse(JSON.stringify(n.choiceRows || []))
+    },
+    outgoingEdges: draftEdges.value
+      .filter((e) => String(e.fromStableKey ?? '').trim() === sk)
+      .map((e) => ({
+        fromStableKey: e.fromStableKey,
+        toStableKey: e.toStableKey,
+        sortOrder: e.sortOrder,
+        conditionKind: e.conditionKind,
+        conditionValue: e.conditionValue != null ? String(e.conditionValue) : ''
+      }))
+  }
+}
+
+function restoreEditSnapshot(stableKey, snapshot) {
+  if (!snapshot) return
+  const n = getDraftNode(stableKey)
+  if (!n) return
+  const sk = String(stableKey ?? '').trim()
+  n.title = snapshot.node.title
+  n.body = snapshot.node.body
+  n.questionType = snapshot.node.questionType
+  n.choicesJson = snapshot.node.choicesJson
+  n.choiceRows = JSON.parse(JSON.stringify(snapshot.node.choiceRows || []))
+  draftEdges.value = draftEdges.value.filter((e) => String(e.fromStableKey ?? '').trim() !== sk)
+  for (const e of snapshot.outgoingEdges) {
+    draftEdges.value.push({ ...e })
+  }
+}
+
+provide('branchingMapContext', {
+  getDraftNode,
+  patchDraftNode,
+  questionTypes,
+  questionTypeLabel,
+  stepSelectLabel,
+  branchTargetOptions,
+  yesTarget,
+  yesTargetNo,
+  setYesNoTarget,
+  choiceTarget,
+  setChoiceTarget,
+  textNext,
+  setTextNext,
+  addChoiceRow,
+  removeChoiceRow,
+  onQuestionTypeChange,
+  editingCardStableKey,
+  setEditingCardStableKey,
+  captureEditSnapshot,
+  restoreEditSnapshot
+})
+
 function parseChoicesLocal(json) {
   if (json == null || String(json).trim() === '') return []
   try {
@@ -1314,6 +1595,7 @@ function initDraftFromGraph() {
 function resetDraft() {
   saveError.value = ''
   saveSuccess.value = ''
+  resetRun()
   initDraftFromGraph()
 }
 
@@ -1345,6 +1627,86 @@ function addDraftNode() {
   nextTick(() => {
     mapEditorEl.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   })
+}
+
+/** Approximate Vue Flow node size for BranchingFlowNode (dagre uses center coords; we convert to top-left). */
+const AUTO_LAYOUT_NODE_W = 200
+const AUTO_LAYOUT_NODE_H = 76
+
+function gridLayoutFallback(keys) {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(keys.length)))
+  keys.forEach((k, i) => {
+    const n = draftNodes.value.find((x) => String(x.stableKey ?? '').trim() === k)
+    if (!n) return
+    const col = i % cols
+    const row = Math.floor(i / cols)
+    n.posX = 48 + col * 260
+    n.posY = 48 + row * 140
+  })
+}
+
+function runAutoLayout() {
+  const nodes = draftNodes.value
+  if (!nodes.length) return
+
+  const keyList = []
+  const seen = new Set()
+  for (const n of nodes) {
+    const k = String(n.stableKey ?? '').trim()
+    if (!k || seen.has(k)) continue
+    seen.add(k)
+    keyList.push(k)
+  }
+  if (!keyList.length) return
+
+  const keySet = new Set(keyList)
+  const g = new dagre.graphlib.Graph()
+  g.setDefaultEdgeLabel(() => ({}))
+  g.setGraph({
+    rankdir: 'LR',
+    align: 'UL',
+    nodesep: 56,
+    ranksep: 88,
+    marginx: 32,
+    marginy: 32,
+    ranker: 'network-simplex'
+  })
+
+  for (const k of keySet) {
+    g.setNode(k, { width: AUTO_LAYOUT_NODE_W, height: AUTO_LAYOUT_NODE_H })
+  }
+
+  const edgePairs = new Set()
+  for (const e of draftEdges.value) {
+    const f = String(e.fromStableKey ?? '').trim()
+    const t = String(e.toStableKey ?? '').trim()
+    if (!f || !t || f === t || !keySet.has(f) || !keySet.has(t)) continue
+    const pk = `${f}\0${t}`
+    if (edgePairs.has(pk)) continue
+    edgePairs.add(pk)
+    g.setEdge(f, t)
+  }
+
+  try {
+    dagre.layout(g)
+  } catch (err) {
+    console.warn('Auto layout failed, using grid fallback', err)
+    gridLayoutFallback(keyList)
+    layoutFitTick.value++
+    return
+  }
+
+  for (const n of nodes) {
+    const k = String(n.stableKey ?? '').trim()
+    if (!k || !keySet.has(k)) continue
+    const pos = g.node(k)
+    if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+      n.posX = Math.round(pos.x - AUTO_LAYOUT_NODE_W / 2)
+      n.posY = Math.round(pos.y - AUTO_LAYOUT_NODE_H / 2)
+    }
+  }
+
+  layoutFitTick.value++
 }
 
 function addDraftEdge() {
@@ -1550,6 +1912,7 @@ async function loadGraph() {
       graph.value = null
     } else {
       initDraftFromGraph()
+      resetRun()
     }
   } catch (e) {
     loadError.value = formatLoadError(e)
@@ -1576,6 +1939,7 @@ function startRun() {
   const s = nodeById.value.get(sid)
   if (s) pathLabels.value.push(s.title)
   if (s?.questionType === 'END') finishAtEnd(s)
+  previewModalOpen.value = true
 }
 
 function finishAtEnd(n) {
@@ -1584,7 +1948,7 @@ function finishAtEnd(n) {
   endBody.value = n.body || ''
 }
 
-function resetRun() {
+function clearPreviewSessionState() {
   runStarted.value = false
   runFinished.value = false
   currentNodeId.value = null
@@ -1592,6 +1956,19 @@ function resetRun() {
   resolveError.value = ''
   startRunError.value = ''
   textAnswer.value = ''
+}
+
+function resetRun() {
+  clearPreviewSessionState()
+  previewModalOpen.value = false
+}
+
+function closePreviewModal() {
+  previewModalOpen.value = false
+}
+
+function onPreviewModalHidden() {
+  clearPreviewSessionState()
 }
 
 async function submitAnswer(v) {
@@ -1650,30 +2027,207 @@ loadGraph()
 </script>
 
 <style scoped>
-.branching-demo__flow-wrap {
-  height: min(52vh, 520px);
-  min-height: 320px;
+.branching-demo--wide {
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+  max-width: none;
 }
+
+.branching-demo--shell {
+  --bd-canvas: #e4e8f0;
+  --bd-canvas-deep: #d7dde8;
+  padding-bottom: 2.5rem;
+}
+
+.branching-demo__page-head {
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.branching-demo__eyebrow {
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary-color);
+  font-size: 0.7rem;
+}
+
+.branching-demo__title {
+  letter-spacing: -0.02em;
+  color: var(--bs-emphasis-color);
+}
+
+.branching-demo__lede {
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+.branching-demo__intro {
+  border-left: 3px solid var(--bs-primary);
+  padding: 1rem 1.25rem;
+  background: var(--bs-primary-bg-subtle);
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--bs-body-color);
+  line-height: 1.55;
+}
+
+.branching-demo__loading {
+  background: var(--bs-secondary-bg);
+  border: 1px dashed var(--bs-border-color);
+}
+
+.branching-demo__spinner {
+  width: 0.65rem;
+  height: 0.65rem;
+  vertical-align: middle;
+  background: var(--bs-primary);
+  animation: branching-demo-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes branching-demo-pulse {
+  from {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.branching-demo__main {
+  gap: 1.75rem !important;
+}
+
+.branching-demo__save-bar {
+  z-index: 1040;
+  background: linear-gradient(180deg, var(--bs-body-bg) 0%, color-mix(in srgb, var(--bs-body-bg) 92%, var(--bs-secondary-bg)) 100%);
+  border: 1px solid var(--bs-border-color-translucent);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.branching-demo__save-bar-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  background: linear-gradient(135deg, var(--bs-primary) 0%, color-mix(in srgb, var(--bs-primary) 70%, var(--bs-primary-bg-subtle)) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.branching-demo__save-btn {
+  min-width: 10.5rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.branching-demo__surface {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.branching-demo__card-head {
+  background: linear-gradient(180deg, var(--bs-body-bg) 0%, var(--bs-secondary-bg) 100%);
+  border-bottom: 1px solid var(--bs-border-color-translucent) !important;
+}
+
+.branching-demo__card-head--muted {
+  background: color-mix(in srgb, var(--bs-secondary-bg) 88%, var(--bs-body-bg));
+}
+
+.branching-demo__section-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--bs-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bs-primary) 22%, transparent);
+}
+
+.branching-demo__section-dot--muted {
+  background: var(--bs-secondary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bs-secondary-color) 22%, transparent);
+}
+
+.branching-demo__flow-wrap {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  height: min(62vh, 880px);
+  min-height: min(48vh, 448px);
+  padding: 0.75rem 1rem 1rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, var(--bd-canvas) 0%, var(--bd-canvas-deep) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+@media (min-width: 768px) {
+  .branching-demo__flow-wrap {
+    padding: 1rem 1.5rem 1.25rem;
+  }
+}
+
 .branching-demo__vue-flow {
   width: 100%;
   height: 100%;
-  min-height: 320px;
+  min-height: min(46vh, 416px);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
 }
+
 .branching-demo__minimap {
   bottom: 0.5rem;
   right: 0.5rem;
 }
+
+.branching-demo__map-activate-hint {
+  z-index: 9;
+  pointer-events: none;
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  max-width: calc(100% - 2rem);
+  text-align: center;
+}
+
+.branching-demo__vue-flow.branching-demo--map-inactive .vue-flow__controls,
+.branching-demo__vue-flow.branching-demo--map-inactive .vue-flow__minimap {
+  pointer-events: none;
+  opacity: 0.48;
+}
+
+.branching-demo__map-footnote {
+  background: color-mix(in srgb, var(--bs-secondary-bg) 65%, var(--bs-body-bg));
+  border-top: 1px solid var(--bs-border-color-translucent) !important;
+  line-height: 1.55;
+}
+
+/* Bootstrap’s default kbd is light-on-dark; we use a light keycap here — force readable (dark) label text. */
+.branching-demo__map-footnote-kbd {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.8em;
+  color: var(--bs-body-color);
+  background-color: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.25rem;
+}
+
 .branching-demo__map-editor {
-  max-height: min(52vh, 480px);
+  max-height: min(32vh, 416px);
   overflow-y: auto;
+  background: var(--bs-body-bg);
 }
-.branching-demo__save-bar {
-  z-index: 1040;
-  background-color: var(--bs-body-bg);
-  border-color: var(--bs-border-color) !important;
+
+.branching-demo__empty-hint {
+  border: 1px dashed var(--bs-border-color);
+  background: var(--bs-secondary-bg);
+  line-height: 1.55;
 }
-.branching-demo__save-btn {
-  min-width: 10.5rem;
+
+.branching-demo__path-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
 }
 .branching-demo__connect-modal {
   z-index: 1060;
@@ -1682,6 +2236,40 @@ loadGraph()
 .branching-demo__question-card {
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border-color: var(--bs-border-color-translucent) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.branching-demo__question-details > summary {
+  list-style: none;
+}
+.branching-demo__question-details > summary::-webkit-details-marker {
+  display: none;
+}
+.branching-demo__question-details > summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  color: var(--bs-primary);
+  transition: transform 0.2s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+.branching-demo__question-details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.branching-demo__question-card:hover .branching-demo__question-details > summary::before {
+  color: var(--bs-primary-text-emphasis, var(--bs-primary));
+}
+.branching-demo__question-summary {
+  user-select: none;
+  background-color: var(--bs-secondary-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+}
+.branching-demo__question-details[open] > .branching-demo__question-summary {
+  border-bottom-color: var(--bs-border-color-translucent);
 }
 .branching-demo__question-card:hover {
   border-color: var(--bs-border-color) !important;
@@ -1694,9 +2282,107 @@ loadGraph()
 </style>
 
 <style>
-/* Vue Flow edge labels (unscoped: rendered in portal) */
+/* Main map canvas background (Vue Flow fills this area; keep in sync with .branching-demo__flow-wrap) */
+.branching-demo__vue-flow.vue-flow {
+  background-color: #e4e8f0;
+}
+
+/* While a map card is in inline-edit mode, panels (controls, minimap, tools) sit above the viewport by default; send them behind so the node stays unobstructed. */
+.branching-demo__vue-flow.branching-demo--card-editing .vue-flow__panel {
+  z-index: 0 !important;
+  opacity: 0.35;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.branching-demo__vue-flow.branching-demo--card-editing .vue-flow__connectionline {
+  z-index: 0 !important;
+}
+
+.branching-demo__vue-flow .vue-flow__node.branching-vue-node--card-editing {
+  z-index: 50000 !important;
+}
+
+/* Vue Flow edges (unscoped: SVG under .branching-demo__vue-flow). Stroke colors come from edge style(). */
+.branching-demo__vue-flow .vue-flow__edge-path {
+  transition: stroke-width 0.12s ease, filter 0.12s ease;
+}
+.branching-demo__vue-flow .vue-flow__edge.selected .vue-flow__edge-path,
+.branching-demo__vue-flow .vue-flow__edge:focus .vue-flow__edge-path,
+.branching-demo__vue-flow .vue-flow__edge:focus-visible .vue-flow__edge-path {
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.22));
+}
+.branching-demo__vue-flow .vue-flow__edge.selected .vue-flow__edge-text,
+.branching-demo__vue-flow .vue-flow__edge:focus .vue-flow__edge-text {
+  fill: #1a1d26;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+.branching-demo__vue-flow .vue-flow__edge.selected .vue-flow__edge-textbg,
+.branching-demo__vue-flow .vue-flow__edge:focus .vue-flow__edge-textbg {
+  fill: rgba(255, 255, 255, 0.97);
+  stroke: rgba(0, 0, 0, 0.12);
+  stroke-width: 2;
+}
 .branching-demo__vue-flow .vue-flow__edge-text {
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+/* Vue Flow default control buttons are 16×16px — expand and label them. */
+.branching-demo__vue-flow .vue-flow__controls {
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.12);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  background: var(--bs-body-bg, #fff);
+}
+.branching-demo__vue-flow .vue-flow__controls-button {
+  width: auto !important;
+  min-width: 4.5rem;
+  height: auto !important;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.5rem !important;
+  border-bottom: 1px solid var(--bs-border-color, #eee) !important;
+  background: var(--bs-body-bg, #fefefe) !important;
+}
+.branching-demo__vue-flow .vue-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+.branching-demo__vue-flow .vue-flow__controls-button:hover {
+  background: var(--bs-secondary-bg, #f4f4f4) !important;
+}
+.branching-demo__vue-flow .vue-flow__controls-button:disabled .branching-demo__map-control-label,
+.branching-demo__vue-flow .vue-flow__controls-button:disabled .branching-demo__map-control-glyph {
+  opacity: 0.4;
+}
+.branching-demo__map-control {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  line-height: 1.05;
+  text-align: center;
+}
+.branching-demo__map-control-glyph {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--bs-body-color, #212529);
+}
+.branching-demo__map-control-glyph--fit {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.branching-demo__map-control-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary, #6c757d);
+  max-width: 4.25rem;
+  line-height: 1.15;
+}
+.branching-demo__map-control--fit .branching-demo__map-control-label {
+  max-width: none;
 }
 </style>

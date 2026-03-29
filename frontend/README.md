@@ -21,8 +21,15 @@ App: `http://localhost:5173` — `/api` is proxied to `http://127.0.0.1:8080` in
 | `npm run dev` | Dev server |
 | `npm run build` | Production bundle → `dist/` |
 | `npm run preview` | Preview production build |
-| `npm run test:unit` | Vitest |
+| `npm run test:unit` | Vitest (all tests under `src/`, including `src/integration/`) |
+| `npm run test:integration` | Vitest — only `src/integration/` |
+| `npm run test:smoke` | Same as `test:unit` |
 | `npm run test:coverage` | Vitest + coverage report (`coverage/`) |
+| `npm run test:e2e` | Playwright — specs in `e2e/` (install browsers once: `npx playwright install chromium`) |
+| `npm run test:e2e:ui` | Playwright UI mode |
+| `npm run test:full` | `test:unit` then `test:e2e` |
+
+Playwright uses **`playwright.config.ts`**. Set **`PLAYWRIGHT_SKIP_WEBSERVER=1`** if Vite is already running on port **5173**. **`e2e/`** is excluded from Vitest via **`vitest.config.js`**.
 
 ## Notable paths
 

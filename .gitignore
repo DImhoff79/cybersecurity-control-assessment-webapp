@@ -10,4 +10,5 @@ frontend/coverage/
 *.tmp
 *.swp
 test-results/
+frontend/playwright-report/
 tmp-login-check.js

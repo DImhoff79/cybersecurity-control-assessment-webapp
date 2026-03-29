@@ -15,7 +15,7 @@ Dependabot is configured in `.github/dependabot.yml`:
 
 2. **npm (frontend)**  
    - **Patch/minor** (`axios`, `bootstrap`, etc.): merge after green CI.  
-   - **Major** (`vite`, `vitest`, `vue`, `vue-router`, `pinia`): run `npm ci` and `npm run test:coverage && npm run build` locally; read upstream migration guides.
+   - **Major** (`vite`, `vitest`, `vue`, `vue-router`, `pinia`, `@playwright/test`): run `npm ci` and `npm run test:coverage && npm run build` locally; after `@playwright/test` bumps, run `npx playwright install chromium` so browsers match the package version; read upstream migration guides.
 
 3. **Maven (backend)**  
    - **Patch/minor** (drivers, plugins, Spring Boot **3.x** line): merge after `.\mvnw.cmd verify`.  
