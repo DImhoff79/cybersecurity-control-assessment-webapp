@@ -17,9 +17,9 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void illegalStateReturnsUnauthorizedBody() {
+    void illegalStateReturnsBadRequestBody() {
         var response = handler.handleIllegalState(new IllegalStateException("session issue"));
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("error", "session issue");
     }
 }

@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -42,7 +44,8 @@ public class CurrentUserService {
     }
 
     public User getCurrentUserOrThrow() {
-        return getCurrentUser().orElseThrow(() -> new IllegalStateException("Not authenticated"));
+        return getCurrentUser()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated"));
     }
 
     public boolean isAdmin() {

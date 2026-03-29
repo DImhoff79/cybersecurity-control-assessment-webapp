@@ -15,9 +15,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Bad request"));
     }
 
+    /**
+     * Business/state errors must not use 401 — the SPA treats any 401 as "session expired" and clears auth.
+     * For true auth failures from services, throw {@link org.springframework.web.server.ResponseStatusException}
+     * with {@link HttpStatus#UNAUTHORIZED} (handled by Spring MVC, not this handler).
+     */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException e) {
         String msg = e.getMessage() != null ? e.getMessage() : "Invalid state";
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", msg));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", msg));
     }
 }

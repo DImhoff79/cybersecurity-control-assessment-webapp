@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -214,10 +215,17 @@ public class DemoBranchingWorkflowService {
         }
         versionRepository.saveAndFlush(v);
 
+        // Re-load managed nodes with IDs. Using the in-memory instances from the first loop can leave
+        // Hibernate treating edge endpoints as transient when persisting edges (TransientPropertyValueException).
+        Map<String, DemoBranchingNode> persistedByKey = nodeRepository.findByVersion_Id(v.getId()).stream()
+                .collect(Collectors.toMap(n -> n.getStableKey().trim(), n -> n, (a, b) -> a, LinkedHashMap::new));
+
         if (dto.getEdges() != null) {
             for (BranchingEdgeSaveDto e : dto.getEdges()) {
-                DemoBranchingNode from = byKey.get(e.getFromStableKey());
-                DemoBranchingNode to = byKey.get(e.getToStableKey());
+                String fk = e.getFromStableKey() != null ? e.getFromStableKey().trim() : "";
+                String tk = e.getToStableKey() != null ? e.getToStableKey().trim() : "";
+                DemoBranchingNode from = persistedByKey.get(fk);
+                DemoBranchingNode to = persistedByKey.get(tk);
                 if (from == null || to == null) {
                     throw new IllegalArgumentException("Edge references unknown stableKey");
                 }
@@ -233,7 +241,7 @@ public class DemoBranchingWorkflowService {
                 v.getEdges().add(edge);
             }
         }
-        DemoBranchingNode start = byKey.get(dto.getStartStableKey().trim());
+        DemoBranchingNode start = persistedByKey.get(dto.getStartStableKey().trim());
         if (start == null) {
             throw new IllegalArgumentException("startStableKey does not match any node");
         }

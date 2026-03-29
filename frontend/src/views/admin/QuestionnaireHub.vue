@@ -52,7 +52,7 @@
       <div class="col-lg-4">
         <div class="card shadow-sm h-100 border-info">
           <div class="card-body">
-            <h2 class="h5">Branching workflow <span class="badge text-bg-info">Demo</span></h2>
+            <h2 class="h5">Branching demo</h2>
             <p class="text-muted small mb-2">Visual graph and a live run-through resolved on the server.</p>
             <router-link class="btn btn-outline-primary btn-sm" :to="{ name: 'AdminBranchingWorkflowDemo' }">
               Open branching demo

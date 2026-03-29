@@ -169,7 +169,7 @@ const router = createRouter({
           path: 'branching-workflow-demo',
           name: 'AdminBranchingWorkflowDemo',
           component: () => import('../views/admin/BranchingWorkflowDemo.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Branching workflow (demo)' }
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Branching demo' }
         },
         {
           path: 'audits/:auditId',

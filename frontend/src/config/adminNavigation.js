@@ -23,7 +23,7 @@ export const adminSections = [
         permission: 'AUDIT_MANAGEMENT'
       },
       {
-        label: 'Branching workflow (demo)',
+        label: 'Branching demo',
         to: '/admin/branching-workflow-demo',
         permission: 'AUDIT_MANAGEMENT'
       }
