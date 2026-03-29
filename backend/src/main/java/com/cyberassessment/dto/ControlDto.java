@@ -1,6 +1,7 @@
 package com.cyberassessment.dto;
 
 import com.cyberassessment.entity.ControlFramework;
+import com.cyberassessment.model.ControlResponderAudience;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,8 @@ public class ControlDto {
     private ControlFramework framework;
     private Boolean enabled;
     private String category;
+    /** Derived from linked questions' ask_owner flags. */
+    private ControlResponderAudience responderAudience;
     @Builder.Default
     private List<QuestionDto> questions = new ArrayList<>();
 }

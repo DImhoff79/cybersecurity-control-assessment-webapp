@@ -5,6 +5,7 @@ import com.cyberassessment.dto.QuestionDto;
 import com.cyberassessment.entity.Control;
 import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.entity.Question;
+import com.cyberassessment.model.ControlResponderAudience;
 import com.cyberassessment.repository.ControlRepository;
 import com.cyberassessment.repository.QuestionControlMappingRepository;
 import com.cyberassessment.repository.QuestionRepository;
@@ -12,7 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +37,31 @@ public class ControlService {
                 .enabled(c.getEnabled())
                 .category(c.getCategory())
                 .build();
+    }
+
+    private Map<Long, ControlResponderAudience> loadResponderAudiences(List<Long> controlIds) {
+        if (controlIds == null || controlIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = questionRepository.summarizeAskOwnerByControlIds(controlIds);
+        Map<Long, ControlResponderAudience> out = new HashMap<>();
+        for (Object[] row : rows) {
+            Long cid = (Long) row[0];
+            Number trueSum = (Number) row[1];
+            Number total = (Number) row[2];
+            long t = trueSum != null ? trueSum.longValue() : 0;
+            long tot = total != null ? total.longValue() : 0;
+            out.put(cid, ControlResponderAudience.fromAskOwnerCounts(t, tot));
+        }
+        for (Long id : controlIds) {
+            out.putIfAbsent(id, ControlResponderAudience.APPLICATION_OWNER);
+        }
+        return out;
+    }
+
+    private void applyResponderAudience(ControlDto dto, Map<Long, ControlResponderAudience> audiences) {
+        if (dto == null || audiences == null) return;
+        dto.setResponderAudience(audiences.getOrDefault(dto.getId(), ControlResponderAudience.APPLICATION_OWNER));
     }
 
     public static QuestionDto questionToDto(Question q) {
@@ -75,8 +103,11 @@ public class ControlService {
         } else {
             list = controlRepository.findAll();
         }
+        List<Long> ids = list.stream().map(Control::getId).toList();
+        Map<Long, ControlResponderAudience> audiences = loadResponderAudiences(ids);
         return list.stream().map(c -> {
             ControlDto dto = toDto(c);
+            applyResponderAudience(dto, audiences);
             if (includeQuestions) {
                 dto.setQuestions(questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(c.getId()).stream()
                         .map(m -> questionToDto(m.getQuestion(), c.getId(), m))
@@ -90,6 +121,7 @@ public class ControlService {
     public ControlDto findById(Long id, boolean includeQuestions) {
         return controlRepository.findById(id).map(c -> {
             ControlDto dto = toDto(c);
+            applyResponderAudience(dto, loadResponderAudiences(List.of(id)));
             if (includeQuestions) {
                 dto.setQuestions(questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(c.getId()).stream()
                         .map(m -> questionToDto(m.getQuestion(), c.getId(), m))
@@ -106,7 +138,9 @@ public class ControlService {
         if (description != null) c.setDescription(description);
         if (enabled != null) c.setEnabled(enabled);
         c = controlRepository.save(c);
-        return toDto(c);
+        ControlDto dto = toDto(c);
+        applyResponderAudience(dto, loadResponderAudiences(List.of(id)));
+        return dto;
     }
 
     @Transactional
@@ -131,7 +165,10 @@ public class ControlService {
                 .enabled(enabled != null ? enabled : true)
                 .category(category)
                 .build();
-        return toDto(controlRepository.save(control));
+        Control saved = controlRepository.save(control);
+        ControlDto dto = toDto(saved);
+        applyResponderAudience(dto, loadResponderAudiences(List.of(saved.getId())));
+        return dto;
     }
 
     @Transactional

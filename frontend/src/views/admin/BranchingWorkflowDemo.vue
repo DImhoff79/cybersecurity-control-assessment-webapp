@@ -5,8 +5,10 @@
         <p class="branching-demo__eyebrow text-uppercase small fw-semibold mb-1">Demo workspace</p>
         <h1 class="h3 mb-0 branching-demo__title">Branching workflow</h1>
         <p class="text-body-secondary small mb-0 mt-2 branching-demo__lede">
-          Design steps on the map, wire branches, and edit details in the list. Open preview from the bar to walk the
-          <strong>last saved</strong> version in a modal.
+          Sample graph matches the <strong>new application</strong> owner intake (purpose, hosting, audience, integrations,
+          classification, then structured Yes/No for PII, PCI, SOX, and HIPAA)—the same path that leads into the Kroger CCF
+          assessment. Design steps on the map,
+          wire branches, and open preview from the bar to walk the <strong>last saved</strong> version in a modal.
         </p>
       </div>
       <button

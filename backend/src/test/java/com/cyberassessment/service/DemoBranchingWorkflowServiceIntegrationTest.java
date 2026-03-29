@@ -27,27 +27,27 @@ class DemoBranchingWorkflowServiceIntegrationTest {
         BranchingWorkflowGraphDto g = demoBranchingWorkflowService.getGraph(null);
         assertThat(g.getVersionId()).isEqualTo(1L);
         assertThat(g.getStartNodeId()).isEqualTo(1L);
-        assertThat(g.getNodes()).hasSize(4);
-        assertThat(g.getEdges()).hasSize(7);
+        assertThat(g.getNodes()).hasSize(11);
+        assertThat(g.getEdges()).hasSize(34);
     }
 
     @Test
-    void resolveYesFromStartGoesToDescribeScope() {
+    void resolveFromAppNameGoesToPurpose() {
         BranchingResolveRequest req = new BranchingResolveRequest();
         req.setVersionId(1L);
         req.setFromNodeId(1L);
-        req.setValue("yes");
+        req.setValue("Checkout service");
         BranchingResolveResponse r = demoBranchingWorkflowService.resolve(req);
         assertThat(r.isFinished()).isFalse();
         assertThat(r.getNextNode()).isNotNull();
-        assertThat(r.getNextNode().getStableKey()).isEqualTo("describe_scope");
+        assertThat(r.getNextNode().getStableKey()).isEqualTo("purpose");
     }
 
     @Test
     void resolveEndNodeMarksFinished() {
         BranchingResolveRequest req = new BranchingResolveRequest();
         req.setVersionId(1L);
-        req.setFromNodeId(4L);
+        req.setFromNodeId(11L);
         req.setValue("x");
         BranchingResolveResponse r = demoBranchingWorkflowService.resolve(req);
         assertThat(r.isFinished()).isTrue();

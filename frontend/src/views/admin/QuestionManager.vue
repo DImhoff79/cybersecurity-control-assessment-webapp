@@ -23,6 +23,42 @@
       Tip: use owner visibility filters to keep owner questionnaires focused and readable.
     </div>
 
+    <div v-else class="card border-0 shadow-sm mb-3 owner-design-callout">
+      <div class="card-body py-3">
+        <p class="small fw-semibold text-uppercase text-muted mb-2 mb-md-1">Same mindset as the branching demo</p>
+        <p class="mb-2 small">
+          The branching workflow uses a few plain-language steps to learn scope before security work starts.
+          Kroger CCF attestation for app owners should feel the same: <strong>the smallest number of simple questions</strong>, each written so
+          <strong>one honest “yes / partial / no” can cover many controls</strong> when those controls describe the same real-world behavior.
+        </p>
+        <ul class="small mb-3 ps-3">
+          <li>Prefer broad, outcome-based wording (what the app does) over control-by-control jargon.</li>
+          <li>Add <strong>multiple control mappings</strong> per question wherever one answer genuinely satisfies several requirements.</li>
+          <li>Turn <strong>Ask owners</strong> off for policy-only or org-level items (security/compliance attests those), matching the flow split.</li>
+        </ul>
+        <div v-if="!loading && questions.length" class="row g-2 small border-top pt-3">
+          <div class="col-sm-6 col-lg-3">
+            <div class="text-muted">Owner-facing questions</div>
+            <div class="fs-5 fw-semibold">{{ ownerDesignStats.ownerQuestionCount }}</div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="text-muted">Control mappings on those questions</div>
+            <div class="fs-5 fw-semibold">{{ ownerDesignStats.mappingsOnOwnerQuestions }}</div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="text-muted">Avg mappings per owner question</div>
+            <div class="fs-5 fw-semibold">{{ ownerDesignStats.avgMappingsPerOwnerQuestion }}</div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="text-muted">KCF controls touched by owner questions</div>
+            <div class="fs-5 fw-semibold">
+              {{ ownerDesignStats.distinctControlsUnderOwnerQuestions }} <span class="text-muted fw-normal">/ {{ ownerDesignStats.kcfControlCount }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body row g-3 align-items-end">
         <div class="col-md-5">
@@ -65,7 +101,7 @@
                 <td>
                   <div class="d-flex flex-wrap gap-1">
                     <span v-for="c in q.controls.slice(0, 4)" :key="`${q.id}-${c.id}`" class="badge text-bg-light border">
-                      {{ c.controlId }}
+                      {{ controlIdentifierDisplay(c) }} — {{ controlDisplayName(c) }}
                     </span>
                     <span v-if="q.controls.length > 4" class="badge text-bg-secondary">+{{ q.controls.length - 4 }} more</span>
                   </div>
@@ -116,7 +152,7 @@
         <div class="mb-3">
           <label class="form-label">Mapped controls</label>
           <div class="d-flex flex-wrap gap-1">
-            <span v-for="c in editForm.controls" :key="`edit-${c.id}`" class="badge text-bg-light border">{{ c.controlId }} - {{ c.name }}</span>
+            <span v-for="c in editForm.controls" :key="`edit-${c.id}`" class="badge text-bg-light border">{{ controlIdentifierDisplay(c) }} — {{ controlDisplayName(c) }}</span>
           </div>
         </div>
         <div class="form-check form-switch">
@@ -153,7 +189,7 @@
             <select v-model="newMappingControlId" class="form-select">
               <option :value="null">Select control</option>
               <option v-for="c in availableMappingControls" :key="`map-${c.id}`" :value="c.id">
-                {{ c.controlId }} - {{ c.name }}
+                {{ controlIdentifierDisplay(c) }} — {{ controlDisplayName(c) }}
               </option>
             </select>
           </div>
@@ -163,7 +199,8 @@
           <table class="table table-sm workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('controlId')">Control {{ mappingSortIndicator('controlId') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('controlId')">Control identifier {{ mappingSortIndicator('controlId') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('controlName')">Control name {{ mappingSortIndicator('controlName') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('mappingRationale')">Rationale {{ mappingSortIndicator('mappingRationale') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('mappingWeight')">Weight {{ mappingSortIndicator('mappingWeight') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleMappingSort('effectiveFrom')">Effective from {{ mappingSortIndicator('effectiveFrom') }}</button></th>
@@ -173,7 +210,8 @@
             </thead>
             <tbody>
               <tr v-for="m in sortedMappings" :key="`mapping-row-${m.id}`">
-                <td>{{ m.controlId }}</td>
+                <td>{{ controlIdentifierDisplay(m) }}</td>
+                <td>{{ controlDisplayName(m) }}</td>
                 <td><input v-model="m.mappingRationale" class="form-control form-control-sm" /></td>
                 <td><input v-model.number="m.mappingWeight" type="number" min="0" max="100" step="0.01" class="form-control form-control-sm" /></td>
                 <td><input v-model="m.effectiveFrom" type="datetime-local" class="form-control form-control-sm" /></td>
@@ -202,6 +240,7 @@ import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+import { controlDisplayName, controlIdentifierDisplay } from '../../utils/controlDisplay'
 
 defineProps({
   embedded: {
@@ -235,6 +274,32 @@ let toastTimer = null
 const newMappingControlId = ref(null)
 const cameFromGovernance = computed(() => route.query.from === 'governance')
 
+/** Kroger CCF scope: few owner questions with dense mappings (aligns with branching demo philosophy). */
+const ownerDesignStats = computed(() => {
+  const qs = questions.value
+  const kcfControlCount = allControls.value.length
+  const ownerQs = qs.filter((q) => q.askOwner)
+  const ownerQuestionCount = ownerQs.length
+  let mappingsOnOwnerQuestions = 0
+  const distinctControls = new Set()
+  for (const q of ownerQs) {
+    const n = q.controls?.length || 0
+    mappingsOnOwnerQuestions += n
+    for (const c of q.controls || []) {
+      distinctControls.add(c.id)
+    }
+  }
+  const avg =
+    ownerQuestionCount > 0 ? (mappingsOnOwnerQuestions / ownerQuestionCount).toFixed(1) : '0'
+  return {
+    ownerQuestionCount,
+    mappingsOnOwnerQuestions,
+    avgMappingsPerOwnerQuestion: avg,
+    distinctControlsUnderOwnerQuestions: distinctControls.size,
+    kcfControlCount
+  }
+})
+
 const isEditOpen = computed({
   get: () => !!editModal.value,
   set: (open) => {
@@ -252,7 +317,9 @@ const filteredQuestions = computed(() => {
     if (!matchFilter) return false
     if (!term) return true
 
-    const controlMatch = q.controls.some((c) => `${c.controlId} ${c.name}`.toLowerCase().includes(term))
+    const controlMatch = q.controls.some((c) =>
+      `${controlIdentifierDisplay(c)} ${controlDisplayName(c)} ${c.controlId} ${c.name || ''}`.toLowerCase().includes(term)
+    )
     return q.questionText.toLowerCase().includes(term) || (q.helpText || '').toLowerCase().includes(term) || controlMatch
   })
 })
@@ -271,7 +338,11 @@ const availableMappingControls = computed(() => {
 
 const editMappings = computed(() => editForm.value.controls || [])
 const { sortedRows: sortedMappings, toggleSort: toggleMappingSort, sortIndicator: mappingSortIndicator } = useTableSort(editMappings, {
-  initialKey: 'controlId'
+  initialKey: 'controlId',
+  valueGetters: {
+    controlId: (row) => controlIdentifierDisplay(row),
+    controlName: (row) => controlDisplayName(row)
+  }
 })
 
 load()
@@ -279,7 +350,7 @@ load()
 async function load() {
   loading.value = true
   try {
-    const res = await api.get('/api/controls?includeQuestions=true')
+    const res = await api.get('/api/controls?framework=KROGER_CCF&includeQuestions=true')
     const controls = res.data || []
     allControls.value = controls.map((c) => ({ id: c.id, controlId: c.controlId, name: c.name }))
 
@@ -442,3 +513,10 @@ function toDateTimeLocal(value) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 </script>
+
+<style scoped>
+.owner-design-callout {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color) !important;
+}
+</style>

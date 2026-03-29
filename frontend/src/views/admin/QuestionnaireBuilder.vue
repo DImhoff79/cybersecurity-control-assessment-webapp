@@ -3,7 +3,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
       <div>
         <h1 class="h3 mb-1">Questionnaire - Library Builder</h1>
-        <p class="text-muted mb-0">Manage controls and questions in one place, then publish from governance.</p>
+        <p class="text-muted mb-0">{{ builderSubtext }}</p>
       </div>
       <div class="d-flex gap-2">
         <router-link :to="{ name: 'AdminQuestionnaireHub' }" class="btn btn-outline-secondary btn-sm">Back to Questionnaire</router-link>
@@ -73,6 +73,11 @@ const router = useRouter()
 
 const activeTab = computed(() => (route.query.tab === 'questions' ? 'questions' : 'controls'))
 const activeTabLabel = computed(() => (activeTab.value === 'questions' ? 'Questions' : 'Controls'))
+const builderSubtext = computed(() =>
+  activeTab.value === 'questions'
+    ? 'Favor a small set of plain questions with many control mappings per question—same owner-friendly mindset as the branching workflow demo.'
+    : 'Manage controls and questions in one place, then publish from governance.'
+)
 
 function setTab(tab) {
   router.replace({

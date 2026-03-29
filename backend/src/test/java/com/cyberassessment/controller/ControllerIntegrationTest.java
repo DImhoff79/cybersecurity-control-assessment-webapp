@@ -1,5 +1,6 @@
 package com.cyberassessment.controller;
 
+import com.cyberassessment.dto.ApplicationDto;
 import com.cyberassessment.dto.ControlDto;
 import com.cyberassessment.dto.QuestionnaireTemplateDto;
 import com.cyberassessment.dto.UserDto;
@@ -55,7 +56,7 @@ class ControllerIntegrationTest {
     @Test
     void controlAndUserAndQuestionFlowsWork() {
         authenticateAsAdmin("controller-admin@test.com");
-        List<ControlDto> controls = controlController.list(ControlFramework.NIST_800_53_LOW, true, false);
+        List<ControlDto> controls = controlController.list(ControlFramework.KROGER_CCF, true, false);
         assertThat(controls).isNotEmpty();
 
         Long existingControlId = controls.get(0).getId();
@@ -91,17 +92,18 @@ class ControllerIntegrationTest {
 
     @Test
     void applicationAuditValidationBranchesWork() {
-        authenticateAsAdmin("controller-admin2@test.com");
+        authenticateAsSystemAdmin("controller-admin2@test.com");
         ResponseEntity<?> missingYear = applicationController.createAudit(1L, Map.of());
         assertThat(missingYear.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
         ResponseEntity<?> invalidYear = applicationController.createAudit(1L, Map.of("year", 1900));
         assertThat(invalidYear.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
-        Long appId = applicationController.create(Map.of(
+        ApplicationDto createdApp = (ApplicationDto) applicationController.create(Map.of(
                 "name", "Controller Integration App",
                 "description", "test"
-        )).getBody().getId();
+        )).getBody();
+        Long appId = createdApp.getId();
         ResponseEntity<?> missingProject = applicationController.createAudit(appId, Map.of("year", 2030));
         assertThat(missingProject.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 

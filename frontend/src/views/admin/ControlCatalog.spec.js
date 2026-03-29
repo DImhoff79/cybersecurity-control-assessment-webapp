@@ -33,11 +33,25 @@ describe('ControlCatalog', () => {
     vi.stubGlobal('prompt', vi.fn(() => 'Updated question text'))
 
     api.get.mockImplementation((url) => {
-      if (url === '/api/controls?includeQuestions=false') {
+      if (url === '/api/controls?framework=KROGER_CCF&includeQuestions=false') {
         return Promise.resolve({
           data: [
-            { id: 1, controlId: 'AC-1', name: 'Access Control', framework: 'PCI_DSS_V4', enabled: true },
-            { id: 2, controlId: 'LG-1', name: 'Logging', framework: 'SOX', enabled: false }
+            {
+              id: 1,
+              controlId: 'AC-1',
+              name: 'Access Control',
+              framework: 'KROGER_CCF',
+              enabled: true,
+              responderAudience: 'APPLICATION_OWNER'
+            },
+            {
+              id: 2,
+              controlId: 'LG-1',
+              name: 'Logging',
+              framework: 'KROGER_CCF',
+              enabled: false,
+              responderAudience: 'SECURITY_COMPLIANCE'
+            }
           ]
         })
       }
@@ -52,7 +66,7 @@ describe('ControlCatalog', () => {
             id: 1,
             controlId: 'AC-1',
             name: 'Access Control',
-            framework: 'PCI_DSS_V4',
+            framework: 'KROGER_CCF',
             category: 'Identity',
             description: 'Control description',
             questions: [{ id: 11, questionText: 'Do you review access?', helpText: 'Check quarterly.' }]

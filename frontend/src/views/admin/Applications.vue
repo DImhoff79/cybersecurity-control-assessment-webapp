@@ -23,6 +23,7 @@
                 <th><button type="button" class="workspace-table-sort" @click="toggleSort('owner')">Owner {{ sortIndicator('owner') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleSort('criticality')">Criticality {{ sortIndicator('criticality') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleSort('lifecycle')">Lifecycle {{ sortIndicator('lifecycle') }}</button></th>
+                <th>Regulatory data types</th>
                 <th></th>
               </tr>
             </thead>
@@ -33,6 +34,22 @@
                 <td>{{ a.ownerDisplayName || a.ownerEmail || '-' }}</td>
                 <td>{{ a.criticality || '-' }}</td>
                 <td>{{ a.lifecycleStatus || '-' }}</td>
+                <td class="small text-nowrap">
+                  <span v-if="a.dataScopePii" class="badge text-bg-secondary me-1">PII</span>
+                  <span v-if="a.dataScopePci" class="badge text-bg-secondary me-1">PCI</span>
+                  <span v-if="a.dataScopeSox" class="badge text-bg-secondary me-1">SOX</span>
+                  <span v-if="a.dataScopeHipaa ?? a.dataScopePhi" class="badge text-bg-secondary me-1">HIPAA</span>
+                  <span
+                    v-if="
+                      !a.dataScopePii &&
+                      !a.dataScopePci &&
+                      !a.dataScopeSox &&
+                      !(a.dataScopeHipaa ?? a.dataScopePhi)
+                    "
+                    class="text-muted"
+                    >—</span
+                  >
+                </td>
                 <td class="text-nowrap">
                   <button class="btn btn-secondary btn-sm me-2" @click="openModal(a)">Edit</button>
                   <button class="btn btn-danger btn-sm" @click="remove(a.id)">Delete</button>
@@ -93,8 +110,86 @@
             </select>
           </div>
           <div class="col-md-6">
-            <label class="form-label">Regulatory Scope</label>
-            <input v-model="form.regulatoryScope" class="form-control" />
+            <label class="form-label">Notes (optional)</label>
+            <input v-model="form.regulatoryScope" class="form-control" placeholder="Operational context only" />
+            <div class="form-text">Do not use this field for PII, PCI, SOX, or HIPAA—use the checkboxes under regulatory data types.</div>
+          </div>
+          <div class="col-12">
+            <hr class="my-2" />
+            <div class="fw-semibold mb-2">Owner triage</div>
+            <p class="small text-muted mb-3">
+              Plain-language routing: helps prioritize assessments. Not a full control attestation.
+            </p>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Primary purpose</label>
+            <select v-model="form.applicationPurpose" class="form-select">
+              <option :value="null">— Select —</option>
+              <option value="INTERNAL_OPERATIONAL">Internal / back-office</option>
+              <option value="CUSTOMER_FACING">Customer or shopper-facing</option>
+              <option value="PARTNER_FACING">Partner / B2B</option>
+              <option value="MIXED">Mixed</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Where it runs</label>
+            <select v-model="form.hostingModel" class="form-select">
+              <option :value="null">— Select —</option>
+              <option value="KROGER_MANAGED">Enterprise-managed (data center / cloud)</option>
+              <option value="VENDOR_SAAS">Vendor SaaS / vendor-hosted</option>
+              <option value="HYBRID">Hybrid</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Who uses it</label>
+            <select v-model="form.userAudienceScope" class="form-select">
+              <option :value="null">— Select —</option>
+              <option value="WORKFORCE_ONLY">Workforce only</option>
+              <option value="WORKFORCE_AND_CONTRACTORS">Workforce and contractors</option>
+              <option value="CUSTOMER_OR_PUBLIC">Customers or the public</option>
+              <option value="BUSINESS_PARTNERS">External business partners</option>
+              <option value="MIXED">Mixed audiences</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Integrations &amp; data flows</label>
+            <select v-model="form.integrationScope" class="form-select">
+              <option :value="null">— Select —</option>
+              <option value="STANDALONE">Mostly standalone</option>
+              <option value="KROGER_INTEGRATED">Connects to other enterprise systems</option>
+              <option value="EXTERNAL_EXCHANGE">Sends/receives data with external orgs</option>
+              <option value="BOTH">Enterprise and external</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label d-block">Regulatory data types in scope</label>
+            <p class="small text-muted mb-2">
+              Structured flags for reporting and filtering. Select each type this application stores, processes, or transmits.
+            </p>
+            <div class="form-check">
+              <input id="scope-pii" v-model="form.dataScopePii" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="scope-pii">
+                Personal information about individuals (names, contact info, loyalty IDs, employee identifiers, etc.) — <strong>PII</strong>
+              </label>
+            </div>
+            <div class="form-check">
+              <input id="scope-pci" v-model="form.dataScopePci" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="scope-pci">
+                Payment card data (card numbers, full magnetic stripe, CVV, PIN) — <strong>PCI</strong> scope
+              </label>
+            </div>
+            <div class="form-check">
+              <input id="scope-sox" v-model="form.dataScopeSox" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="scope-sox">
+                SOX-relevant financial reporting, disclosure controls, or IT general controls — <strong>SOX</strong>
+              </label>
+            </div>
+            <div class="form-check">
+              <input id="scope-hipaa" v-model="form.dataScopeHipaa" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="scope-hipaa">
+                HIPAA-regulated health information (PHI) — <strong>HIPAA</strong>
+              </label>
+            </div>
           </div>
           <div class="col-md-6">
             <label class="form-label">Business Owner Name</label>
@@ -134,7 +229,15 @@ const form = reactive({
   regulatoryScope: '',
   businessOwnerName: '',
   technicalOwnerName: '',
-  lifecycleStatus: null
+  lifecycleStatus: null,
+  applicationPurpose: null,
+  hostingModel: null,
+  userAudienceScope: null,
+  integrationScope: null,
+  dataScopePii: false,
+  dataScopePci: false,
+  dataScopeSox: false,
+  dataScopeHipaa: false
 })
 
 const sortableApplications = computed(() => applications.value)
@@ -168,6 +271,14 @@ function openModal(app = null) {
   form.businessOwnerName = app?.businessOwnerName ?? ''
   form.technicalOwnerName = app?.technicalOwnerName ?? ''
   form.lifecycleStatus = app?.lifecycleStatus ?? null
+  form.applicationPurpose = app?.applicationPurpose ?? null
+  form.hostingModel = app?.hostingModel ?? null
+  form.userAudienceScope = app?.userAudienceScope ?? null
+  form.integrationScope = app?.integrationScope ?? null
+  form.dataScopePii = !!app?.dataScopePii
+  form.dataScopePci = !!app?.dataScopePci
+  form.dataScopeSox = !!app?.dataScopeSox
+  form.dataScopeHipaa = !!(app?.dataScopeHipaa ?? app?.dataScopePhi)
   showModal.value = true
 }
 

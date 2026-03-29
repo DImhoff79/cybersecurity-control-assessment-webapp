@@ -317,6 +317,7 @@ async function logout() {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   overflow: visible;
 }
 
@@ -341,6 +342,8 @@ async function logout() {
 
 .admin-content {
   padding: 0.9rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .utility-dropdown:hover > .dropdown-menu,

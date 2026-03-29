@@ -57,7 +57,12 @@ describe('QuestionManager', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('confirm', vi.fn(() => true))
-    api.get.mockResolvedValue({ data: controlsResponse() })
+    api.get.mockImplementation((url) => {
+      if (String(url).includes('/api/controls') && String(url).includes('includeQuestions=true')) {
+        return Promise.resolve({ data: controlsResponse() })
+      }
+      return Promise.resolve({ data: [] })
+    })
     api.put.mockResolvedValue({ data: {} })
     api.post.mockResolvedValue({ data: {} })
     api.delete.mockResolvedValue({ data: {} })
@@ -135,6 +140,28 @@ describe('QuestionManager', () => {
     await removeMappingBtn.trigger('click')
     await flushPromises()
     expect(api.delete).toHaveBeenCalledWith('/api/controls/1/questions/11')
+  })
+
+  it('loads Kroger CCF controls with questions', async () => {
+    mount(QuestionManager, {
+      global: {
+        stubs: { BsModal: ModalStub, RouterLink: true }
+      }
+    })
+    await flushPromises()
+    expect(api.get).toHaveBeenCalledWith('/api/controls?framework=KROGER_CCF&includeQuestions=true')
+  })
+
+  it('shows owner-experience design callout when embedded', async () => {
+    const wrapper = mount(QuestionManager, {
+      props: { embedded: true },
+      global: {
+        stubs: { BsModal: ModalStub, RouterLink: true }
+      }
+    })
+    await flushPromises()
+    expect(wrapper.text()).toMatch(/Same mindset as the branching demo/)
+    expect(wrapper.text()).toMatch(/Owner-facing questions/)
   })
 
   it('filters by owner visibility and search term', async () => {

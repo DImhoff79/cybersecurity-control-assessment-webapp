@@ -2,9 +2,6 @@ package com.cyberassessment.controller;
 
 import com.cyberassessment.dto.ApplicationDto;
 import com.cyberassessment.dto.AuditDto;
-import com.cyberassessment.entity.ApplicationCriticality;
-import com.cyberassessment.entity.ApplicationLifecycleStatus;
-import com.cyberassessment.entity.DataClassification;
 import com.cyberassessment.service.ApplicationService;
 import com.cyberassessment.service.AuditService;
 import lombok.RequiredArgsConstructor;
@@ -38,38 +35,26 @@ public class ApplicationController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApplicationDto> create(@RequestBody Map<String, Object> body) {
-        String name = (String) body.get("name");
-        String description = body.containsKey("description") ? (String) body.get("description") : null;
-        Long ownerId = body.get("ownerId") != null ? ((Number) body.get("ownerId")).longValue() : null;
-        ApplicationCriticality criticality = body.containsKey("criticality") ? ApplicationCriticality.valueOf((String) body.get("criticality")) : null;
-        DataClassification dataClassification = body.containsKey("dataClassification") ? DataClassification.valueOf((String) body.get("dataClassification")) : null;
-        String regulatoryScope = body.containsKey("regulatoryScope") ? (String) body.get("regulatoryScope") : null;
-        String businessOwnerName = body.containsKey("businessOwnerName") ? (String) body.get("businessOwnerName") : null;
-        String technicalOwnerName = body.containsKey("technicalOwnerName") ? (String) body.get("technicalOwnerName") : null;
-        ApplicationLifecycleStatus lifecycleStatus = body.containsKey("lifecycleStatus") ? ApplicationLifecycleStatus.valueOf((String) body.get("lifecycleStatus")) : null;
-        ApplicationDto created = applicationService.create(
-                name, description, ownerId, criticality, dataClassification, regulatoryScope, businessOwnerName, technicalOwnerName, lifecycleStatus
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        try {
+            ApplicationDto created = applicationService.create(body);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApplicationDto> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        String name = body.containsKey("name") ? (String) body.get("name") : null;
-        String description = body.containsKey("description") ? (String) body.get("description") : null;
-        Long ownerId = body.get("ownerId") != null ? ((Number) body.get("ownerId")).longValue() : null;
-        ApplicationCriticality criticality = body.containsKey("criticality") ? ApplicationCriticality.valueOf((String) body.get("criticality")) : null;
-        DataClassification dataClassification = body.containsKey("dataClassification") ? DataClassification.valueOf((String) body.get("dataClassification")) : null;
-        String regulatoryScope = body.containsKey("regulatoryScope") ? (String) body.get("regulatoryScope") : null;
-        String businessOwnerName = body.containsKey("businessOwnerName") ? (String) body.get("businessOwnerName") : null;
-        String technicalOwnerName = body.containsKey("technicalOwnerName") ? (String) body.get("technicalOwnerName") : null;
-        ApplicationLifecycleStatus lifecycleStatus = body.containsKey("lifecycleStatus") ? ApplicationLifecycleStatus.valueOf((String) body.get("lifecycleStatus")) : null;
-        ApplicationDto updated = applicationService.update(
-                id, name, description, ownerId, criticality, dataClassification, regulatoryScope, businessOwnerName, technicalOwnerName, lifecycleStatus
-        );
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        try {
+            return ResponseEntity.ok(applicationService.update(id, body));
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

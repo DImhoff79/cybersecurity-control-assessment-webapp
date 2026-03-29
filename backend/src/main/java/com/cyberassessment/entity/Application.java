@@ -53,6 +53,46 @@ public class Application {
     @Column(name = "lifecycle_status")
     private ApplicationLifecycleStatus lifecycleStatus;
 
+    /** Owner triage: primary purpose of the application */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "application_purpose", length = 40)
+    private ApplicationPurpose applicationPurpose;
+
+    /** Where it runs */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hosting_model", length = 40)
+    private HostingModel hostingModel;
+
+    /** Who uses it */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_audience_scope", length = 40)
+    private UserAudienceScope userAudienceScope;
+
+    /** Integration / data-flow footprint */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "integration_scope", length = 40)
+    private IntegrationScope integrationScope;
+
+    /** Whether personal / identifying information about individuals is in scope (null = not answered) */
+    @Column(name = "data_scope_pii")
+    private Boolean dataScopePii;
+
+    /** Whether health-related protected information is in scope */
+    @Column(name = "data_scope_phi")
+    private Boolean dataScopePhi;
+
+    /** Whether payment card data is in scope */
+    @Column(name = "data_scope_pci")
+    private Boolean dataScopePci;
+
+    /** Whether SOX-relevant financial / ITGC data is in scope */
+    @Column(name = "data_scope_sox")
+    private Boolean dataScopeSox;
+
+    /** Whether HIPAA-regulated health information (PHI) is in scope */
+    @Column(name = "data_scope_hipaa")
+    private Boolean dataScopeHipaa;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

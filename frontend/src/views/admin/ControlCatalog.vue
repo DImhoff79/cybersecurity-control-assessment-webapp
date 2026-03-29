@@ -20,28 +20,23 @@
       </div>
     </div>
     <div v-if="!embedded" class="small text-muted mb-3">
-      Tip: filter by framework and enabled status to curate your active baseline quickly.
+      Only <strong>Kroger CCF</strong> controls are shown (the live baseline catalog).
+      <strong>Primary audience</strong> follows each question’s “Ask owners” setting (app owner vs security/compliance), same idea as the branching flow split.
+    </div>
+    <div v-else class="small text-muted mb-2">
+      <strong>Kroger CCF</strong> baseline catalog.
+      <strong>Primary audience</strong> is derived from each question’s “Ask owners” flag (same split as the branching flow).
     </div>
 
     <div class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body row g-3 align-items-end">
-        <div class="col-md-4">
-          <label class="form-label">Framework</label>
-          <select v-model="filterFramework" class="form-select">
-            <option value="">All</option>
-            <option value="NIST_800_53_LOW">NIST 800-53 Low</option>
-            <option value="PCI_DSS_V4">PCI DSS v4</option>
-            <option value="HIPAA">HIPAA</option>
-            <option value="SOX">SOX</option>
-          </select>
-        </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="form-check">
             <input type="checkbox" v-model="filterEnabled" class="form-check-input" id="enabledOnly" />
             <label class="form-check-label" for="enabledOnly">Enabled only</label>
           </div>
         </div>
-        <div class="col-md-4 text-md-end">
+        <div class="col-md-6 text-md-end">
           <button class="btn btn-primary" @click="openCreate">Add control</button>
         </div>
       </div>
@@ -53,22 +48,35 @@
           <table class="table workspace-table align-middle mb-0">
             <thead>
               <tr>
-                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('controlId')">ID {{ controlSortIndicator('controlId') }}</button></th>
-                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('name')">Name {{ controlSortIndicator('name') }}</button></th>
-                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('framework')">Framework {{ controlSortIndicator('framework') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('controlId')">Control identifier {{ controlSortIndicator('controlId') }}</button></th>
+                <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('name')">Control name {{ controlSortIndicator('name') }}</button></th>
+                <th>
+                  <button type="button" class="workspace-table-sort" @click="toggleControlSort('responderAudience')">
+                    Primary audience {{ controlSortIndicator('responderAudience') }}
+                  </button>
+                </th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleControlSort('enabled')">Enabled {{ controlSortIndicator('enabled') }}</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="c in sortedControls" :key="c.id">
-                <td>{{ c.controlId }}</td>
+                <td>{{ controlIdentifierDisplay(c) }}</td>
                 <td>
-                  <button class="btn btn-link p-0 text-decoration-none" type="button" @click="openControlDetails(c.id)">
-                    {{ c.name }}
+                  <button
+                    class="btn btn-link p-0 text-decoration-none text-start"
+                    type="button"
+                    :title="c.name || ''"
+                    @click="openControlDetails(c.id)"
+                  >
+                    {{ controlDisplayName(c) }}
                   </button>
                 </td>
-                <td>{{ c.framework }}</td>
+                <td>
+                  <span class="badge rounded-pill" :class="responderAudienceBadgeClass(c.responderAudience)">
+                    {{ responderAudienceLabel(c.responderAudience) }}
+                  </span>
+                </td>
                 <td>
                   <input type="checkbox" :checked="c.enabled" @change="toggleEnabled(c)" class="form-check-input" />
                 </td>
@@ -119,6 +127,7 @@
           <label class="form-label">Framework</label>
           <select v-model="createForm.framework" class="form-select" required>
             <option disabled value="">Select framework</option>
+            <option value="KROGER_CCF">Kroger CCF</option>
             <option value="NIST_800_53_LOW">NIST 800-53 Low</option>
             <option value="PCI_DSS_V4">PCI DSS v4</option>
             <option value="HIPAA">HIPAA</option>
@@ -201,6 +210,12 @@ import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+import {
+  controlDisplayName,
+  controlIdentifierDisplay,
+  responderAudienceBadgeClass,
+  responderAudienceLabel
+} from '../../utils/controlDisplay'
 
 defineProps({
   embedded: {
@@ -211,7 +226,6 @@ defineProps({
 
 const route = useRoute()
 const controls = ref([])
-const filterFramework = ref('')
 const filterEnabled = ref(false)
 const createModal = ref(false)
 const createForm = ref({ controlId: '', name: '', framework: '', description: '', enabled: true, category: '' })
@@ -225,13 +239,17 @@ const cameFromGovernance = computed(() => route.query.from === 'governance')
 
 const filteredControls = computed(() => {
   let list = controls.value
-  if (filterFramework.value) list = list.filter((c) => c.framework === filterFramework.value)
   if (filterEnabled.value) list = list.filter((c) => c.enabled)
   return list
 })
 
 const { sortedRows: sortedControls, toggleSort: toggleControlSort, sortIndicator: controlSortIndicator } = useTableSort(filteredControls, {
-  initialKey: 'controlId'
+  initialKey: 'controlId',
+  valueGetters: {
+    controlId: (row) => controlIdentifierDisplay(row),
+    name: (row) => controlDisplayName(row),
+    responderAudience: (row) => row?.responderAudience || ''
+  }
 })
 
 const { sortedRows: sortedQuestions, toggleSort: toggleQuestionSort, sortIndicator: questionSortIndicator } = useTableSort(questionsList, {
@@ -268,12 +286,12 @@ const isDetailsOpen = computed({
 
 const questionsTitle = computed(() => {
   if (!questionsModal.value) return 'Questions'
-  return `Questions for ${questionsModal.value.controlId} - ${questionsModal.value.name}`
+  return `Questions for ${controlIdentifierDisplay(questionsModal.value)} - ${controlDisplayName(questionsModal.value)}`
 })
 
 const detailsTitle = computed(() => {
   if (!detailsModal.value) return 'Control details'
-  return `${detailsModal.value.controlId} - ${detailsModal.value.name}`
+  return `${controlIdentifierDisplay(detailsModal.value)} - ${controlDisplayName(detailsModal.value)}`
 })
 
 const detailExamples = computed(() => {
@@ -287,12 +305,12 @@ const detailExamples = computed(() => {
 onMounted(load)
 
 async function load() {
-  const res = await api.get('/api/controls?includeQuestions=false')
+  const res = await api.get('/api/controls?framework=KROGER_CCF&includeQuestions=false')
   controls.value = res.data || []
 }
 
 function openCreate() {
-  createForm.value = { controlId: '', name: '', framework: '', description: '', enabled: true, category: '' }
+  createForm.value = { controlId: '', name: '', framework: 'KROGER_CCF', description: '', enabled: true, category: '' }
   createModal.value = true
 }
 

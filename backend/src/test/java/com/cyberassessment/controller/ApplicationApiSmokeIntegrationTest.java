@@ -69,8 +69,8 @@ class ApplicationApiSmokeIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.versionId").value(1))
                 .andExpect(jsonPath("$.startNodeId").value(1))
-                .andExpect(jsonPath("$.nodes.length()").value(4))
-                .andExpect(jsonPath("$.edges.length()").value(7));
+                .andExpect(jsonPath("$.nodes.length()").value(11))
+                .andExpect(jsonPath("$.edges.length()").value(34));
     }
 
     @Test
@@ -83,9 +83,9 @@ class ApplicationApiSmokeIntegrationTest {
     }
 
     @Test
-    void demoBranchingResolveYesTransition() throws Exception {
+    void demoBranchingResolveFromAppNameGoesToPurpose() throws Exception {
         String body = """
-                {"versionId":1,"fromNodeId":1,"value":"yes"}
+                {"versionId":1,"fromNodeId":1,"value":"Loyalty API"}
                 """;
         mockMvc.perform(post("/api/demo/branching-workflows/resolve")
                         .with(httpBasic("owner@example.com", "owner123"))
@@ -93,6 +93,6 @@ class ApplicationApiSmokeIntegrationTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.finished").value(false))
-                .andExpect(jsonPath("$.nextNode.stableKey").value("describe_scope"));
+                .andExpect(jsonPath("$.nextNode.stableKey").value("purpose"));
     }
 }

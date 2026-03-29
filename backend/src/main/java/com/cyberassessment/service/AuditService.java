@@ -170,6 +170,40 @@ public class AuditService {
                 .dueAt(dueAt)
                 .build();
         audit = auditRepository.save(audit);
+        seedAuditControlsAndSnapshot(audit);
+        auditActivityLogService.log(audit, AuditActivityType.AUDIT_CREATED, "Created audit for " + app.getName() + " (" + year + ")");
+        return toDto(audit);
+    }
+
+    /**
+     * Application owner starts an assessment without an audit project (intake / new application).
+     */
+    @Transactional
+    public AuditDto createOwnerIntakeAudit(Long applicationId, Integer year) {
+        User me = currentUserService.getCurrentUser().orElseThrow(() -> new IllegalArgumentException("Not authenticated"));
+        Application app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Application not found: " + applicationId));
+        if (app.getOwner() == null || !Objects.equals(app.getOwner().getId(), me.getId())) {
+            throw new IllegalArgumentException("Only the application owner can start this assessment");
+        }
+        if (auditRepository.findByApplicationIdAndYear(applicationId, year).isPresent()) {
+            throw new IllegalArgumentException("An assessment already exists for this application and year");
+        }
+        Audit audit = Audit.builder()
+                .application(app)
+                .auditProject(null)
+                .year(year)
+                .status(AuditStatus.DRAFT)
+                .build();
+        audit = auditRepository.save(audit);
+        seedAuditControlsAndSnapshot(audit);
+        syncPrimaryAssignment(audit, me);
+        auditActivityLogService.log(audit, AuditActivityType.AUDIT_CREATED,
+                "Owner intake assessment for " + app.getName() + " (" + year + ")");
+        return toDto(audit);
+    }
+
+    private void seedAuditControlsAndSnapshot(Audit audit) {
         List<Control> enabledControls = controlRepository.findByEnabled(true);
         for (Control c : enabledControls) {
             AuditControl ac = AuditControl.builder()
@@ -180,8 +214,6 @@ public class AuditService {
             auditControlRepository.save(ac);
         }
         createQuestionnaireSnapshot(audit);
-        auditActivityLogService.log(audit, AuditActivityType.AUDIT_CREATED, "Created audit for " + app.getName() + " (" + year + ")");
-        return toDto(audit);
     }
 
     @Transactional(readOnly = true)
@@ -366,30 +398,28 @@ public class AuditService {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         ensureCanAccessAudit(audit);
         Set<Long> allowedControlIds = allowedControlIdsForCurrentUser(audit);
-        AuditQuestionnaireSnapshot snapshot = ensureSnapshot(audit);
-        List<AuditQuestionnaireItem> items = auditQuestionnaireItemRepository
-                .findBySnapshotIdOrderByDisplayOrderAscControlControlIdAsc(snapshot.getId());
         List<AuditQuestionItemDto> result = new ArrayList<>();
-        for (AuditQuestionnaireItem item : items) {
-            if (!Boolean.TRUE.equals(item.getAskOwner())) {
+        for (AuditControl ac : auditControlRepository.findByAudit(audit)) {
+            Control c = ac.getControl();
+            if (!allowedControlIds.contains(c.getId())) {
                 continue;
             }
-            if (!allowedControlIds.contains(item.getControl().getId())) {
-                continue;
+            for (Question q : ownerQuestionsForAuditControl(ac)) {
+                Optional<AuditControlAnswer> existing = ac.getAnswers().stream()
+                        .filter(a -> a.getQuestion().getId().equals(q.getId()))
+                        .findFirst();
+                result.add(AuditQuestionItemDto.builder()
+                        .questionId(q.getId())
+                        .auditControlId(ac.getId())
+                        .controlId(c.getId())
+                        .controlControlId(c.getControlId())
+                        .controlName(c.getName())
+                        .questionText(q.getQuestionText())
+                        .helpText(q.getHelpText())
+                        .displayOrder(q.getDisplayOrder())
+                        .existingAnswerText(existing.map(AuditControlAnswer::getAnswerText).orElse(null))
+                        .build());
             }
-            AuditControl ac = item.getAuditControl();
-            Optional<AuditControlAnswer> existing = ac.getAnswers().stream().filter(a -> a.getQuestion().getId().equals(item.getQuestion().getId())).findFirst();
-            result.add(AuditQuestionItemDto.builder()
-                    .questionId(item.getQuestion().getId())
-                    .auditControlId(ac.getId())
-                    .controlId(item.getControl().getId())
-                    .controlControlId(item.getControl().getControlId())
-                    .controlName(item.getControl().getName())
-                    .questionText(item.getQuestionText())
-                    .helpText(item.getHelpText())
-                    .displayOrder(item.getDisplayOrder())
-                    .existingAnswerText(existing.map(AuditControlAnswer::getAnswerText).orElse(null))
-                    .build());
         }
         result.sort(Comparator.comparing(AuditQuestionItemDto::getDisplayOrder).thenComparing(AuditQuestionItemDto::getControlControlId));
         return result;
@@ -436,11 +466,11 @@ public class AuditService {
             AuditControl ac = auditControlRepository.findById(item.getAuditControlId()).orElse(null);
             if (ac == null || !ac.getAudit().getId().equals(auditId)) continue;
             if (!allowedControlIds.contains(ac.getControl().getId())) continue;
-            boolean allowed = auditQuestionnaireItemRepository
-                    .findByAuditControlIdAndAskOwnerTrue(ac.getId())
-                    .stream()
-                    .anyMatch(i -> i.getQuestion().getId().equals(item.getQuestionId()));
-            if (!allowed) {
+            if (!questionControlMappingRepository.existsByControl_IdAndQuestion_Id(ac.getControl().getId(), item.getQuestionId())) {
+                continue;
+            }
+            Question q = questionRepository.findById(item.getQuestionId()).orElse(null);
+            if (q == null || !Boolean.TRUE.equals(q.getAskOwner())) {
                 continue;
             }
             Optional<AuditControlAnswer> existing = auditControlAnswerRepository.findByAuditControlIdAndQuestionId(item.getAuditControlId(), item.getQuestionId());
@@ -450,8 +480,6 @@ public class AuditService {
                 a.setAnsweredAt(Instant.now());
                 auditControlAnswerRepository.save(a);
             } else {
-                Question q = questionRepository.findById(item.getQuestionId()).orElse(null);
-                if (q == null) continue;
                 AuditControlAnswer a = AuditControlAnswer.builder()
                         .auditControl(ac)
                         .question(q)
@@ -565,25 +593,38 @@ public class AuditService {
     private boolean isAuditCompleteForOwner(Audit audit) {
         List<AuditControl> auditControls = auditControlRepository.findByAudit(audit);
         for (AuditControl ac : auditControls) {
-            List<Question> ownerQuestions = auditQuestionnaireItemRepository
-                    .findByAuditControlIdAndAskOwnerTrue(ac.getId())
-                    .stream()
-                    .map(AuditQuestionnaireItem::getQuestion)
-                    .toList();
+            List<Long> ownerQuestionIds = ownerQuestionsForAuditControl(ac).stream().map(Question::getId).toList();
 
-            if (!ownerQuestions.isEmpty()) {
-                for (Question q : ownerQuestions) {
+            if (!ownerQuestionIds.isEmpty()) {
+                for (Long qid : ownerQuestionIds) {
                     Optional<AuditControlAnswer> answer = auditControlAnswerRepository
-                            .findByAuditControlIdAndQuestionId(ac.getId(), q.getId());
+                            .findByAuditControlIdAndQuestionId(ac.getId(), qid);
                     if (answer.isEmpty() || answer.get().getAnswerText() == null || answer.get().getAnswerText().isBlank()) {
                         return false;
                     }
                 }
-            } else if (!(ac.getStatus() == ControlAssessmentStatus.PASS || ac.getStatus() == ControlAssessmentStatus.FAIL || ac.getStatus() == ControlAssessmentStatus.NA)) {
-                return false;
+            } else if (questionControlMappingRepository.countByControl_Id(ac.getControl().getId()) == 0) {
+                if (!(ac.getStatus() == ControlAssessmentStatus.PASS || ac.getStatus() == ControlAssessmentStatus.FAIL || ac.getStatus() == ControlAssessmentStatus.NA)) {
+                    return false;
+                }
             }
         }
         return true;
+    }
+
+    /**
+     * Owner-facing questions for an audit control from the current {@code question_control_mappings},
+     * not the frozen audit questionnaire snapshot, so owner-facing content tracks the live library.
+     */
+    private List<Question> ownerQuestionsForAuditControl(AuditControl ac) {
+        Map<Long, Question> byId = new LinkedHashMap<>();
+        for (QuestionControlMapping m : questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(ac.getControl().getId())) {
+            Question q = m.getQuestion();
+            if (Boolean.TRUE.equals(q.getAskOwner())) {
+                byId.putIfAbsent(q.getId(), q);
+            }
+        }
+        return new ArrayList<>(byId.values());
     }
 
     private void ensureCanAccessAudit(Audit audit) {
@@ -702,13 +743,14 @@ public class AuditService {
         snapshot = auditQuestionnaireSnapshotRepository.save(snapshot);
         List<AuditControl> auditControls = auditControlRepository.findByAudit(audit);
         QuestionnaireTemplate publishedTemplate = questionnaireTemplateService.findLatestPublishedEntity();
-        if (publishedTemplate != null) {
-            List<QuestionnaireTemplateItem> templateItems = questionnaireTemplateItemRepository
-                    .findByTemplateIdOrderByDisplayOrderAscControlControlIdAsc(publishedTemplate.getId());
-            for (AuditControl ac : auditControls) {
-                List<QuestionnaireTemplateItem> controlItems = templateItems.stream()
-                        .filter(i -> i.getControl().getId().equals(ac.getControl().getId()))
-                        .toList();
+        List<QuestionnaireTemplateItem> templateItems = publishedTemplate != null
+                ? questionnaireTemplateItemRepository.findByTemplateIdOrderByDisplayOrderAscControlControlIdAsc(publishedTemplate.getId())
+                : List.of();
+        for (AuditControl ac : auditControls) {
+            List<QuestionnaireTemplateItem> controlItems = templateItems.stream()
+                    .filter(i -> i.getControl().getId().equals(ac.getControl().getId()))
+                    .toList();
+            if (!controlItems.isEmpty()) {
                 for (QuestionnaireTemplateItem i : controlItems) {
                     AuditQuestionnaireItem item = AuditQuestionnaireItem.builder()
                             .snapshot(snapshot)
@@ -722,30 +764,31 @@ public class AuditService {
                             .build();
                     auditQuestionnaireItemRepository.save(item);
                 }
-            }
-            return snapshot;
-        }
-
-        for (AuditControl ac : auditControls) {
-            List<QuestionControlMapping> mappings = questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(ac.getControl().getId()).stream()
-                    .sorted(Comparator.comparingInt(m -> m.getQuestion().getDisplayOrder()))
-                    .toList();
-            for (QuestionControlMapping mapping : mappings) {
-                Question q = mapping.getQuestion();
-                AuditQuestionnaireItem item = AuditQuestionnaireItem.builder()
-                        .snapshot(snapshot)
-                        .auditControl(ac)
-                        .question(q)
-                        .control(ac.getControl())
-                        .questionText(q.getQuestionText())
-                        .helpText(q.getHelpText())
-                        .displayOrder(q.getDisplayOrder())
-                        .askOwner(Boolean.TRUE.equals(q.getAskOwner()))
-                        .build();
-                auditQuestionnaireItemRepository.save(item);
+            } else {
+                appendSnapshotItemsFromControlMappings(snapshot, ac);
             }
         }
         return snapshot;
+    }
+
+    private void appendSnapshotItemsFromControlMappings(AuditQuestionnaireSnapshot snapshot, AuditControl ac) {
+        List<QuestionControlMapping> mappings = questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(ac.getControl().getId()).stream()
+                .sorted(Comparator.comparingInt(m -> m.getQuestion().getDisplayOrder()))
+                .toList();
+        for (QuestionControlMapping mapping : mappings) {
+            Question q = mapping.getQuestion();
+            AuditQuestionnaireItem item = AuditQuestionnaireItem.builder()
+                    .snapshot(snapshot)
+                    .auditControl(ac)
+                    .question(q)
+                    .control(ac.getControl())
+                    .questionText(q.getQuestionText())
+                    .helpText(q.getHelpText())
+                    .displayOrder(q.getDisplayOrder())
+                    .askOwner(Boolean.TRUE.equals(q.getAskOwner()))
+                    .build();
+            auditQuestionnaireItemRepository.save(item);
+        }
     }
 
     private AuditAssignmentDto toAssignmentDto(AuditAssignment aa) {

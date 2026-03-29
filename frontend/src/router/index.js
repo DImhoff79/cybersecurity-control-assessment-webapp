@@ -11,6 +11,12 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/start' },
         { path: 'start', name: 'RoleHub', component: () => import('../views/RoleHub.vue') },
+        {
+          path: 'start/new-application',
+          name: 'NewApplicationIntake',
+          component: () => import('../views/selfservice/NewApplicationIntake.vue'),
+          meta: { pageTitle: 'New application assessment' }
+        },
         { path: 'my-audits', name: 'MyAudits', component: () => import('../views/selfservice/MyAudits.vue') },
         {
           path: 'my-exceptions',

@@ -122,7 +122,8 @@
         <table class="table table-sm workspace-table mb-0">
           <thead>
             <tr>
-              <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('controlControlId')">Control {{ itemSortIndicator('controlControlId') }}</button></th>
+              <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('controlControlId')">Control identifier {{ itemSortIndicator('controlControlId') }}</button></th>
+              <th>Control name</th>
               <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('questionText')">Question {{ itemSortIndicator('questionText') }}</button></th>
               <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('mappingWeight')">Weight {{ itemSortIndicator('mappingWeight') }}</button></th>
               <th><button type="button" class="workspace-table-sort" @click="toggleItemSort('mappingRationale')">Rationale {{ itemSortIndicator('mappingRationale') }}</button></th>
@@ -151,6 +152,7 @@ import api from '../../services/api'
 import BsModal from '../../components/BsModal.vue'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+import { controlDisplayName, controlIdentifierDisplay } from '../../utils/controlDisplay'
 
 const loading = ref(true)
 const templates = ref([])
@@ -165,7 +167,10 @@ const { sortedRows: sortedTemplates, toggleSort: toggleTemplateSort, sortIndicat
 })
 
 const { sortedRows: sortedItems, toggleSort: toggleItemSort, sortIndicator: itemSortIndicator } = useTableSort(items, {
-  initialKey: 'controlControlId'
+  initialKey: 'controlControlId',
+  valueGetters: {
+    controlControlId: (row) => controlIdentifierDisplay({ controlId: row.controlControlId })
+  }
 })
 
 onMounted(load)
@@ -253,6 +258,16 @@ function badgeClass(status) {
 function statusLabel(status) {
   if (status === 'DRAFT') return 'WORKING'
   return status
+}
+
+function itemControlIdentifier(item) {
+  const c = controls.value.find((x) => x.controlId === item.controlControlId)
+  return controlIdentifierDisplay(c || { controlId: item.controlControlId })
+}
+
+function itemControlName(item) {
+  const c = controls.value.find((x) => x.controlId === item.controlControlId)
+  return c ? controlDisplayName(c) : '—'
 }
 
 const enabledControlsCount = computed(() => controls.value.filter((c) => c.enabled).length)

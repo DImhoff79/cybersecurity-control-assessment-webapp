@@ -50,20 +50,29 @@ const cards = computed(() => {
   const hp = (p) => authStore.hasPermission(p)
 
   if (!authStore.canAccessAdmin) {
-    return [
+    const base = [
       {
         key: 'my-audits',
         title: 'Work on my assessments',
-        description: 'Audits assigned to you—status, progress, and the questionnaire.',
+        description: 'Your CCF assessments—status, progress, and control attestation.',
         to: '/my-audits'
-      },
-      {
-        key: 'my-exceptions',
-        title: 'Control exceptions',
-        description: 'Request and track exceptions for controls on your audits.',
-        to: '/my-exceptions'
       }
     ]
+    if (role === 'APPLICATION_OWNER') {
+      base.unshift({
+        key: 'new-app',
+        title: 'Register a new application',
+        description: 'Answer a short intake, then complete the Kroger Common Controls Framework assessment.',
+        to: '/start/new-application'
+      })
+    }
+    base.push({
+      key: 'my-exceptions',
+      title: 'Control exceptions',
+      description: 'Request and track exceptions for controls on your audits.',
+      to: '/my-exceptions'
+    })
+    return base
   }
 
   const out = []

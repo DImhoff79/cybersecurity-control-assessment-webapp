@@ -8,6 +8,8 @@ import com.cyberassessment.dto.FindingUpsertRequest;
 import com.cyberassessment.dto.RemediationPlanDto;
 import com.cyberassessment.dto.RiskRegisterItemDto;
 import com.cyberassessment.entity.Application;
+import com.cyberassessment.entity.ApplicationPurpose;
+import com.cyberassessment.entity.HostingModel;
 import com.cyberassessment.entity.AuditAssignmentRole;
 import com.cyberassessment.entity.ApplicationCriticality;
 import com.cyberassessment.entity.ApplicationLifecycleStatus;
@@ -161,16 +163,16 @@ public class DemoDatasetSeeder implements ApplicationRunner {
         }
         AppSeed[] seeds = {
                 new AppSeed(DEMO + "Northwind Payments API", "Card-present and e-commerce payment orchestration APIs.",
-                        ApplicationCriticality.CRITICAL, DataClassification.RESTRICTED, "PCI-DSS 4.0",
+                        ApplicationCriticality.CRITICAL, DataClassification.RESTRICTED, null,
                         "Jordan Lee", "Priya Singh"),
                 new AppSeed(DEMO + "Aurora HR Portal", "Employee self-service, benefits, and payroll previews.",
-                        ApplicationCriticality.MEDIUM, DataClassification.CONFIDENTIAL, "SOC 2 / HR privacy",
+                        ApplicationCriticality.MEDIUM, DataClassification.CONFIDENTIAL, null,
                         "Morgan Ellis", "Casey Nguyen"),
                 new AppSeed(DEMO + "Helios Analytics Warehouse", "Centralized metrics store for product and finance KPIs.",
-                        ApplicationCriticality.HIGH, DataClassification.CONFIDENTIAL, "SOX ITGC adjacent",
+                        ApplicationCriticality.HIGH, DataClassification.CONFIDENTIAL, null,
                         "Riley Park", "Devon Clarke"),
                 new AppSeed(DEMO + "Vertex B2B Gateway", "Partner-facing APIs and file exchange for inventory sync.",
-                        ApplicationCriticality.MEDIUM, DataClassification.INTERNAL, "Contractual security addendum",
+                        ApplicationCriticality.MEDIUM, DataClassification.INTERNAL, null,
                         "Taylor Brooks", "Jamal Ortiz")
         };
         List<Application> out = new ArrayList<>();
@@ -189,9 +191,33 @@ public class DemoDatasetSeeder implements ApplicationRunner {
                 );
                 return applicationRepository.findById(dto.getId()).orElseThrow();
             });
+            enrichDemoTriage(app, s.name);
             out.add(app);
         }
         return out;
+    }
+
+    /** Sample owner-triage values so the inventory demonstrates structured PII / PCI / SOX / HIPAA flags. */
+    private void enrichDemoTriage(Application app, String name) {
+        if (name.contains("Northwind Payments")) {
+            app.setApplicationPurpose(ApplicationPurpose.CUSTOMER_FACING);
+            app.setHostingModel(HostingModel.HYBRID);
+            app.setDataScopePci(true);
+            app.setDataScopePii(true);
+            applicationRepository.save(app);
+        } else if (name.contains("Aurora HR")) {
+            app.setDataScopePii(true);
+            app.setDataScopeHipaa(true);
+            app.setDataScopePhi(true);
+            applicationRepository.save(app);
+        } else if (name.contains("Helios")) {
+            app.setDataScopePii(true);
+            app.setDataScopeSox(true);
+            applicationRepository.save(app);
+        } else if (name.contains("Vertex B2B")) {
+            app.setApplicationPurpose(ApplicationPurpose.PARTNER_FACING);
+            applicationRepository.save(app);
+        }
     }
 
     private void ensureAuditsAndStatuses(List<Application> apps, User auditor) {
