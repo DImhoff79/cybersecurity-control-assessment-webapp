@@ -85,7 +85,7 @@
           </div>
           <div class="mt-3 bulk-actions">
             <select v-model="bulkUserId" class="form-select form-select-sm bulk-user-select">
-              <option :value="null">Bulk assign selected to...</option>
+              <option :value="null">Bulk assign selected to auditor…</option>
               <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
             </select>
             <button class="btn btn-outline-primary btn-sm" :disabled="!selectedAuditIds.length || !bulkUserId" @click="bulkAssign(false)">
@@ -147,13 +147,13 @@ const isAssignModalOpen = computed({
 onMounted(load)
 
 async function load() {
-  const [appsRes, usersRes, projectsRes] = await Promise.all([
+  const [appsRes, auditorsRes, projectsRes] = await Promise.all([
     api.get('/api/applications'),
-    api.get('/api/users'),
+    api.get('/api/users/auditors'),
     api.get('/api/audit-projects')
   ])
   applications.value = appsRes.data || []
-  users.value = usersRes.data || []
+  users.value = auditorsRes.data || []
   projects.value = projectsRes.data || []
   for (const app of applications.value) {
     const res = await api.get(`/api/applications/${app.id}/audits`)

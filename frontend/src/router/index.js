@@ -172,6 +172,12 @@ const router = createRouter({
           meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Questionnaire Builder' }
         },
         {
+          path: 'owner-answer-option-profiles',
+          name: 'AdminOwnerAnswerOptionProfiles',
+          component: () => import('../views/admin/OwnerAnswerOptionProfiles.vue'),
+          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Audit Program', pageTitle: 'Owner answer options' }
+        },
+        {
           path: 'question-control-mapping-studio',
           name: 'AdminQuestionControlMappingStudio',
           component: () => import('../views/admin/QuestionControlMappingStudio.vue'),

@@ -31,8 +31,8 @@ describe('KickoffAudit', () => {
       if (url === '/api/applications') {
         return Promise.resolve({ data: [{ id: 1, name: 'App' }] })
       }
-      if (url === '/api/users') {
-        return Promise.resolve({ data: [{ id: 2, email: 'owner@example.com', displayName: 'Owner' }] })
+      if (url === '/api/users/auditors') {
+        return Promise.resolve({ data: [{ id: 2, email: 'auditor@example.com', displayName: 'Auditor' }] })
       }
       if (url === '/api/audit-projects') {
         return Promise.resolve({ data: [{ id: 8, name: 'PCI 2026' }] })

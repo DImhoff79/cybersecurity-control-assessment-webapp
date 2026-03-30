@@ -7,12 +7,23 @@
           Create a point-in-time project, scope applications, and generate linked audits in one workflow.
         </p>
       </div>
+      <div v-if="canManageProjects" class="d-flex flex-wrap gap-2 align-items-center">
+        <button
+          v-if="!showCreateProject"
+          type="button"
+          class="btn btn-primary"
+          @click="openCreateProject"
+        >
+          Create new project
+        </button>
+        <button v-else type="button" class="btn btn-outline-secondary" @click="cancelCreateProject">Cancel</button>
+      </div>
     </div>
     <div class="small text-muted mb-3">
       Example: create <strong>PCI 2026</strong>, scope all in-scope apps, then track progress across one project record.
     </div>
 
-    <section class="card workspace-card border-0 shadow-sm mb-3" v-if="canManageProjects">
+    <section class="card workspace-card border-0 shadow-sm mb-3" v-if="canManageProjects && showCreateProject">
       <div class="card-body">
         <h2 class="h5 mb-3">Create project</h2>
         <form class="row g-3" @submit.prevent="createProject">
@@ -35,6 +46,16 @@
           <div class="col-12">
             <label class="form-label">Notes</label>
             <textarea v-model.trim="form.notes" class="form-control" rows="2" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Primary auditor (optional)</label>
+            <select v-model="form.primaryAuditorUserId" class="form-select">
+              <option :value="null">Assign later (Kickoff / bulk assign)</option>
+              <option v-for="u in auditors" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+            </select>
+            <p class="small text-muted mb-0 mt-1">
+              Each new audit for the scoped applications is assigned to this auditor. Only users with the Auditor role appear here.
+            </p>
           </div>
           <div class="col-12">
             <label class="form-label">Applications in scope</label>
@@ -354,6 +375,8 @@ const editSelectedSelection = ref([])
 const editAvailableSortDir = ref('asc')
 const editSelectedSortDir = ref('asc')
 const editingProjectId = ref(null)
+/** Create-project form is hidden until the user opts in (keeps the page focused on the project list). */
+const showCreateProject = ref(false)
 const editForm = reactive({
   name: '',
   frameworkTag: '',
@@ -362,13 +385,15 @@ const editForm = reactive({
   notes: '',
   applicationIds: []
 })
+const auditors = ref([])
 const form = reactive({
   name: '',
   frameworkTag: '',
   year: new Date().getFullYear(),
   dueAt: '',
   notes: '',
-  applicationIds: []
+  applicationIds: [],
+  primaryAuditorUserId: null
 })
 const projectViewFilter = ref('active')
 const authStore = useAuthStore()
@@ -465,13 +490,33 @@ const projectCards = computed(() => {
 
 onMounted(load)
 
+function openCreateProject() {
+  showCreateProject.value = true
+}
+
+function cancelCreateProject() {
+  showCreateProject.value = false
+  form.name = ''
+  form.frameworkTag = ''
+  form.year = new Date().getFullYear()
+  form.dueAt = ''
+  form.notes = ''
+  form.applicationIds = []
+  form.primaryAuditorUserId = null
+  appSearch.value = ''
+  availableSelection.value = []
+  selectedSelection.value = []
+}
+
 async function load() {
-  const [appsRes, projectsRes] = await Promise.all([
+  const [appsRes, projectsRes, auditorsRes] = await Promise.all([
     api.get('/api/applications'),
-    api.get('/api/audit-projects')
+    api.get('/api/audit-projects'),
+    api.get('/api/users/auditors').catch(() => ({ data: [] }))
   ])
   applications.value = appsRes.data || []
   projects.value = projectsRes.data || []
+  auditors.value = auditorsRes.data || []
 }
 
 function addApplication(appId) {
@@ -528,12 +573,15 @@ async function createProject() {
       applicationIds: form.applicationIds
     }
     if (form.dueAt) payload.dueAt = `${form.dueAt}T23:59:59Z`
+    if (form.primaryAuditorUserId != null) payload.primaryAuditorUserId = form.primaryAuditorUserId
     await api.post('/api/audit-projects', payload)
     toastSuccess('Audit project created.')
+    showCreateProject.value = false
     form.name = ''
     form.frameworkTag = ''
     form.notes = ''
     form.applicationIds = []
+    form.primaryAuditorUserId = null
     await load()
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to create audit project')
@@ -541,6 +589,7 @@ async function createProject() {
 }
 
 function startEdit(project) {
+  showCreateProject.value = false
   editingProjectId.value = project.id
   editForm.name = project.name || ''
   editForm.frameworkTag = project.frameworkTag || ''

@@ -4,10 +4,12 @@ import com.cyberassessment.dto.QuestionDto;
 import com.cyberassessment.dto.QuestionLibraryRowDto;
 import com.cyberassessment.dto.QuestionMappingRefDto;
 import com.cyberassessment.entity.Control;
+import com.cyberassessment.entity.OwnerAnswerOptionProfile;
 import com.cyberassessment.entity.Question;
 import com.cyberassessment.entity.QuestionControlId;
 import com.cyberassessment.entity.QuestionControlMapping;
 import com.cyberassessment.repository.ControlRepository;
+import com.cyberassessment.repository.OwnerAnswerOptionProfileRepository;
 import com.cyberassessment.repository.QuestionControlMappingRepository;
 import com.cyberassessment.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class QuestionService {
     private final QuestionRepository questionRepository;
     private final ControlRepository controlRepository;
     private final QuestionControlMappingRepository questionControlMappingRepository;
+    private final OwnerAnswerOptionProfileRepository ownerAnswerOptionProfileRepository;
 
     @Transactional(readOnly = true)
     public List<QuestionDto> findByControlId(Long controlId) {
@@ -33,8 +36,27 @@ public class QuestionService {
                 .collect(Collectors.toList());
     }
 
+    private OwnerAnswerOptionProfile resolveOwnerProfileForNewQuestion(Long profileId) {
+        if (profileId != null) {
+            return ownerAnswerOptionProfileRepository.findById(profileId)
+                    .orElseThrow(() -> new IllegalArgumentException("Owner answer option profile not found: " + profileId));
+        }
+        return ownerAnswerOptionProfileRepository.findByCode(OwnerAnswerOptionProfile.DEFAULT_CODE)
+                .orElseThrow(() -> new IllegalStateException("Missing DEFAULT owner answer option profile"));
+    }
+
+    private void applyOwnerProfileUpdate(Question q, Long profileId) {
+        if (profileId == null) {
+            q.setOwnerAnswerOptionProfile(resolveOwnerProfileForNewQuestion(null));
+        } else {
+            q.setOwnerAnswerOptionProfile(ownerAnswerOptionProfileRepository.findById(profileId)
+                    .orElseThrow(() -> new IllegalArgumentException("Owner answer option profile not found: " + profileId)));
+        }
+    }
+
     @Transactional
-    public QuestionDto create(Long controlId, String questionText, Integer displayOrder, String helpText, Boolean askOwner) {
+    public QuestionDto create(Long controlId, String questionText, Integer displayOrder, String helpText, Boolean askOwner,
+                              Long ownerAnswerOptionProfileId) {
         Control control = controlRepository.findById(controlId).orElseThrow(() -> new IllegalArgumentException("Control not found: " + controlId));
         String normalizedQuestionText = questionText != null ? questionText.trim() : null;
         if (normalizedQuestionText == null || normalizedQuestionText.isBlank()) {
@@ -64,6 +86,7 @@ public class QuestionService {
                 .displayOrder(displayOrder)
                 .helpText(helpText)
                 .askOwner(askOwner != null ? askOwner : true)
+                .ownerAnswerOptionProfile(resolveOwnerProfileForNewQuestion(ownerAnswerOptionProfileId))
                 .build();
         q = questionRepository.save(q);
         QuestionControlMapping mapping = questionControlMappingRepository.save(QuestionControlMapping.builder()
@@ -75,7 +98,8 @@ public class QuestionService {
     }
 
     @Transactional
-    public QuestionDto update(Long controlId, Long id, String questionText, Integer displayOrder, String helpText, Boolean askOwner) {
+    public QuestionDto update(Long controlId, Long id, String questionText, Integer displayOrder, String helpText, Boolean askOwner,
+                              boolean applyOwnerAnswerOptionProfile, Long ownerAnswerOptionProfileId) {
         if (!questionControlMappingRepository.existsByControl_IdAndQuestion_Id(controlId, id)) {
             throw new IllegalArgumentException("Question not mapped to this control");
         }
@@ -84,6 +108,9 @@ public class QuestionService {
         if (displayOrder != null) q.setDisplayOrder(displayOrder);
         if (helpText != null) q.setHelpText(helpText);
         if (askOwner != null) q.setAskOwner(askOwner);
+        if (applyOwnerAnswerOptionProfile) {
+            applyOwnerProfileUpdate(q, ownerAnswerOptionProfileId);
+        }
         q = questionRepository.save(q);
         QuestionControlMapping mapping = questionControlMappingRepository.findById(new QuestionControlId(id, controlId)).orElse(null);
         return ControlService.questionToDto(q, controlId, mapping);
@@ -133,14 +160,19 @@ public class QuestionService {
         List<QuestionMappingRefDto> refs = questionControlMappingRepository.findByQuestion_Id(q.getId()).stream()
                 .map(this::toMappingRef)
                 .collect(Collectors.toList());
-        return QuestionLibraryRowDto.builder()
+        QuestionLibraryRowDto.QuestionLibraryRowDtoBuilder row = QuestionLibraryRowDto.builder()
                 .id(q.getId())
                 .questionText(q.getQuestionText())
                 .helpText(q.getHelpText())
                 .askOwner(q.getAskOwner())
                 .displayOrder(q.getDisplayOrder())
-                .mappings(refs)
-                .build();
+                .mappings(refs);
+        if (q.getOwnerAnswerOptionProfile() != null) {
+            row.ownerAnswerOptionProfileId(q.getOwnerAnswerOptionProfile().getId())
+                    .ownerAnswerOptionProfileCode(q.getOwnerAnswerOptionProfile().getCode())
+                    .ownerAnswerOptionProfileDisplayName(q.getOwnerAnswerOptionProfile().getDisplayName());
+        }
+        return row.build();
     }
 
     private QuestionMappingRefDto toMappingRef(QuestionControlMapping m) {
@@ -159,7 +191,8 @@ public class QuestionService {
     }
 
     @Transactional
-    public QuestionDto createUnmapped(String questionText, Integer displayOrder, String helpText, Boolean askOwner) {
+    public QuestionDto createUnmapped(String questionText, Integer displayOrder, String helpText, Boolean askOwner,
+                                      Long ownerAnswerOptionProfileId) {
         String normalized = questionText != null ? questionText.trim() : "";
         if (normalized.isBlank()) {
             throw new IllegalArgumentException("Question text is required");
@@ -174,6 +207,7 @@ public class QuestionService {
                 .displayOrder(order)
                 .helpText(helpText)
                 .askOwner(askOwner != null ? askOwner : true)
+                .ownerAnswerOptionProfile(resolveOwnerProfileForNewQuestion(ownerAnswerOptionProfileId))
                 .build();
         q = questionRepository.save(q);
         return ControlService.questionToDto(q);

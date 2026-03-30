@@ -235,6 +235,13 @@ class FindingAndExceptionServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("ex-upd-auditor@test.com")
+                .passwordHash("x")
+                .displayName("Ex Upd Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Ex Upd App")
                 .description("test")
@@ -243,7 +250,7 @@ class FindingAndExceptionServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto audit = auditService.create(app.getId(), 2048);
-        auditService.assign(audit.getId(), owner.getId());
+        auditService.assign(audit.getId(), auditor.getId());
         Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
 
         authenticate(owner.getEmail());

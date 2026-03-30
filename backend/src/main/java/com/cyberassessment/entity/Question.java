@@ -48,4 +48,9 @@ public class Question {
     /** TEXT, CHOICE, YES_NO — intake presentation when {@link #intakeStepKey} is set. */
     @Column(name = "intake_input_type", length = 24)
     private String intakeInputType;
+
+    /** Labels and guided dropdown options for owner audit responses; defaults to system DEFAULT profile when null. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_answer_option_profile_id")
+    private OwnerAnswerOptionProfile ownerAnswerOptionProfile;
 }

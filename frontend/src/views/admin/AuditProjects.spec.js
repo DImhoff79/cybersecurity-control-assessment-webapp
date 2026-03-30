@@ -48,6 +48,13 @@ describe('AuditProjects', () => {
     expect(wrapper.text()).toContain('PCI 2026')
     expect(wrapper.text()).toContain('Live Audits')
     expect(wrapper.text()).toContain('Stage Snapshot')
+    expect(wrapper.text()).toContain('Create new project')
+    expect(wrapper.text()).not.toContain('Available applications')
+
+    const createBtn = wrapper.findAll('button').find((b) => b.text() === 'Create new project')
+    await createBtn.trigger('click')
+    await flushPromises()
+
     expect(wrapper.text()).toContain('Available applications')
     expect(wrapper.text()).toContain('In this project')
 
@@ -99,7 +106,7 @@ describe('AuditProjects', () => {
     expect(wrapper.text()).toContain('1 selected')
 
     const forms = wrapper.findAll('form')
-    await forms[1].trigger('submit.prevent')
+    await forms[0].trigger('submit.prevent')
     await flushPromises()
 
     expect(api.put).toHaveBeenCalledWith('/api/audit-projects/50', expect.objectContaining({

@@ -65,6 +65,14 @@ public class AuditProjectService {
 
     @Transactional
     public AuditProjectDto create(String name, String frameworkTag, Integer year, String notes, Instant startsAt, Instant dueAt, List<Long> applicationIds) {
+        return create(name, frameworkTag, year, notes, startsAt, dueAt, applicationIds, null);
+    }
+
+    /**
+     * @param primaryAuditorUserId optional; when set, each generated or linked audit is assigned to this user (must be {@link com.cyberassessment.entity.UserRole#AUDITOR}).
+     */
+    @Transactional
+    public AuditProjectDto create(String name, String frameworkTag, Integer year, String notes, Instant startsAt, Instant dueAt, List<Long> applicationIds, Long primaryAuditorUserId) {
         if (!currentUserService.isAdminOrAuditManager()) {
             throw new IllegalArgumentException("Only ADMIN or AUDIT_MANAGER can create audit projects");
         }
@@ -96,7 +104,7 @@ public class AuditProjectService {
         Long projectId = project.getId();
 
         for (Application app : applications) {
-            ensureAuditLinkedForProjectApplication(project, app, dueAt);
+            ensureAuditLinkedForProjectApplication(project, app, dueAt, primaryAuditorUserId);
         }
         List<AuditDto> audits = auditRepository.findByAuditProjectId(projectId).stream()
                 .map(AuditService::toDto)
@@ -160,7 +168,7 @@ public class AuditProjectService {
         auditRepository.saveAll(linkedAudits);
 
         for (Application app : project.getApplications()) {
-            ensureAuditLinkedForProjectApplication(project, app, project.getDueAt());
+            ensureAuditLinkedForProjectApplication(project, app, project.getDueAt(), null);
         }
 
         return toDto(project);
@@ -181,7 +189,7 @@ public class AuditProjectService {
         auditProjectRepository.delete(project);
     }
 
-    private void ensureAuditLinkedForProjectApplication(AuditProject project, Application app, Instant dueAt) {
+    private void ensureAuditLinkedForProjectApplication(AuditProject project, Application app, Instant dueAt, Long primaryAuditorUserId) {
         Audit existing = auditRepository.findByApplicationIdAndYear(app.getId(), project.getYear()).orElse(null);
         Audit targetAudit;
         if (existing == null) {
@@ -203,10 +211,8 @@ public class AuditProjectService {
             targetAudit = auditRepository.save(existing);
         }
 
-        // Default assignment: route new project audits to each application's owner.
-        if (app.getOwner() != null && (targetAudit.getAssignedTo() == null
-                || !Objects.equals(targetAudit.getAssignedTo().getId(), app.getOwner().getId()))) {
-            auditService.assign(targetAudit.getId(), app.getOwner().getId());
+        if (primaryAuditorUserId != null) {
+            auditService.assign(targetAudit.getId(), primaryAuditorUserId);
         }
     }
 }

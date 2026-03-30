@@ -157,14 +157,20 @@
               {{ mappedControlSummary(question) }}
             </p>
 
-            <label class="form-label" :for="'answer-' + question.questionId">Your answer</label>
+            <label class="form-label" :for="'answer-' + question.questionId">{{ answerFieldLabel(question) }}</label>
+            <p :id="'answer-hint-' + question.questionId" class="small text-muted mb-2">
+              {{ answerFieldHint(question) }}
+            </p>
             <select
               :id="'answer-' + question.questionId"
               v-model="answers[questionKey(question.questionId)]"
               class="form-select mb-0"
               :disabled="readOnly"
+              :aria-describedby="'answer-hint-' + question.questionId"
             >
-              <option v-for="opt in answerOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              <option v-for="opt in answerOptionsForQuestion(question)" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
             </select>
 
             <details class="respond-evidence-details mt-3">
@@ -328,6 +334,7 @@ import api from '../../services/api'
 import OwnerEvidenceBlock from '../../components/OwnerEvidenceBlock.vue'
 import { toastError, toastSuccess, toastWarning } from '../../services/toast'
 import { isAuditOwnerAnswerLocked } from '../../utils/auditStatus'
+import { OWNER_ANSWER_VALUE_KEYS } from '../../utils/ownerAnswerOptions'
 
 const route = useRoute()
 const auditId = Number(route.params.auditId)
@@ -348,13 +355,21 @@ const currentStage = ref('human') // 'human' | 'additional'
 const currentHumanIndex = ref(0)
 const currentAdditionalIndex = ref(0)
 
-const answerOptions = [
-  { value: 'UNANSWERED', label: 'Choose an answer' },
-  { value: 'YES', label: 'Yes, this is in place' },
-  { value: 'PARTIAL', label: 'Partially in place' },
-  { value: 'NO', label: 'No, this is not in place yet' },
-  { value: 'NOT_APPLICABLE', label: 'Not applicable to my application' }
-]
+function answerOptionsForQuestion(question) {
+  const opts = question?.ownerResponseOptions
+  return Array.isArray(opts) && opts.length ? opts : []
+}
+
+function answerFieldLabel(question) {
+  return question?.ownerResponseFieldLabel || 'Which option best describes your situation?'
+}
+
+function answerFieldHint(question) {
+  return (
+    question?.ownerResponseFieldHint ||
+    'If none of these fit perfectly, choose the closest option and add context under Notes & supporting files.'
+  )
+}
 
 function buildGroupedQuestions(items) {
   const byId = new Map()
@@ -365,6 +380,9 @@ function buildGroupedQuestions(items) {
         questionText: item.questionText,
         helpText: item.helpText,
         displayOrder: item.displayOrder ?? 0,
+        ownerResponseOptions: item.ownerResponseOptions,
+        ownerResponseFieldLabel: item.ownerResponseFieldLabel,
+        ownerResponseFieldHint: item.ownerResponseFieldHint,
         mappings: [],
         existingAnswerText: item.existingAnswerText || ''
       })
@@ -819,8 +837,7 @@ async function saveAdditionalControls() {
 }
 
 function normalizeExistingAnswer(value) {
-  const supported = answerOptions.map((x) => x.value)
-  return supported.includes(value) ? value : 'UNANSWERED'
+  return OWNER_ANSWER_VALUE_KEYS.includes(value) ? value : 'UNANSWERED'
 }
 
 function isHumanAnswered(value) {

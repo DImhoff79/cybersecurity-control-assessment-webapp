@@ -31,11 +31,13 @@ public class QuestionLibraryController {
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
         String helpText = (String) body.get("helpText");
         Boolean askOwner = body.containsKey("askOwner") ? (Boolean) body.get("askOwner") : null;
+        Long ownerAnswerOptionProfileId = body.get("ownerAnswerOptionProfileId") != null
+                ? ((Number) body.get("ownerAnswerOptionProfileId")).longValue() : null;
         if (questionText == null || questionText.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
         try {
-            QuestionDto created = questionService.createUnmapped(questionText, displayOrder, helpText, askOwner);
+            QuestionDto created = questionService.createUnmapped(questionText, displayOrder, helpText, askOwner, ownerAnswerOptionProfileId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();

@@ -48,14 +48,16 @@ class QuestionServiceMappingTest {
                 "Do you review access regularly?",
                 0,
                 "Review at least annually.",
-                true
+                true,
+                null
         );
         QuestionDto q2 = questionService.create(
                 c2.getId(),
                 "Do you review access regularly?",
                 0,
                 "Review at least annually.",
-                true
+                true,
+                null
         );
 
         assertThat(q2.getId()).isEqualTo(q1.getId());
@@ -70,7 +72,8 @@ class QuestionServiceMappingTest {
                 "Is MFA enabled?",
                 0,
                 "Include remote/admin access.",
-                true
+                true,
+                null
         );
 
         QuestionDto updated = questionService.update(
@@ -79,7 +82,9 @@ class QuestionServiceMappingTest {
                 null,
                 null,
                 null,
-                false
+                false,
+                false,
+                null
         );
 
         assertThat(updated.getAskOwner()).isFalse();
@@ -95,7 +100,8 @@ class QuestionServiceMappingTest {
                 "Is logging enabled?",
                 0,
                 null,
-                true
+                true,
+                null
         );
 
         assertThatThrownBy(() -> questionService.delete(c1.getId(), created.getId()))
@@ -111,7 +117,8 @@ class QuestionServiceMappingTest {
                 "Do you test backup restores?",
                 0,
                 "Test on a regular cadence.",
-                true
+                true,
+                null
         );
 
         Instant effectiveFrom = Instant.parse("2026-01-01T00:00:00Z");

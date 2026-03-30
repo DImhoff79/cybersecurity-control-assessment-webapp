@@ -137,6 +137,34 @@
       </div>
     </div>
 
+    <div v-if="activeWorkspaceTab === 'overview' && canManageAudits" class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h5 mb-2">Primary auditor</h2>
+        <p class="small text-muted mb-3">
+          The lead auditor for this engagement (workbench, reminders, and primary assignment). Reassign anytime.
+        </p>
+        <div class="row g-2 align-items-end flex-wrap">
+          <div class="col-md-6">
+            <label class="form-label small mb-1">Auditor</label>
+            <select v-model="primaryAuditorDraft" class="form-select form-select-sm">
+              <option :value="null">Unassigned</option>
+              <option v-for="u in auditorPool" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              :disabled="primaryAuditorDraft === (audit?.assignedToUserId ?? null) || primaryAuditorSaving"
+              @click="savePrimaryAuditor"
+            >
+              {{ primaryAuditorSaving ? 'Saving…' : 'Save assignment' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="activeWorkspaceTab === 'overview'" class="card shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Collaborators</h2>
@@ -151,8 +179,8 @@
         <div class="row g-2 mt-2">
           <div class="col-md-6">
             <select v-model="newAssignment.userId" class="form-select form-select-sm">
-              <option :value="null">Select user</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
+              <option :value="null">Select auditor</option>
+              <option v-for="u in auditorPool" :key="u.id" :value="u.id">{{ u.displayName || u.email }}</option>
             </select>
           </div>
           <div class="col-md-4">
@@ -399,7 +427,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
@@ -431,6 +459,8 @@ const auditorPool = ref([])
 const workflowDraftIds = ref([])
 const workflowAddUserId = ref(null)
 const returnNotes = ref('')
+const primaryAuditorDraft = ref(null)
+const primaryAuditorSaving = ref(false)
 
 const cockpitLoading = ref(false)
 const cockpitFindings = ref([])
@@ -482,22 +512,29 @@ const detailsTitle = computed(() => {
   return `${detailsModal.value.controlId} - ${detailsModal.value.name}`
 })
 
+watch(
+  () => audit.value?.assignedToUserId,
+  (id) => {
+    primaryAuditorDraft.value = id ?? null
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
   try {
-    const [auditRes, controlsRes, logsRes, assignmentsRes, usersRes, auditorsRes] = await Promise.all([
+    const [auditRes, controlsRes, logsRes, assignmentsRes, auditorsRes] = await Promise.all([
       api.get(`/api/audits/${auditId}`),
       api.get(`/api/audits/${auditId}/controls`),
       api.get(`/api/audits/${auditId}/activity-logs`),
       api.get(`/api/audits/${auditId}/assignments`),
-      api.get('/api/users'),
       api.get('/api/users/auditors').catch(() => ({ data: [] }))
     ])
     audit.value = auditRes.data
     auditControls.value = controlsRes.data || []
     activityLogs.value = logsRes.data || []
     assignments.value = assignmentsRes.data || []
-    users.value = usersRes.data || []
     auditorPool.value = auditorsRes.data || []
+    users.value = auditorPool.value
     await loadApproval()
     await loadCockpit()
   } finally {
@@ -606,9 +643,25 @@ async function approvalReturn() {
   }
 }
 
+async function savePrimaryAuditor() {
+  if (!audit.value || primaryAuditorSaving.value) return
+  primaryAuditorSaving.value = true
+  try {
+    const res = await api.put(`/api/audits/${auditId}/assign`, { userId: primaryAuditorDraft.value })
+    audit.value = res.data
+    const assignmentsRes = await api.get(`/api/audits/${auditId}/assignments`)
+    assignments.value = assignmentsRes.data || []
+    toastSuccess('Primary auditor updated.')
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to update assignment')
+  } finally {
+    primaryAuditorSaving.value = false
+  }
+}
+
 async function addAssignment() {
   if (!newAssignment.value.userId) {
-    toastWarning('Select a user first.')
+    toastWarning('Select an auditor first.')
     return
   }
   try {

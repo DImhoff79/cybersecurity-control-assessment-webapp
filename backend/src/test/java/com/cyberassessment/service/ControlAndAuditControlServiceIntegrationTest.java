@@ -78,8 +78,15 @@ class ControlAndAuditControlServiceIntegrationTest {
                 .email("other-control@test.com")
                 .passwordHash("x")
                 .displayName("Other")
-                .role(UserRole.APPLICATION_OWNER)
-                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
+        User leadAuditor = userRepository.save(User.builder()
+                .email("lead-control@test.com")
+                .passwordHash("x")
+                .displayName("Lead Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
                 .build());
         User admin = userRepository.save(User.builder()
                 .email("admin-control@test.com")
@@ -97,7 +104,7 @@ class ControlAndAuditControlServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2033);
-        auditService.assign(created.getId(), owner.getId());
+        auditService.assign(created.getId(), leadAuditor.getId());
         Long auditId = created.getId();
 
         authenticate(owner.getEmail());

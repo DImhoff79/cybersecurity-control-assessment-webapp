@@ -89,6 +89,7 @@
                 <th style="min-width: 420px;"><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('questionText')">Question {{ questionSortIndicator('questionText') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('controls')">Mapped controls {{ questionSortIndicator('controls') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleQuestionSort('askOwner')">Ask owners {{ questionSortIndicator('askOwner') }}</button></th>
+                <th>Owner answer profile</th>
                 <th></th>
               </tr>
             </thead>
@@ -115,6 +116,10 @@
                       @change="toggleAskOwner(q, $event.target.checked)"
                     />
                   </div>
+                </td>
+                <td class="small">
+                  <span v-if="q.ownerAnswerOptionProfileDisplayName" class="text-muted">{{ q.ownerAnswerOptionProfileDisplayName }}</span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td class="text-nowrap">
                   <button class="btn btn-secondary btn-sm" @click="openEdit(q)">Edit</button>
@@ -255,6 +260,7 @@ const search = ref('')
 const askOwnerFilter = ref('ALL')
 const questions = ref([])
 const allControls = ref([])
+const profiles = ref([])
 
 const editModal = ref(null)
 const editForm = ref({
@@ -267,7 +273,8 @@ const editForm = ref({
   mappingWeight: null,
   effectiveFrom: '',
   effectiveTo: '',
-  controls: []
+  controls: [],
+  ownerAnswerOptionProfileId: null
 })
 const toast = ref({ show: false, message: '', at: '' })
 let toastTimer = null
@@ -350,6 +357,13 @@ load()
 async function load() {
   loading.value = true
   try {
+    try {
+      const profilesRes = await api.get('/api/owner-answer-option-profiles')
+      profiles.value = profilesRes.data || []
+    } catch {
+      profiles.value = []
+    }
+
     const res = await api.get('/api/controls?framework=KROGER_CCF&includeQuestions=true')
     const controls = res.data || []
     allControls.value = controls.map((c) => ({ id: c.id, controlId: c.controlId, name: c.name }))
@@ -368,6 +382,8 @@ async function load() {
             mappingWeight: q.mappingWeight ?? null,
             effectiveFrom: q.effectiveFrom || '',
             effectiveTo: q.effectiveTo || '',
+            ownerAnswerOptionProfileId: q.ownerAnswerOptionProfileId ?? null,
+            ownerAnswerOptionProfileDisplayName: q.ownerAnswerOptionProfileDisplayName || '',
             controls: []
           })
         }
@@ -405,7 +421,7 @@ async function toggleAskOwner(question, enabled) {
 
 function openEdit(question) {
   editModal.value = question
-  editForm.value = {
+    editForm.value = {
     id: question.id,
     controlId: question.controlId,
     questionText: question.questionText,
@@ -415,7 +431,8 @@ function openEdit(question) {
     mappingWeight: question.mappingWeight ?? null,
     effectiveFrom: toDateTimeLocal(question.effectiveFrom),
     effectiveTo: toDateTimeLocal(question.effectiveTo),
-    controls: [...question.controls]
+    controls: [...question.controls],
+    ownerAnswerOptionProfileId: question.ownerAnswerOptionProfileId ?? profiles.value[0]?.id ?? null
   }
   newMappingControlId.value = null
 }
@@ -425,7 +442,8 @@ async function saveEdit() {
     await api.put(`/api/controls/${editForm.value.controlId}/questions/${editForm.value.id}`, {
       questionText: editForm.value.questionText,
       helpText: editForm.value.helpText,
-      askOwner: editForm.value.askOwner
+      askOwner: editForm.value.askOwner,
+      ownerAnswerOptionProfileId: editForm.value.ownerAnswerOptionProfileId
     })
     await api.put(`/api/controls/${editForm.value.controlId}/questions/${editForm.value.id}/mapping`, {
       mappingRationale: editForm.value.mappingRationale || null,

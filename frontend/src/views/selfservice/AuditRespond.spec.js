@@ -21,6 +21,18 @@ vi.mock('../../services/api', () => ({
   }
 }))
 
+const ownerResponseFromApi = {
+  ownerResponseOptions: [
+    { value: 'UNANSWERED', label: 'Choose…' },
+    { value: 'YES', label: 'Yes' },
+    { value: 'PARTIAL', label: 'Partial' },
+    { value: 'NO', label: 'No' },
+    { value: 'NOT_APPLICABLE', label: 'N/A' }
+  ],
+  ownerResponseFieldLabel: 'Which option best describes your situation?',
+  ownerResponseFieldHint: 'Choose the closest fit.'
+}
+
 describe('AuditRespond', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -43,7 +55,8 @@ describe('AuditRespond', () => {
               helpText: '',
               displayOrder: 0,
               askOwner: true,
-              existingAnswerText: ''
+              existingAnswerText: '',
+              ...ownerResponseFromApi
             },
             {
               questionId: 101,
@@ -55,7 +68,8 @@ describe('AuditRespond', () => {
               helpText: '',
               displayOrder: 0,
               askOwner: true,
-              existingAnswerText: ''
+              existingAnswerText: '',
+              ...ownerResponseFromApi
             }
           ]
         })
@@ -106,6 +120,7 @@ describe('AuditRespond', () => {
   it('submits assessment for admin review when complete', async () => {
     api.post.mockImplementation((url) => {
       if (url === '/api/audits/1/submit') return Promise.resolve({ data: { status: 'PENDING_APPROVAL' } })
+      if (url === '/api/audits/1/answers') return Promise.resolve({ data: {} })
       return Promise.resolve({ data: {} })
     })
 
@@ -139,7 +154,8 @@ describe('AuditRespond', () => {
               helpText: '',
               displayOrder: 0,
               askOwner: true,
-              existingAnswerText: 'YES'
+              existingAnswerText: 'YES',
+              ...ownerResponseFromApi
             }
           ]
         })
@@ -180,7 +196,8 @@ describe('AuditRespond', () => {
               helpText: '',
               displayOrder: 0,
               askOwner: true,
-              existingAnswerText: 'YES'
+              existingAnswerText: 'YES',
+              ...ownerResponseFromApi
             }
           ]
         })
@@ -222,7 +239,8 @@ describe('AuditRespond', () => {
               helpText: '',
               displayOrder: 0,
               askOwner: true,
-              existingAnswerText: ''
+              existingAnswerText: '',
+              ...ownerResponseFromApi
             },
             {
               questionId: 202,
@@ -234,7 +252,8 @@ describe('AuditRespond', () => {
               helpText: '',
               displayOrder: 1,
               askOwner: true,
-              existingAnswerText: ''
+              existingAnswerText: '',
+              ...ownerResponseFromApi
             }
           ]
         })

@@ -42,6 +42,7 @@ public class AuditService {
     private final JavaMailSender mailSender;
     private final AuditSeedProperties auditSeedProperties;
     private final ApplicationSecurityReviewService applicationSecurityReviewService;
+    private final OwnerAnswerOptionProfileService ownerAnswerOptionProfileService;
 
     public AuditService(AuditRepository auditRepository, ApplicationRepository applicationRepository,
                         ControlRepository controlRepository, AuditControlRepository auditControlRepository,
@@ -61,6 +62,7 @@ public class AuditService {
                         AuditActivityLogService auditActivityLogService,
                         AuditSeedProperties auditSeedProperties,
                         ApplicationSecurityReviewService applicationSecurityReviewService,
+                        OwnerAnswerOptionProfileService ownerAnswerOptionProfileService,
                         @Autowired(required = false) JavaMailSender mailSender) {
         this.auditRepository = auditRepository;
         this.applicationRepository = applicationRepository;
@@ -83,6 +85,7 @@ public class AuditService {
         this.auditActivityLogService = auditActivityLogService;
         this.auditSeedProperties = auditSeedProperties;
         this.applicationSecurityReviewService = applicationSecurityReviewService;
+        this.ownerAnswerOptionProfileService = ownerAnswerOptionProfileService;
         this.mailSender = mailSender;
     }
 
@@ -329,6 +332,7 @@ public class AuditService {
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         User user = userId != null ? userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId)) : null;
+        requireAuditorAssignee(user);
         audit.setAssignedTo(user);
         audit.setAssignedAt(user != null ? Instant.now() : null);
         if (user != null) {
@@ -462,6 +466,7 @@ public class AuditService {
                 Optional<AuditControlAnswer> existing = ac.getAnswers().stream()
                         .filter(a -> a.getQuestion().getId().equals(q.getId()))
                         .findFirst();
+                ResolvedOwnerAnswerUi ownerUi = ownerAnswerOptionProfileService.resolveForQuestion(q);
                 result.add(AuditQuestionItemDto.builder()
                         .questionId(q.getId())
                         .auditControlId(ac.getId())
@@ -473,6 +478,11 @@ public class AuditService {
                         .displayOrder(q.getDisplayOrder())
                         .askOwner(true)
                         .existingAnswerText(existing.map(AuditControlAnswer::getAnswerText).orElse(null))
+                        .ownerAnswerOptionProfileId(ownerUi.getProfileId())
+                        .ownerAnswerOptionProfileCode(ownerUi.getCode())
+                        .ownerResponseFieldLabel(ownerUi.getFieldLabel())
+                        .ownerResponseFieldHint(ownerUi.getFieldHint())
+                        .ownerResponseOptions(ownerUi.getOptions())
                         .build());
             }
         }
@@ -560,8 +570,9 @@ public class AuditService {
         ensureCanAccessAudit(audit);
         if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             User current = currentUserService.getCurrentUserOrThrow();
-            if (audit.getAssignedTo() == null || !audit.getAssignedTo().getId().equals(current.getId())) {
-                throw new IllegalArgumentException("Only the primary assignee can submit the full audit");
+            User appOwner = audit.getApplication().getOwner();
+            if (appOwner == null || !appOwner.getId().equals(current.getId())) {
+                throw new IllegalArgumentException("Only the application owner can submit the full audit");
             }
         }
         if (!isAuditCompleteForOwner(audit)) {
@@ -624,6 +635,7 @@ public class AuditService {
             throw new IllegalArgumentException("Missing permission: AUDIT_MANAGEMENT");
         }
         User user = userId != null ? userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId)) : null;
+        requireAuditorAssignee(user);
         List<AuditDto> updated = new ArrayList<>();
         for (Long auditId : auditIds) {
             Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
@@ -646,6 +658,16 @@ public class AuditService {
             updated.add(toDto(audit));
         }
         return updated;
+    }
+
+    /** Primary assignee and collaborators must be {@link UserRole#AUDITOR} users. */
+    private void requireAuditorAssignee(User user) {
+        if (user == null) {
+            return;
+        }
+        if (user.getRole() != UserRole.AUDITOR) {
+            throw new IllegalArgumentException("Only users with the Auditor role can be assigned to an audit");
+        }
     }
 
     private boolean isAuditCompleteForOwner(Audit audit) {
@@ -747,6 +769,7 @@ public class AuditService {
         }
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        requireAuditorAssignee(user);
         if (role == AuditAssignmentRole.PRIMARY) {
             deactivatePrimaryAssignments(auditId);
             audit.setAssignedTo(user);

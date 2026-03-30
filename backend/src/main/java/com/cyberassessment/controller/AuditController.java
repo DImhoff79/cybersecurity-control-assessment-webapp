@@ -72,7 +72,7 @@ public class AuditController {
     }
 
     @PutMapping("/audits/{auditId}/assign")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<AuditDto> assign(@PathVariable Long auditId, @RequestBody Map<String, Object> body) {
         Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;
         try {
@@ -169,7 +169,7 @@ public class AuditController {
     }
 
     @PostMapping("/audits/{auditId}/assignments")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<List<AuditAssignmentDto>> addAssignment(@PathVariable Long auditId, @RequestBody Map<String, Object> body) {
         Long userId = body.get("userId") != null ? ((Number) body.get("userId")).longValue() : null;
         AuditAssignmentRole role = body.get("role") != null ? AuditAssignmentRole.valueOf(body.get("role").toString()) : AuditAssignmentRole.DELEGATE;
@@ -180,7 +180,7 @@ public class AuditController {
     }
 
     @DeleteMapping("/audits/{auditId}/assignments/{assignmentId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
     public ResponseEntity<List<AuditAssignmentDto>> removeAssignment(@PathVariable Long auditId, @PathVariable Long assignmentId) {
         return ResponseEntity.ok(auditService.removeAssignment(auditId, assignmentId));
     }

@@ -25,6 +25,11 @@ export const adminSections = [
         permission: 'AUDIT_MANAGEMENT'
       },
       {
+        label: 'Owner answer options',
+        to: '/admin/owner-answer-option-profiles',
+        permission: 'AUDIT_MANAGEMENT'
+      },
+      {
         label: 'Branching demo',
         to: '/admin/branching-workflow-demo',
         permission: 'AUDIT_MANAGEMENT'

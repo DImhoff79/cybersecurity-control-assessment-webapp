@@ -18,6 +18,9 @@ public class QuestionLibraryRowDto {
     private String helpText;
     private Boolean askOwner;
     private Integer displayOrder;
+    private Long ownerAnswerOptionProfileId;
+    private String ownerAnswerOptionProfileCode;
+    private String ownerAnswerOptionProfileDisplayName;
     @Builder.Default
     private List<QuestionMappingRefDto> mappings = new ArrayList<>();
 }

@@ -61,6 +61,13 @@ class AuditProjectServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("project-auditor@test.com")
+                .passwordHash("x")
+                .displayName("Project Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
 
         Application app1 = applicationRepository.save(Application.builder().name("PCI Billing").owner(owner).build());
         Application app2 = applicationRepository.save(Application.builder().name("PCI Orders").owner(owner).build());
@@ -75,7 +82,8 @@ class AuditProjectServiceIntegrationTest {
                 "Annual PCI audit",
                 null,
                 Instant.parse("2099-12-31T23:59:59Z"),
-                List.of(app1.getId(), app2.getId())
+                List.of(app1.getId(), app2.getId()),
+                auditor.getId()
         );
 
         assertThat(created.getId()).isNotNull();
@@ -83,7 +91,7 @@ class AuditProjectServiceIntegrationTest {
         assertThat(created.getScopedApplications()).hasSize(2);
         assertThat(created.getTotalAudits()).isEqualTo(2); // existing year-matching audit is linked + missing audit is created
         assertThat(created.getAudits()).allMatch(a -> "PCI 2036".equals(a.getProjectName()));
-        assertThat(created.getAudits()).allMatch(a -> "project-owner@test.com".equals(a.getAssignedToEmail()));
+        assertThat(created.getAudits()).allMatch(a -> "project-auditor@test.com".equals(a.getAssignedToEmail()));
 
         Audit linkedAudit = auditRepository.findByApplicationIdAndYear(app2.getId(), 2099).orElseThrow();
         assertThat(linkedAudit.getAuditProject()).isNotNull();
@@ -138,8 +146,7 @@ class AuditProjectServiceIntegrationTest {
         assertThat(oldAudit.getAuditProject()).isNull();
         assertThat(newAudit.getAuditProject()).isNotNull();
         assertThat(newAudit.getAuditProject().getId()).isEqualTo(created.getId());
-        assertThat(newAudit.getAssignedTo()).isNotNull();
-        assertThat(newAudit.getAssignedTo().getEmail()).isEqualTo(owner.getEmail());
+        assertThat(newAudit.getAssignedTo()).isNull();
     }
 
     @Test

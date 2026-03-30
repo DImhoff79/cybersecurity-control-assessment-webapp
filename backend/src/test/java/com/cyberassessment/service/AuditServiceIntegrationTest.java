@@ -68,6 +68,13 @@ class AuditServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("auditor-audit-service@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
 
         Application app = applicationRepository.save(Application.builder()
                 .name("Audit Service App")
@@ -80,8 +87,8 @@ class AuditServiceIntegrationTest {
         assertThat(created.getStatus()).isEqualTo(AuditStatus.DRAFT);
         assertThat(auditControlRepository.findByAuditId(created.getId())).isNotEmpty();
 
-        AuditDto assigned = auditService.assign(created.getId(), owner.getId());
-        assertThat(assigned.getAssignedToUserId()).isEqualTo(owner.getId());
+        AuditDto assigned = auditService.assign(created.getId(), auditor.getId());
+        assertThat(assigned.getAssignedToUserId()).isEqualTo(auditor.getId());
         assertThat(assigned.getAssignedAt()).isNotNull();
 
         AuditDto sent = auditService.sendToOwner(created.getId());
@@ -146,6 +153,13 @@ class AuditServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("auditor-access@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Access App")
                 .description("test")
@@ -154,7 +168,7 @@ class AuditServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2032);
-        auditService.assign(created.getId(), owner.getId());
+        auditService.assign(created.getId(), auditor.getId());
 
         authenticate(other.getEmail());
         assertThatThrownBy(() -> auditService.getQuestionsForAudit(created.getId()))
@@ -191,9 +205,17 @@ class AuditServiceIntegrationTest {
                 .owner(owner)
                 .build());
 
+        User leadAuditor = userRepository.save(User.builder()
+                .email("lead-auditor-submit@test.com")
+                .passwordHash("x")
+                .displayName("Lead Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
+
         authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2034);
-        auditService.assign(created.getId(), owner.getId());
+        auditService.assign(created.getId(), leadAuditor.getId());
         auditService.addAssignment(created.getId(), auditor.getId(), AuditAssignmentRole.REVIEWER);
         auditService.sendToOwner(created.getId());
         authenticate(owner.getEmail());
@@ -239,6 +261,13 @@ class AuditServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("bulk-auditor@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Bulk App")
                 .description("test")
@@ -249,9 +278,9 @@ class AuditServiceIntegrationTest {
         AuditDto a1 = auditService.create(app.getId(), 2040);
         AuditDto a2 = auditService.create(app.getId(), 2041);
 
-        List<AuditDto> updated = auditService.bulkAssign(List.of(a1.getId(), a2.getId()), owner.getId(), true);
+        List<AuditDto> updated = auditService.bulkAssign(List.of(a1.getId(), a2.getId()), auditor.getId(), true);
         assertThat(updated).hasSize(2);
-        assertThat(updated).allMatch(a -> a.getAssignedToUserId().equals(owner.getId()));
+        assertThat(updated).allMatch(a -> a.getAssignedToUserId().equals(auditor.getId()));
         assertThat(updated).allMatch(a -> a.getSentAt() != null);
         assertThat(updated).allMatch(a -> a.getStatus() == AuditStatus.IN_PROGRESS || a.getStatus() == AuditStatus.DRAFT);
     }
@@ -276,8 +305,15 @@ class AuditServiceIntegrationTest {
                 .email("delegate-user@test.com")
                 .passwordHash("x")
                 .displayName("Delegate")
-                .role(UserRole.APPLICATION_OWNER)
-                .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
+        User leadAuditor = userRepository.save(User.builder()
+                .email("delegate-lead@test.com")
+                .passwordHash("x")
+                .displayName("Lead")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
                 .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Delegate App")
@@ -287,7 +323,7 @@ class AuditServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto created = auditService.create(app.getId(), 2042);
-        auditService.assign(created.getId(), owner.getId());
+        auditService.assign(created.getId(), leadAuditor.getId());
         auditService.addAssignment(created.getId(), delegate.getId(), AuditAssignmentRole.DELEGATE);
 
         authenticate(delegate.getEmail());

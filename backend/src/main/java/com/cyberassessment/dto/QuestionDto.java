@@ -26,4 +26,7 @@ public class QuestionDto {
     private String intakeStepKey;
     private String intakeInputType;
     private String intakeChoicesJson;
+    private Long ownerAnswerOptionProfileId;
+    private String ownerAnswerOptionProfileCode;
+    private String ownerAnswerOptionProfileDisplayName;
 }

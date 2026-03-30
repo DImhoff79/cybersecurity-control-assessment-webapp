@@ -68,6 +68,13 @@ class AuditEvidenceServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("evidence-auditor@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Evidence App")
                 .description("test")
@@ -76,7 +83,7 @@ class AuditEvidenceServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto audit = auditService.create(app.getId(), 2036);
-        auditService.assign(audit.getId(), owner.getId());
+        auditService.assign(audit.getId(), auditor.getId());
         auditService.sendToOwner(audit.getId());
         Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
 
@@ -118,6 +125,13 @@ class AuditEvidenceServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("evidence-auditor2@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Evidence Policy App")
                 .description("test")
@@ -126,7 +140,7 @@ class AuditEvidenceServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto audit = auditService.create(app.getId(), 2037);
-        auditService.assign(audit.getId(), owner.getId());
+        auditService.assign(audit.getId(), auditor.getId());
         auditService.sendToOwner(audit.getId());
         Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
 
@@ -159,6 +173,13 @@ class AuditEvidenceServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("evidence-auditor3@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Evidence Freshness App")
                 .description("test")
@@ -167,7 +188,7 @@ class AuditEvidenceServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto audit = auditService.create(app.getId(), 2038);
-        auditService.assign(audit.getId(), owner.getId());
+        auditService.assign(audit.getId(), auditor.getId());
         auditService.sendToOwner(audit.getId());
         Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
 
@@ -205,6 +226,13 @@ class AuditEvidenceServiceIntegrationTest {
                 .role(UserRole.APPLICATION_OWNER)
                 .permissions(UserRole.APPLICATION_OWNER.defaultPermissions())
                 .build());
+        User auditor = userRepository.save(User.builder()
+                .email("evidence-auditor4@test.com")
+                .passwordHash("x")
+                .displayName("Auditor")
+                .role(UserRole.AUDITOR)
+                .permissions(UserRole.AUDITOR.defaultPermissions())
+                .build());
         Application app = applicationRepository.save(Application.builder()
                 .name("Evidence Lifecycle App")
                 .description("test")
@@ -213,7 +241,7 @@ class AuditEvidenceServiceIntegrationTest {
 
         authenticate(admin.getEmail());
         AuditDto audit = auditService.create(app.getId(), 2039);
-        auditService.assign(audit.getId(), owner.getId());
+        auditService.assign(audit.getId(), auditor.getId());
         auditService.sendToOwner(audit.getId());
         Long auditControlId = auditControlRepository.findByAuditId(audit.getId()).get(0).getId();
 

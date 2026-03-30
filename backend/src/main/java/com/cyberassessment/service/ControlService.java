@@ -84,7 +84,7 @@ public class ControlService {
 
     public static QuestionDto questionToDto(Question q, Long controlId, com.cyberassessment.entity.QuestionControlMapping mapping) {
         if (q == null) return null;
-        return QuestionDto.builder()
+        QuestionDto.QuestionDtoBuilder b = QuestionDto.builder()
                 .id(q.getId())
                 .controlId(controlId)
                 .questionText(q.getQuestionText())
@@ -97,8 +97,13 @@ public class ControlService {
                 .effectiveTo(mapping != null ? mapping.getEffectiveTo() : null)
                 .intakeStepKey(q.getIntakeStepKey())
                 .intakeInputType(q.getIntakeInputType())
-                .intakeChoicesJson(q.getIntakeChoicesJson())
-                .build();
+                .intakeChoicesJson(q.getIntakeChoicesJson());
+        if (q.getOwnerAnswerOptionProfile() != null) {
+            b.ownerAnswerOptionProfileId(q.getOwnerAnswerOptionProfile().getId())
+                    .ownerAnswerOptionProfileCode(q.getOwnerAnswerOptionProfile().getCode())
+                    .ownerAnswerOptionProfileDisplayName(q.getOwnerAnswerOptionProfile().getDisplayName());
+        }
+        return b.build();
     }
 
     @Transactional(readOnly = true)

@@ -53,7 +53,10 @@ public class AuditProjectController {
             @SuppressWarnings("unchecked")
             List<Number> appIdsRaw = body.containsKey("applicationIds") ? (List<Number>) body.get("applicationIds") : List.of();
             List<Long> appIds = appIdsRaw.stream().map(Number::longValue).toList();
-            AuditProjectDto created = auditProjectService.create(name, frameworkTag, year, notes, startsAt, dueAt, appIds);
+            Long primaryAuditorUserId = body.get("primaryAuditorUserId") != null
+                    ? ((Number) body.get("primaryAuditorUserId")).longValue()
+                    : null;
+            AuditProjectDto created = auditProjectService.create(name, frameworkTag, year, notes, startsAt, dueAt, appIds, primaryAuditorUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

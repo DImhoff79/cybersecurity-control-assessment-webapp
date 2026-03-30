@@ -115,7 +115,7 @@ class AuditQuestionVisibilityAndDeleteTest {
 
         authenticate(owner.getEmail());
 
-        questionService.update(control.getId(), hiddenQuestion.getId(), null, null, null, false);
+        questionService.update(control.getId(), hiddenQuestion.getId(), null, null, null, false, false, null);
 
         List<AuditQuestionItemDto> items = auditService.getQuestionsForAudit(audit.getId());
         assertThat(items).extracting(AuditQuestionItemDto::getQuestionText).containsExactly("Shown question?");

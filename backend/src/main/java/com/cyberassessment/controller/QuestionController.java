@@ -41,11 +41,13 @@ public class QuestionController {
         String questionText = (String) body.get("questionText");
         String helpText = (String) body.get("helpText");
         Boolean askOwner = body.containsKey("askOwner") ? (Boolean) body.get("askOwner") : null;
+        Long ownerAnswerOptionProfileId = body.get("ownerAnswerOptionProfileId") != null
+                ? ((Number) body.get("ownerAnswerOptionProfileId")).longValue() : null;
         if (questionText == null || questionText.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
         try {
-            QuestionDto created = questionService.create(controlId, questionText, displayOrder, helpText, askOwner);
+            QuestionDto created = questionService.create(controlId, questionText, displayOrder, helpText, askOwner, ownerAnswerOptionProfileId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
@@ -59,8 +61,12 @@ public class QuestionController {
         Integer displayOrder = body.get("displayOrder") != null ? ((Number) body.get("displayOrder")).intValue() : null;
         String helpText = body.containsKey("helpText") ? (String) body.get("helpText") : null;
         Boolean askOwner = body.containsKey("askOwner") ? (Boolean) body.get("askOwner") : null;
+        boolean applyOwnerAnswerOptionProfile = body.containsKey("ownerAnswerOptionProfileId");
+        Long ownerAnswerOptionProfileId = body.get("ownerAnswerOptionProfileId") != null
+                ? ((Number) body.get("ownerAnswerOptionProfileId")).longValue() : null;
         try {
-            QuestionDto updated = questionService.update(controlId, id, questionText, displayOrder, helpText, askOwner);
+            QuestionDto updated = questionService.update(controlId, id, questionText, displayOrder, helpText, askOwner,
+                    applyOwnerAnswerOptionProfile, ownerAnswerOptionProfileId);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
