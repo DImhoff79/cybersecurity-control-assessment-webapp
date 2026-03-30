@@ -26,10 +26,11 @@ public class AuditProjectService {
     private final AuditRepository auditRepository;
     private final AuditService auditService;
     private final CurrentUserService currentUserService;
+    private final ApplicationService applicationService;
 
-    public static AuditProjectDto toDto(AuditProject p) {
+    private AuditProjectDto toDto(AuditProject p) {
         User createdBy = p.getCreatedBy();
-        List<ApplicationDto> apps = p.getApplications().stream().map(ApplicationService::toDto).toList();
+        List<ApplicationDto> apps = p.getApplications().stream().map(applicationService::toDto).toList();
         List<AuditDto> audits = p.getAudits().stream().map(AuditService::toDto).toList();
         long complete = p.getAudits().stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count();
         return AuditProjectDto.builder()
@@ -53,12 +54,12 @@ public class AuditProjectService {
 
     @Transactional(readOnly = true)
     public List<AuditProjectDto> list() {
-        return auditProjectRepository.findAllByOrderByCreatedAtDesc().stream().map(AuditProjectService::toDto).toList();
+        return auditProjectRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public AuditProjectDto get(Long projectId) {
-        return auditProjectRepository.findById(projectId).map(AuditProjectService::toDto)
+        return auditProjectRepository.findById(projectId).map(this::toDto)
                 .orElseThrow(() -> new IllegalArgumentException("Audit project not found"));
     }
 
@@ -112,7 +113,7 @@ public class AuditProjectService {
                 .createdByUserId(project.getCreatedBy() != null ? project.getCreatedBy().getId() : null)
                 .createdByEmail(project.getCreatedBy() != null ? project.getCreatedBy().getEmail() : null)
                 .createdAt(project.getCreatedAt())
-                .scopedApplications(applications.stream().map(ApplicationService::toDto).toList())
+                .scopedApplications(applications.stream().map(applicationService::toDto).toList())
                 .audits(audits)
                 .totalAudits(audits.size())
                 .completeAudits(audits.stream().filter(a -> a.getStatus() == AuditStatus.COMPLETE).count())

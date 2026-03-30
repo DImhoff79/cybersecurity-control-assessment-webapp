@@ -28,6 +28,8 @@ cd backend
 
 Class: `com.cyberassessment.controller.ApplicationApiSmokeIntegrationTest` — auth providers, **`/api/auth/me`**, actuator health (mail health indicator disabled in-test), and demo branching workflow endpoints.
 
+**Profiles** (narrow Surefire includes): `-Pbackend-smoke`, `-Pbackend-unit`, `-Pbackend-integration`, `-Pbackend-regression`. Example: `./mvnw test -Pbackend-smoke`.
+
 On **Windows PowerShell**, quote JVM/Maven flags that contain dots, e.g. `.\mvnw.cmd spring-boot:run "-Dmaven.test.skip=true"`.
 
 ## Key packages
@@ -38,4 +40,4 @@ On **Windows PowerShell**, quote JVM/Maven flags that contain dots, e.g. `.\mvnw
 | `service` | Domain logic |
 | `repository` / `entity` | JPA |
 | `security` | `CustomUserDetailsService`, `AppOAuth2UserService` |
-| `resources/db/migration` | Flyway SQL (through **V36**, includes demo branching seed) |
+| `resources/db/migration` | Flyway SQL (through **V50**; includes branching demo, regulatory scope, security review, intake, canonical flow) |

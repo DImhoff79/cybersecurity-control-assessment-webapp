@@ -27,4 +27,8 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     long countByControlId(Long controlId);
 
     Optional<Question> findFirstByQuestionTextIgnoreCase(String questionText);
+
+    List<Question> findByIntakeStepKeyIsNotNullOrderByDisplayOrderAsc();
+
+    Optional<Question> findByIntakeStepKey(String intakeStepKey);
 }

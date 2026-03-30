@@ -4,6 +4,7 @@ import com.cyberassessment.dto.UserDto;
 import com.cyberassessment.entity.User;
 import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.UserRepository;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@Tag("unit")
 @ExtendWith(MockitoExtension.class)
 class UserServiceUnitTest {
 

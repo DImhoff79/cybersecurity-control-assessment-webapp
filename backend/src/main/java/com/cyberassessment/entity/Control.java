@@ -5,7 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "controls")
@@ -41,6 +43,13 @@ public class Control {
 
     @Column(length = 255)
     private String category;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "control_regulatory_scope", joinColumns = @JoinColumn(name = "control_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope", nullable = false, length = 32)
+    @Builder.Default
+    private Set<RegulatoryScopeTag> regulatoryScopes = new HashSet<>();
 
     @OneToMany(mappedBy = "control", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")

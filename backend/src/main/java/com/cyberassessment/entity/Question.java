@@ -36,4 +36,16 @@ public class Question {
     @Column(name = "ask_owner", nullable = false)
     @Builder.Default
     private Boolean askOwner = true;
+
+    /** When set, this question drives the application owner intake wizard (library single source of truth). */
+    @Column(name = "intake_step_key", length = 64)
+    private String intakeStepKey;
+
+    /** For CHOICE intake steps: JSON array of {id,label}. */
+    @Column(name = "intake_choices_json", length = 4000)
+    private String intakeChoicesJson;
+
+    /** TEXT, CHOICE, YES_NO — intake presentation when {@link #intakeStepKey} is set. */
+    @Column(name = "intake_input_type", length = 24)
+    private String intakeInputType;
 }

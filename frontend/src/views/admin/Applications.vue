@@ -24,6 +24,7 @@
                 <th><button type="button" class="workspace-table-sort" @click="toggleSort('criticality')">Criticality {{ sortIndicator('criticality') }}</button></th>
                 <th><button type="button" class="workspace-table-sort" @click="toggleSort('lifecycle')">Lifecycle {{ sortIndicator('lifecycle') }}</button></th>
                 <th>Regulatory data types</th>
+                <th>Security arch. review</th>
                 <th></th>
               </tr>
             </thead>
@@ -49,6 +50,19 @@
                     class="text-muted"
                     >—</span
                   >
+                </td>
+                <td class="small">
+                  <span
+                    v-if="a.securityArchitectureReview"
+                    class="badge me-1"
+                    :class="secReviewBadgeClass(a.securityArchitectureReview.status)"
+                  >
+                    {{ secReviewLabel(a.securityArchitectureReview.status) }}
+                  </span>
+                  <span v-else class="text-muted">—</span>
+                  <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline" @click="openReviewModal(a)">
+                    Update
+                  </button>
                 </td>
                 <td class="text-nowrap">
                   <button class="btn btn-secondary btn-sm me-2" @click="openModal(a)">Edit</button>
@@ -206,6 +220,31 @@
         <button type="submit" form="application-form" class="btn btn-primary">Save</button>
       </template>
     </BsModal>
+
+    <BsModal v-model="showReviewModal" title="Security architecture review">
+      <form id="review-form" @submit.prevent="saveReview">
+        <p class="small text-muted mb-3">
+          Parallel to control attestation—updating this does not block the owner assessment.
+        </p>
+        <div class="mb-3">
+          <label class="form-label">Status</label>
+          <select v-model="reviewForm.status" class="form-select" required>
+            <option value="NOT_STARTED">Not started</option>
+            <option value="IN_REVIEW">In review</option>
+            <option value="APPROVED">Approved</option>
+            <option value="CHANGES_REQUESTED">Changes requested</option>
+          </select>
+        </div>
+        <div class="mb-0">
+          <label class="form-label">Notes</label>
+          <textarea v-model="reviewForm.notes" class="form-control" rows="4" placeholder="Optional feedback for the owner" />
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="showReviewModal = false">Cancel</button>
+        <button type="submit" form="review-form" class="btn btn-primary">Save</button>
+      </template>
+    </BsModal>
   </div>
 </template>
 
@@ -219,6 +258,12 @@ import { useTableSort } from '../../composables/useTableSort'
 const applications = ref([])
 const users = ref([])
 const showModal = ref(false)
+const showReviewModal = ref(false)
+const reviewApp = ref(null)
+const reviewForm = reactive({
+  status: 'NOT_STARTED',
+  notes: ''
+})
 const editing = ref(null)
 const form = reactive({
   name: '',
@@ -306,6 +351,45 @@ async function remove(id) {
     load()
   } catch (e) {
     toastError(e.response?.data?.error || 'Failed to delete')
+  }
+}
+
+function secReviewLabel(status) {
+  const m = {
+    NOT_STARTED: 'Not started',
+    IN_REVIEW: 'In review',
+    APPROVED: 'Approved',
+    CHANGES_REQUESTED: 'Changes requested'
+  }
+  return m[status] || status || '—'
+}
+
+function secReviewBadgeClass(status) {
+  if (status === 'APPROVED') return 'text-bg-success'
+  if (status === 'CHANGES_REQUESTED') return 'text-bg-warning text-dark'
+  if (status === 'IN_REVIEW') return 'text-bg-info text-dark'
+  return 'text-bg-secondary'
+}
+
+function openReviewModal(app) {
+  reviewApp.value = app
+  reviewForm.status = app.securityArchitectureReview?.status || 'NOT_STARTED'
+  reviewForm.notes = app.securityArchitectureReview?.notes || ''
+  showReviewModal.value = true
+}
+
+async function saveReview() {
+  if (!reviewApp.value?.id) return
+  try {
+    await api.patch(`/api/applications/${reviewApp.value.id}/security-architecture-review`, {
+      status: reviewForm.status,
+      notes: reviewForm.notes || null
+    })
+    toastSuccess('Security review updated.')
+    showReviewModal.value = false
+    load()
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Failed to save review')
   }
 }
 </script>

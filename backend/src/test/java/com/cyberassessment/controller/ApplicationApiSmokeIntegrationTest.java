@@ -1,5 +1,6 @@
 package com.cyberassessment.controller;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -25,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // No SMTP in test JVM; mail health would make aggregate status DOWN and break this smoke check.
         "management.health.mail.enabled=false"
 })
+@Tag("smoke")
+@Tag("integration")
 @AutoConfigureMockMvc
 class ApplicationApiSmokeIntegrationTest {
 

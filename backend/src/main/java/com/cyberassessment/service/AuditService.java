@@ -1,8 +1,10 @@
 package com.cyberassessment.service;
 
+import com.cyberassessment.config.AuditSeedProperties;
 import com.cyberassessment.dto.*;
 import com.cyberassessment.entity.*;
 import com.cyberassessment.repository.*;
+import com.cyberassessment.util.RegulatoryScopeMatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -38,6 +40,8 @@ public class AuditService {
     private final UserRepository userRepository;
     private final AuditActivityLogService auditActivityLogService;
     private final JavaMailSender mailSender;
+    private final AuditSeedProperties auditSeedProperties;
+    private final ApplicationSecurityReviewService applicationSecurityReviewService;
 
     public AuditService(AuditRepository auditRepository, ApplicationRepository applicationRepository,
                         ControlRepository controlRepository, AuditControlRepository auditControlRepository,
@@ -55,6 +59,8 @@ public class AuditService {
                         QuestionnaireTemplateItemRepository questionnaireTemplateItemRepository,
                         CurrentUserService currentUserService, UserRepository userRepository,
                         AuditActivityLogService auditActivityLogService,
+                        AuditSeedProperties auditSeedProperties,
+                        ApplicationSecurityReviewService applicationSecurityReviewService,
                         @Autowired(required = false) JavaMailSender mailSender) {
         this.auditRepository = auditRepository;
         this.applicationRepository = applicationRepository;
@@ -75,6 +81,8 @@ public class AuditService {
         this.currentUserService = currentUserService;
         this.userRepository = userRepository;
         this.auditActivityLogService = auditActivityLogService;
+        this.auditSeedProperties = auditSeedProperties;
+        this.applicationSecurityReviewService = applicationSecurityReviewService;
         this.mailSender = mailSender;
     }
 
@@ -204,8 +212,13 @@ public class AuditService {
     }
 
     private void seedAuditControlsAndSnapshot(Audit audit) {
-        List<Control> enabledControls = controlRepository.findByEnabled(true);
+        Application app = audit.getApplication();
+        List<Control> enabledControls = controlRepository.findAllEnabledWithRegulatoryScopes();
         for (Control c : enabledControls) {
+            if (auditSeedProperties.isRegulatoryScopeFilterEnabled()
+                    && !RegulatoryScopeMatcher.controlAppliesToApplication(c, app)) {
+                continue;
+            }
             AuditControl ac = AuditControl.builder()
                     .audit(audit)
                     .control(c)
@@ -229,6 +242,10 @@ public class AuditService {
     private AuditDto enrichAuditDto(Audit audit) {
         AuditDto dto = AuditService.toDto(audit);
         enrichPendingAuditor(audit.getId(), dto);
+        if (audit.getApplication() != null && audit.getApplication().getId() != null) {
+            applicationSecurityReviewService.findSummary(audit.getApplication().getId())
+                    .ifPresent(dto::setSecurityArchitectureReview);
+        }
         return dto;
     }
 
@@ -349,23 +366,46 @@ public class AuditService {
     @Transactional(readOnly = true)
     public List<AuditDto> findMyAudits() {
         User current = currentUserService.getCurrentUserOrThrow();
+        List<AuditDto> dtos;
         if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
-            return auditRepository.findAll().stream().map(AuditService::toDto).collect(Collectors.toList());
+            dtos = auditRepository.findAll().stream().map(AuditService::toDto).collect(Collectors.toList());
+        } else {
+            List<Audit> direct = auditRepository.findByAssignedTo(current);
+            List<Audit> collaboratorAudits = auditAssignmentRepository.findByUserIdAndActiveTrue(current.getId())
+                    .stream()
+                    .map(AuditAssignment::getAudit)
+                    .toList();
+            List<Audit> ownedAppAudits = auditRepository.findByApplicationOwnerId(current.getId());
+            List<Audit> approvalAudits = auditApprovalStepRepository.findDistinctAuditsByAssignedToUserId(current.getId());
+            List<Audit> findingOwnerAudits = findingRepository.findDistinctAuditsByOwnerUserId(current.getId());
+            dtos = java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream(), approvalAudits.stream(), findingOwnerAudits.stream())
+                    .flatMap(s -> s)
+                    .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
+                    .values().stream()
+                    .map(AuditService::toDto)
+                    .toList();
         }
-        List<Audit> direct = auditRepository.findByAssignedTo(current);
-        List<Audit> collaboratorAudits = auditAssignmentRepository.findByUserIdAndActiveTrue(current.getId())
-                .stream()
-                .map(AuditAssignment::getAudit)
-                .toList();
-        List<Audit> ownedAppAudits = auditRepository.findByApplicationOwnerId(current.getId());
-        List<Audit> approvalAudits = auditApprovalStepRepository.findDistinctAuditsByAssignedToUserId(current.getId());
-        List<Audit> findingOwnerAudits = findingRepository.findDistinctAuditsByOwnerUserId(current.getId());
-        return java.util.stream.Stream.of(direct.stream(), collaboratorAudits.stream(), ownedAppAudits.stream(), approvalAudits.stream(), findingOwnerAudits.stream())
-                .flatMap(s -> s)
-                .collect(Collectors.toMap(Audit::getId, a -> a, (a, b) -> a))
-                .values().stream()
-                .map(AuditService::toDto)
-                .toList();
+        attachSecurityReviews(dtos);
+        return dtos;
+    }
+
+    private void attachSecurityReviews(List<AuditDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            return;
+        }
+        Set<Long> appIds = dtos.stream()
+                .map(AuditDto::getApplicationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, ApplicationSecurityReviewSummaryDto> byApp = applicationSecurityReviewService.findSummariesByApplicationIds(appIds);
+        for (AuditDto d : dtos) {
+            if (d.getApplicationId() != null) {
+                ApplicationSecurityReviewSummaryDto s = byApp.get(d.getApplicationId());
+                if (s != null) {
+                    d.setSecurityArchitectureReview(s);
+                }
+            }
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ package com.cyberassessment.controller;
 
 import com.cyberassessment.entity.UserPermission;
 import com.cyberassessment.entity.UserRole;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +27,8 @@ import static org.assertj.core.api.Assertions.fail;
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=validate"
 })
+@Tag("smoke")
+@Tag("integration")
 @Transactional
 class AccessGuardSmokeIntegrationTest {
 

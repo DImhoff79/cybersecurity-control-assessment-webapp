@@ -106,6 +106,28 @@
           <input type="checkbox" v-model="editForm.enabled" class="form-check-input" id="enabledControl" />
           <label class="form-check-label" for="enabledControl">Enabled</label>
         </div>
+        <div class="mb-0">
+          <label class="form-label d-block">Regulatory scope tags</label>
+          <p class="small text-muted mb-2">
+            Empty = baseline control (always in scope when enabled). Tagged controls are filtered against application triage when regulatory filtering is on.
+          </p>
+          <div class="form-check">
+            <input id="rs-pii" v-model="editForm.regulatoryScopes" class="form-check-input" type="checkbox" value="PII" />
+            <label class="form-check-label" for="rs-pii">PII</label>
+          </div>
+          <div class="form-check">
+            <input id="rs-pci" v-model="editForm.regulatoryScopes" class="form-check-input" type="checkbox" value="PCI" />
+            <label class="form-check-label" for="rs-pci">PCI</label>
+          </div>
+          <div class="form-check">
+            <input id="rs-sox" v-model="editForm.regulatoryScopes" class="form-check-input" type="checkbox" value="SOX" />
+            <label class="form-check-label" for="rs-sox">SOX</label>
+          </div>
+          <div class="form-check">
+            <input id="rs-hipaa" v-model="editForm.regulatoryScopes" class="form-check-input" type="checkbox" value="HIPAA" />
+            <label class="form-check-label" for="rs-hipaa">HIPAA</label>
+          </div>
+        </div>
       </form>
       <template #footer>
         <button type="button" class="btn btn-secondary" @click="isEditOpen = false">Cancel</button>
@@ -230,7 +252,7 @@ const filterEnabled = ref(false)
 const createModal = ref(false)
 const createForm = ref({ controlId: '', name: '', framework: '', description: '', enabled: true, category: '' })
 const editModal = ref(null)
-const editForm = ref({ id: null, name: '', description: '', enabled: true })
+const editForm = ref({ id: null, name: '', description: '', enabled: true, regulatoryScopes: [] })
 const questionsModal = ref(null)
 const questionsList = ref([])
 const newQuestionText = ref('')
@@ -344,7 +366,13 @@ async function toggleEnabled(c) {
 
 function openEdit(c) {
   editModal.value = c
-  editForm.value = { id: c.id, name: c.name, description: c.description || '', enabled: c.enabled }
+  editForm.value = {
+    id: c.id,
+    name: c.name,
+    description: c.description || '',
+    enabled: c.enabled,
+    regulatoryScopes: [...(c.regulatoryScopes || [])]
+  }
 }
 
 async function saveControl() {
@@ -352,7 +380,8 @@ async function saveControl() {
     await api.patch(`/api/controls/${editForm.value.id}`, {
       name: editForm.value.name,
       description: editForm.value.description,
-      enabled: editForm.value.enabled
+      enabled: editForm.value.enabled,
+      regulatoryScopes: editForm.value.regulatoryScopes || []
     })
     editModal.value = null
     await load()

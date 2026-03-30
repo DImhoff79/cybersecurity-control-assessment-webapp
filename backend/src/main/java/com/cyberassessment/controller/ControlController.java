@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -38,8 +39,9 @@ public class ControlController {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
         Boolean enabled = body.containsKey("enabled") ? (Boolean) body.get("enabled") : null;
+        List<String> regulatoryScopes = parseStringList(body.get("regulatoryScopes"));
         try {
-            ControlDto updated = controlService.patch(id, name, description, enabled);
+            ControlDto updated = controlService.patch(id, name, description, enabled, regulatoryScopes);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
@@ -52,12 +54,33 @@ public class ControlController {
         String name = body.containsKey("name") ? (String) body.get("name") : null;
         String description = body.containsKey("description") ? (String) body.get("description") : null;
         Boolean enabled = body.containsKey("enabled") ? (Boolean) body.get("enabled") : null;
+        List<String> regulatoryScopes = parseStringList(body.get("regulatoryScopes"));
         try {
-            ControlDto updated = controlService.update(id, name, description, enabled);
+            ControlDto updated = controlService.update(id, name, description, enabled, regulatoryScopes);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    private static List<String> parseStringList(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (!(raw instanceof List<?> list)) {
+            return null;
+        }
+        List<String> out = new ArrayList<>();
+        for (Object o : list) {
+            if (o == null) {
+                continue;
+            }
+            String s = String.valueOf(o).trim();
+            if (!s.isEmpty()) {
+                out.add(s);
+            }
+        }
+        return out;
     }
 
     @PostMapping

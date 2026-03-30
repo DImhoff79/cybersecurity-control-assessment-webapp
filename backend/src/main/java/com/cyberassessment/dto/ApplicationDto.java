@@ -43,4 +43,6 @@ public class ApplicationDto {
     private Boolean dataScopeSox;
     private Boolean dataScopeHipaa;
     private Instant createdAt;
+    /** Parallel security architecture review (does not block attestation). */
+    private ApplicationSecurityReviewSummaryDto securityArchitectureReview;
 }

@@ -24,9 +24,9 @@ Artifacts: CI uploads `backend-jacoco-report` and `frontend-coverage-report` for
 - Coverage reports are uploaded as build artifacts for regression triage.
 
 ### Local parity (before push)
-- Backend: `cd backend && ./mvnw test` (or `mvnw.cmd test` on Windows); use `./mvnw verify` for the same JaCoCo rules as CI. Optional smoke subset: `./mvnw test -Dtest=ApplicationApiSmokeIntegrationTest`.
-- Frontend: `cd frontend && npm run test:unit` for a quick run; `npm run test:coverage` matches CI (tests + coverage artifacts). Integration-only: `npm run test:integration`.
-- **Optional Playwright E2E** (local): `cd frontend` → `npx playwright install chromium` (once) → `npm run test:e2e`. If Vite is already listening on **5173**, use `PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e`. Combine with Vitest: `npm run test:full`.
+- Backend: `cd backend && ./mvnw test` (or `mvnw.cmd test` on Windows); use `./mvnw verify` for the same JaCoCo rules as CI. Optional single-class smoke: `./mvnw test -Dtest=ApplicationApiSmokeIntegrationTest`. Layered profiles: `-Pbackend-smoke`, `-Pbackend-unit`, `-Pbackend-integration`, `-Pbackend-regression` (see root **README**).
+- Frontend: `cd frontend && npm run test:unit` for the full Vitest suite; `npm run test:smoke` for a faster slice; `npm run test:coverage` matches CI (tests + coverage artifacts). Integration-only: `npm run test:integration`.
+- **Optional Playwright E2E** (local): `cd frontend` → `npx playwright install chromium` (once) → `npm run test:e2e` or `npm run test:e2e:regression` (authenticated flows in `e2e/regression.spec.ts`). If Vite is already listening on **5173**, use `PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e`. Full Vitest + all E2E: `npm run test:full`.
 - Dependabot opens **weekly** PRs for `frontend` (npm) and `backend` (Maven), and **monthly** for GitHub Actions (see `.github/dependabot.yml`). Review guidance: **`docs/dependency-upgrades.md`**.
 
 ## Service health checks

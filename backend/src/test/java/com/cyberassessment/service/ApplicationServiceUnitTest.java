@@ -3,11 +3,15 @@ package com.cyberassessment.service;
 import com.cyberassessment.dto.ApplicationDto;
 import com.cyberassessment.entity.Application;
 import com.cyberassessment.entity.User;
+import com.cyberassessment.repository.ApplicationIntakeAnswerRepository;
 import com.cyberassessment.repository.ApplicationRepository;
+import com.cyberassessment.repository.ApplicationSecurityReviewRepository;
+import com.cyberassessment.repository.QuestionRepository;
 import com.cyberassessment.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,8 +21,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@Tag("unit")
 @ExtendWith(MockitoExtension.class)
 class ApplicationServiceUnitTest {
 
@@ -26,8 +33,29 @@ class ApplicationServiceUnitTest {
     private ApplicationRepository applicationRepository;
     @Mock
     private UserRepository userRepository;
-    @InjectMocks
+    @Mock
+    private ApplicationSecurityReviewRepository applicationSecurityReviewRepository;
+    @Mock
+    private ApplicationIntakeAnswerRepository applicationIntakeAnswerRepository;
+    @Mock
+    private QuestionRepository questionRepository;
+
     private ApplicationService applicationService;
+
+    @BeforeEach
+    void setUp() {
+        CurrentUserService currentUserService = new CurrentUserService(userRepository);
+        ApplicationSecurityReviewService reviewService = new ApplicationSecurityReviewService(
+                applicationSecurityReviewRepository, applicationRepository, currentUserService);
+        applicationService = new ApplicationService(
+                applicationRepository,
+                userRepository,
+                reviewService,
+                applicationIntakeAnswerRepository,
+                questionRepository);
+        when(applicationSecurityReviewRepository.findByApplication_Id(anyLong())).thenReturn(Optional.empty());
+        when(applicationSecurityReviewRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+    }
 
     @Test
     void createAndFindByIdWork() {
@@ -48,6 +76,7 @@ class ApplicationServiceUnitTest {
         assertThat(created.getId()).isEqualTo(9L);
         assertThat(created.getOwnerId()).isEqualTo(2L);
         assertThat(found.getName()).isEqualTo("CRM");
+        verify(applicationSecurityReviewRepository).save(any());
     }
 
     @Test

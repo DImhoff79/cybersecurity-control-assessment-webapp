@@ -90,6 +90,8 @@
                     Completion {{ sortIndicator('completionPct') }}
                   </button>
                 </th>
+                <th scope="col" class="text-nowrap">Security review</th>
+                <th scope="col" class="text-nowrap">Controls</th>
                 <th scope="col" class="text-end"><span class="visually-hidden">Action</span></th>
               </tr>
             </thead>
@@ -123,6 +125,20 @@
                     <span class="my-audits-pct small tabular-nums">{{ a.completionPct || 0 }}%</span>
                   </div>
                 </td>
+                <td class="small">
+                  <span
+                    v-if="a.securityArchitectureReview"
+                    class="badge"
+                    :class="secReviewBadgeClass(a.securityArchitectureReview.status)"
+                    :title="a.securityArchitectureReview.notes || ''"
+                  >
+                    {{ secReviewLabel(a.securityArchitectureReview.status) }}
+                  </span>
+                  <span v-else class="text-muted">—</span>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-link btn-sm p-0" @click="openControlsModal(a)">View set</button>
+                </td>
                 <td class="audit-action-cell text-end">
                   <router-link
                     :to="respondPath(a.id)"
@@ -137,12 +153,51 @@
         </div>
       </div>
     </div>
+
+    <BsModal v-model="controlsModalOpen" :title="controlsModalTitle" size="lg">
+      <p class="small text-muted mb-3">
+        Resolved control library for this application. When regulatory filtering is enabled, rows marked “Excluded” are not seeded into new audits based on triage flags.
+      </p>
+      <div v-if="controlsLoading" class="text-muted py-2">Loading…</div>
+      <div v-else class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Scopes</th>
+              <th>Assessment</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in assessmentControls" :key="row.id">
+              <td class="text-nowrap small">{{ row.controlId }}</td>
+              <td>{{ row.name }}</td>
+              <td class="small">
+                <span v-if="!row.regulatoryScopes?.length" class="text-muted">Baseline</span>
+                <span v-else>{{ row.regulatoryScopes.join(', ') }}</span>
+              </td>
+              <td>
+                <span class="badge" :class="row.includedUnderCurrentFilter ? 'text-bg-success' : 'text-bg-secondary'">
+                  {{ row.includedUnderCurrentFilter ? 'Included' : 'Excluded' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="controlsModalOpen = false">Close</button>
+      </template>
+    </BsModal>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import api from '../../services/api'
+import BsModal from '../../components/BsModal.vue'
+import { toastError } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
 import {
   auditStageLabel,
@@ -153,6 +208,10 @@ import {
 
 const items = ref([])
 const loading = ref(true)
+const controlsModalOpen = ref(false)
+const controlsModalAudit = ref(null)
+const assessmentControls = ref([])
+const controlsLoading = ref(false)
 /** 'active' = hide COMPLETE; 'all'; 'completed' = COMPLETE only */
 const filterShow = ref('active')
 
@@ -192,6 +251,44 @@ function actionLabel(audit) {
   if (audit.status === 'REVISIONS_REQUESTED') return 'Address revisions'
   if (isAuditOwnerAnswerLocked(audit.status)) return 'View submission'
   return (audit.completionPct || 0) > 0 ? 'Resume audit' : 'Start audit'
+}
+
+const controlsModalTitle = computed(() => {
+  const a = controlsModalAudit.value
+  return a ? `Assessment controls — ${a.applicationName}` : 'Assessment controls'
+})
+
+function secReviewLabel(status) {
+  const m = {
+    NOT_STARTED: 'Not started',
+    IN_REVIEW: 'In review',
+    APPROVED: 'Approved',
+    CHANGES_REQUESTED: 'Changes requested'
+  }
+  return m[status] || status || '—'
+}
+
+function secReviewBadgeClass(status) {
+  if (status === 'APPROVED') return 'text-bg-success'
+  if (status === 'CHANGES_REQUESTED') return 'text-bg-warning text-dark'
+  if (status === 'IN_REVIEW') return 'text-bg-info text-dark'
+  return 'text-bg-secondary'
+}
+
+async function openControlsModal(audit) {
+  controlsModalAudit.value = audit
+  controlsModalOpen.value = true
+  assessmentControls.value = []
+  if (!audit.applicationId) return
+  controlsLoading.value = true
+  try {
+    const res = await api.get(`/api/applications/${audit.applicationId}/assessment-controls`)
+    assessmentControls.value = res.data || []
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Could not load controls')
+  } finally {
+    controlsLoading.value = false
+  }
 }
 </script>
 

@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +32,8 @@ public class DemoBranchingWorkflowService {
     private final DemoBranchingNodeRepository nodeRepository;
     private final DemoBranchingEdgeRepository edgeRepository;
     private final ObjectMapper objectMapper;
+    private final CanonicalIntakeFlowService canonicalIntakeFlowService;
+    private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
     public BranchingWorkflowGraphDto getGraph(Long versionId) {
@@ -247,6 +250,10 @@ public class DemoBranchingWorkflowService {
         }
         v.setStartNodeId(start.getId());
         versionRepository.save(v);
-        return toGraphDto(versionRepository.findById(v.getId()).orElseThrow());
+        BranchingWorkflowGraphDto graphDto = toGraphDto(versionRepository.findById(v.getId()).orElseThrow());
+        if (Objects.equals(dto.getVersionId(), 1L)) {
+            canonicalIntakeFlowService.saveGraph(graphDto, currentUserService.getCurrentUserOrThrow());
+        }
+        return graphDto;
     }
 }

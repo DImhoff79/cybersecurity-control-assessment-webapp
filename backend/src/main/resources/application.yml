@@ -96,6 +96,9 @@ app:
   remediation:
     reminder-min-hours-between: 24
     escalation-days-overdue: 7
+  audit:
+    # When true, PCI/PII/SOX/HIPAA-tagged controls are excluded from new audits if the app triage flag for that scope is explicitly false.
+    regulatory-scope-filter-enabled: ${APP_AUDIT_REGULATORY_FILTER:false}
   scalability:
     slos:
       api-p95-ms: 350

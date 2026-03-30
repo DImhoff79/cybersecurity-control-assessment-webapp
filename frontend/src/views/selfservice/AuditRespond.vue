@@ -24,6 +24,64 @@
       </p>
     </header>
 
+    <div v-if="audit && !loading" class="card border-0 shadow-sm mb-4">
+      <div class="card-body py-3 px-3 px-sm-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <p class="respond-label-muted mb-1">Security architecture review</p>
+            <span
+              v-if="audit.securityArchitectureReview"
+              class="badge"
+              :class="secReviewBadgeClass(audit.securityArchitectureReview.status)"
+            >
+              {{ secReviewLabel(audit.securityArchitectureReview.status) }}
+            </span>
+            <span v-else class="text-muted">—</span>
+            <p v-if="audit.securityArchitectureReview?.notes" class="small text-muted mt-2 mb-0">
+              {{ audit.securityArchitectureReview.notes }}
+            </p>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleScopePanel">
+            {{ scopePanelOpen ? 'Hide' : 'Show' }} assessment control set
+          </button>
+        </div>
+        <div v-if="scopePanelOpen" class="mt-3 pt-3 border-top">
+          <p class="small text-muted mb-2">
+            Library controls for this application under the current regulatory filter. Your audit was seeded when it was created; use this as a reference for scope.
+          </p>
+          <div v-if="scopeLoading" class="text-muted small">Loading…</div>
+          <div v-else class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Control</th>
+                  <th>Scopes</th>
+                  <th>Filter</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in assessmentControlRows" :key="row.id">
+                  <td class="small">
+                    <span class="fw-medium">{{ row.controlId }}</span>
+                    <span class="text-muted d-block">{{ row.name }}</span>
+                  </td>
+                  <td class="small">
+                    <span v-if="!row.regulatoryScopes?.length" class="text-muted">Baseline</span>
+                    <span v-else>{{ row.regulatoryScopes.join(', ') }}</span>
+                  </td>
+                  <td>
+                    <span class="badge" :class="row.includedUnderCurrentFilter ? 'text-bg-success' : 'text-bg-secondary'">
+                      {{ row.includedUnderCurrentFilter ? 'Included' : 'Excluded' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="loading" class="text-muted py-4">Loading your assessment…</div>
     <div v-else-if="totalSteps === 0" class="card shadow-sm border-0">
       <div class="card-body">No questions are configured for this audit. Contact your administrator.</div>
@@ -281,6 +339,9 @@ const answers = reactive({})
 const additionalResponses = reactive({})
 const loading = ref(true)
 const saving = ref(false)
+const scopePanelOpen = ref(false)
+const scopeLoading = ref(false)
+const assessmentControlRows = ref([])
 
 const currentStage = ref('human') // 'human' | 'additional'
 const currentHumanIndex = ref(0)
@@ -502,6 +563,39 @@ const canGoBack = computed(() => {
 })
 
 onMounted(load)
+
+function secReviewLabel(status) {
+  const m = {
+    NOT_STARTED: 'Not started',
+    IN_REVIEW: 'In review',
+    APPROVED: 'Approved',
+    CHANGES_REQUESTED: 'Changes requested'
+  }
+  return m[status] || status || '—'
+}
+
+function secReviewBadgeClass(status) {
+  if (status === 'APPROVED') return 'text-bg-success'
+  if (status === 'CHANGES_REQUESTED') return 'text-bg-warning text-dark'
+  if (status === 'IN_REVIEW') return 'text-bg-info text-dark'
+  return 'text-bg-secondary'
+}
+
+async function toggleScopePanel() {
+  scopePanelOpen.value = !scopePanelOpen.value
+  if (!scopePanelOpen.value || assessmentControlRows.value.length || !audit.value?.applicationId) {
+    return
+  }
+  scopeLoading.value = true
+  try {
+    const res = await api.get(`/api/applications/${audit.value.applicationId}/assessment-controls`)
+    assessmentControlRows.value = res.data || []
+  } catch (e) {
+    toastError(e.response?.data?.error || 'Could not load controls')
+  } finally {
+    scopeLoading.value = false
+  }
+}
 
 async function load() {
   try {

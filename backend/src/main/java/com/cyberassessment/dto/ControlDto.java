@@ -22,6 +22,9 @@ public class ControlDto {
     private ControlFramework framework;
     private Boolean enabled;
     private String category;
+    /** Regulatory scope tags (PCI, PII, …); empty = baseline control always in scope when enabled. */
+    @Builder.Default
+    private List<String> regulatoryScopes = new ArrayList<>();
     /** Derived from linked questions' ask_owner flags. */
     private ControlResponderAudience responderAudience;
     @Builder.Default

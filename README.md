@@ -47,6 +47,10 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - Findings workflow and control exception requests (including linkage to findings)
   - In-app notifications and scheduled report delivery hooks
   - Idempotent **demo dataset** seeder for local UI walkthroughs (toggle via config; off in `prod`)
+- **Questionnaire / intake (recent)**:
+  - **Regulatory scope tags** on controls (Flyway **V47**); optional filtering when seeding audit controls from application flags (`app.audit.regulatory-scope-filter-enabled` in `application.yml`).
+  - **Application security review** lifecycle and APIs (Flyway **V48**), parallel to attestation flows in the UI.
+  - **New application intake** backed by library questions and persisted answers (Flyway **V49**); **canonical intake flow** storage for branching demo alignment (Flyway **V50**).
 
 ## Prerequisites
 
@@ -149,7 +153,7 @@ npm run dev -- --host
   - `config/SecurityConfig.java`: CORS, CSRF off, OAuth2 user service wiring
   - `service/CurrentUserService.java`: resolves current user from security context for service-layer permission checks
 - **Database migration**
-  - `resources/db/migration`: Flyway migrations (schema + seeds), current through **`V36`** (includes demo branching workflow tables/seed)
+  - `resources/db/migration`: Flyway migrations (schema + seeds), current through **`V50`** (includes demo branching, regulatory scope, security review, intake answers, canonical intake flow)
   - Run automatically on startup when Flyway is enabled
 
 ## Test Commands
@@ -158,23 +162,27 @@ npm run dev -- --host
 
 ```bash
 cd frontend
-npm run test:unit          # Vitest: all specs (unit + src/integration/*.integration.spec.js)
+npm run test:unit          # Vitest: all specs under src/ (including src/integration/)
 npm run test:integration   # Vitest: only src/integration/
-npm run test:smoke         # Same as test:unit (fast local smoke)
+npm run test:smoke         # Vitest: narrow subset (API, auth, router, intake spec, etc.)
+npm run test:regression    # Vitest: full run (alias of test:unit)
 npm run test:coverage      # LCOV/HTML under frontend/coverage (no global threshold gate by default)
 npm run build
 ```
 
-**Browser smoke (Playwright)** — optional; not part of CI until browsers are installed in the pipeline.
+**Browser E2E (Playwright)** — optional; not part of CI until browsers are installed in the pipeline.
 
 ```bash
 cd frontend
 npx playwright install chromium   # once per machine / after @playwright/test upgrades
-npm run test:e2e                  # starts Vite on 5173 unless CI=1 or you set PLAYWRIGHT_SKIP_WEBSERVER=1
-npm run test:full                 # Vitest + Playwright
+npm run test:e2e                  # all Playwright specs; starts Vite on 5173 unless CI=1 or PLAYWRIGHT_SKIP_WEBSERVER=1
+npm run test:e2e:smoke            # e2e/smoke.spec.ts only
+npm run test:e2e:regression       # e2e/regression.spec.ts — admin apps, my audits, questionnaire builder, branching demo, audit respond
+npm run test:full                 # Vitest unit + integration, then Playwright (all e2e specs)
 ```
 
-- E2E specs live under **`frontend/e2e/`** (see **`frontend/playwright.config.ts`**). Vitest excludes **`e2e/**`** so Playwright and Vitest do not double-run the same files.
+- E2E specs live under **`frontend/e2e/`**; shared login helper: **`frontend/e2e/helpers/login.ts`** (`loginWithBasicAuth`). See **`frontend/playwright.config.ts`**. Vitest excludes **`e2e/**`**.
+- **Regression** specs assume the backend on **8080** with default seeded users and the demo dataset so `/my-audits` lists audits with `a.my-audits-app-link`.
 - If a dev server is already on port **5173**, run: `PLAYWRIGHT_SKIP_WEBSERVER=1 npm run test:e2e` (Windows PowerShell: `$env:PLAYWRIGHT_SKIP_WEBSERVER=1; npm run test:e2e`).
 
 ### Backend
@@ -186,7 +194,18 @@ cd backend
 # Tests + JaCoCo coverage rules: ./mvnw verify  (Windows: .\mvnw.cmd verify)
 ```
 
-**HTTP smoke / integration (subset)** — Spring **`MockMvc`** against an in-memory H2 database with Flyway migrations:
+**Layered runs (Maven profiles)** — same codebase, smaller slices for local iteration:
+
+| Profile | Command (Unix) | What runs |
+|---------|------------------|-----------|
+| `backend-smoke` | `./mvnw test -Pbackend-smoke` | HTTP smoke + access guard + application lifecycle smoke |
+| `backend-unit` | `./mvnw test -Pbackend-unit` | `*UnitTest` and selected small controller/security tests |
+| `backend-integration` | `./mvnw test -Pbackend-integration` | `*IntegrationTest` and named integration classes |
+| `backend-regression` | `./mvnw test -Pbackend-regression` | `ApiSurfaceRegressionIntegrationTest` |
+
+On Windows: `.\mvnw.cmd test -Pbackend-smoke`, etc.
+
+**HTTP smoke / integration (single class)** — Spring **`MockMvc`** against an in-memory H2 database with Flyway migrations:
 
 ```bash
 cd backend

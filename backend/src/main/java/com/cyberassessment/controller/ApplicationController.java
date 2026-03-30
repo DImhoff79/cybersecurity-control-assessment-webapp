@@ -1,7 +1,12 @@
 package com.cyberassessment.controller;
 
+import com.cyberassessment.dto.ApplicationAssessmentControlDto;
 import com.cyberassessment.dto.ApplicationDto;
+import com.cyberassessment.dto.ApplicationSecurityReviewSummaryDto;
 import com.cyberassessment.dto.AuditDto;
+import com.cyberassessment.entity.ApplicationSecurityReviewStatus;
+import com.cyberassessment.service.ApplicationAssessmentControlService;
+import com.cyberassessment.service.ApplicationSecurityReviewService;
 import com.cyberassessment.service.ApplicationService;
 import com.cyberassessment.service.AuditService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +26,8 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
     private final AuditService auditService;
+    private final ApplicationAssessmentControlService applicationAssessmentControlService;
+    private final ApplicationSecurityReviewService applicationSecurityReviewService;
 
     @GetMapping
     public List<ApplicationDto> list() {
@@ -31,6 +38,31 @@ public class ApplicationController {
     public ResponseEntity<ApplicationDto> get(@PathVariable Long id) {
         ApplicationDto dto = applicationService.findById(id);
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/{id}/assessment-controls")
+    public ResponseEntity<?> listAssessmentControls(@PathVariable Long id) {
+        try {
+            List<ApplicationAssessmentControlDto> rows = applicationAssessmentControlService.listForApplication(id);
+            return ResponseEntity.ok(rows);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{id}/security-architecture-review")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    public ResponseEntity<?> patchSecurityArchitectureReview(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        try {
+            String statusStr = body.get("status") != null ? String.valueOf(body.get("status")).trim() : null;
+            ApplicationSecurityReviewStatus status =
+                    statusStr != null && !statusStr.isEmpty() ? ApplicationSecurityReviewStatus.valueOf(statusStr) : null;
+            String notes = body.containsKey("notes") ? (String) body.get("notes") : null;
+            ApplicationSecurityReviewSummaryDto updated = applicationSecurityReviewService.updateStatus(id, status, notes);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping

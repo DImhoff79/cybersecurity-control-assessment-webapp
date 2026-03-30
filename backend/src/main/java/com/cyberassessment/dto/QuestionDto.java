@@ -23,4 +23,7 @@ public class QuestionDto {
     private BigDecimal mappingWeight;
     private Instant effectiveFrom;
     private Instant effectiveTo;
+    private String intakeStepKey;
+    private String intakeInputType;
+    private String intakeChoicesJson;
 }

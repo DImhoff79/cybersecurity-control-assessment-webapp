@@ -5,6 +5,7 @@ import com.cyberassessment.dto.QuestionDto;
 import com.cyberassessment.entity.Control;
 import com.cyberassessment.entity.ControlFramework;
 import com.cyberassessment.entity.Question;
+import com.cyberassessment.entity.RegulatoryScopeTag;
 import com.cyberassessment.model.ControlResponderAudience;
 import com.cyberassessment.repository.ControlRepository;
 import com.cyberassessment.repository.QuestionControlMappingRepository;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,10 @@ public class ControlService {
 
     public static ControlDto toDto(Control c) {
         if (c == null) return null;
+        List<String> scopes = new ArrayList<>();
+        if (c.getRegulatoryScopes() != null && !c.getRegulatoryScopes().isEmpty()) {
+            scopes = c.getRegulatoryScopes().stream().map(RegulatoryScopeTag::name).sorted().collect(Collectors.toList());
+        }
         return ControlDto.builder()
                 .id(c.getId())
                 .controlId(c.getControlId())
@@ -36,6 +42,7 @@ public class ControlService {
                 .framework(c.getFramework())
                 .enabled(c.getEnabled())
                 .category(c.getCategory())
+                .regulatoryScopes(scopes)
                 .build();
     }
 
@@ -88,6 +95,9 @@ public class ControlService {
                 .mappingWeight(mapping != null ? mapping.getMappingWeight() : null)
                 .effectiveFrom(mapping != null ? mapping.getEffectiveFrom() : null)
                 .effectiveTo(mapping != null ? mapping.getEffectiveTo() : null)
+                .intakeStepKey(q.getIntakeStepKey())
+                .intakeInputType(q.getIntakeInputType())
+                .intakeChoicesJson(q.getIntakeChoicesJson())
                 .build();
     }
 
@@ -132,20 +142,33 @@ public class ControlService {
     }
 
     @Transactional
-    public ControlDto update(Long id, String name, String description, Boolean enabled) {
+    public ControlDto update(Long id, String name, String description, Boolean enabled, List<String> regulatoryScopes) {
         Control c = controlRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Control not found: " + id));
         if (name != null) c.setName(name);
         if (description != null) c.setDescription(description);
         if (enabled != null) c.setEnabled(enabled);
+        if (regulatoryScopes != null) {
+            applyRegulatoryScopes(c, regulatoryScopes);
+        }
         c = controlRepository.save(c);
         ControlDto dto = toDto(c);
         applyResponderAudience(dto, loadResponderAudiences(List.of(id)));
         return dto;
     }
 
+    private static void applyRegulatoryScopes(Control c, List<String> regulatoryScopes) {
+        c.getRegulatoryScopes().clear();
+        for (String s : regulatoryScopes) {
+            if (s == null || s.isBlank()) {
+                continue;
+            }
+            c.getRegulatoryScopes().add(RegulatoryScopeTag.valueOf(s.trim().toUpperCase()));
+        }
+    }
+
     @Transactional
-    public ControlDto patch(Long id, String name, String description, Boolean enabled) {
-        return update(id, name, description, enabled);
+    public ControlDto patch(Long id, String name, String description, Boolean enabled, List<String> regulatoryScopes) {
+        return update(id, name, description, enabled, regulatoryScopes);
     }
 
     @Transactional

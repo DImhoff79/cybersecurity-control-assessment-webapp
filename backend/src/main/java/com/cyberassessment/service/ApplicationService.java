@@ -1,16 +1,21 @@
 package com.cyberassessment.service;
 
 import com.cyberassessment.dto.ApplicationDto;
+import com.cyberassessment.dto.IntakeAnswerSubmitDto;
 import com.cyberassessment.entity.ApplicationCriticality;
+import com.cyberassessment.entity.ApplicationIntakeAnswer;
 import com.cyberassessment.entity.ApplicationLifecycleStatus;
 import com.cyberassessment.entity.Application;
 import com.cyberassessment.entity.ApplicationPurpose;
 import com.cyberassessment.entity.DataClassification;
 import com.cyberassessment.entity.HostingModel;
 import com.cyberassessment.entity.IntegrationScope;
+import com.cyberassessment.entity.Question;
 import com.cyberassessment.entity.UserAudienceScope;
 import com.cyberassessment.entity.User;
+import com.cyberassessment.repository.ApplicationIntakeAnswerRepository;
 import com.cyberassessment.repository.ApplicationRepository;
+import com.cyberassessment.repository.QuestionRepository;
 import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,12 +32,15 @@ public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
     private final UserRepository userRepository;
+    private final ApplicationSecurityReviewService applicationSecurityReviewService;
+    private final ApplicationIntakeAnswerRepository applicationIntakeAnswerRepository;
+    private final QuestionRepository questionRepository;
 
-    public static ApplicationDto toDto(Application a) {
+    public ApplicationDto toDto(Application a) {
         if (a == null) return null;
         User owner = a.getOwner();
         Boolean hipaa = a.getDataScopeHipaa() != null ? a.getDataScopeHipaa() : a.getDataScopePhi();
-        return ApplicationDto.builder()
+        ApplicationDto.ApplicationDtoBuilder b = ApplicationDto.builder()
                 .id(a.getId())
                 .name(a.getName())
                 .description(a.getDescription())
@@ -54,18 +62,19 @@ public class ApplicationService {
                 .dataScopePci(a.getDataScopePci())
                 .dataScopeSox(a.getDataScopeSox())
                 .dataScopeHipaa(hipaa)
-                .createdAt(a.getCreatedAt())
-                .build();
+                .createdAt(a.getCreatedAt());
+        applicationSecurityReviewService.findSummary(a.getId()).ifPresent(b::securityArchitectureReview);
+        return b.build();
     }
 
     @Transactional(readOnly = true)
     public List<ApplicationDto> findAll() {
-        return applicationRepository.findAll().stream().map(ApplicationService::toDto).collect(Collectors.toList());
+        return applicationRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public ApplicationDto findById(Long id) {
-        return applicationRepository.findById(id).map(ApplicationService::toDto).orElse(null);
+        return applicationRepository.findById(id).map(this::toDto).orElse(null);
     }
 
     @Transactional
@@ -95,7 +104,31 @@ public class ApplicationService {
                 .build();
         mergeFromBody(app, body, false);
         app = applicationRepository.save(app);
+        applicationSecurityReviewService.ensureNotStartedRow(app);
         return toDto(app);
+    }
+
+    @Transactional
+    public void replaceIntakeAnswers(Long applicationId, List<IntakeAnswerSubmitDto> answers) {
+        if (answers == null || answers.isEmpty()) {
+            return;
+        }
+        Application app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new IllegalArgumentException("Application not found: " + applicationId));
+        applicationIntakeAnswerRepository.deleteByApplication_Id(applicationId);
+        for (IntakeAnswerSubmitDto a : answers) {
+            if (a.getQuestionId() == null) {
+                continue;
+            }
+            Question q = questionRepository.findById(a.getQuestionId())
+                    .orElseThrow(() -> new IllegalArgumentException("Question not found: " + a.getQuestionId()));
+            ApplicationIntakeAnswer row = ApplicationIntakeAnswer.builder()
+                    .application(app)
+                    .question(q)
+                    .answerText(a.getAnswerText())
+                    .build();
+            applicationIntakeAnswerRepository.save(row);
+        }
     }
 
     @Transactional
@@ -119,6 +152,7 @@ public class ApplicationService {
         Application app = applicationRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Application not found: " + id));
         mergeFromBody(app, body, true);
         app = applicationRepository.save(app);
+        applicationSecurityReviewService.ensureNotStartedRow(app);
         return toDto(app);
     }
 

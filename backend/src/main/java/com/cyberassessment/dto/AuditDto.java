@@ -50,4 +50,7 @@ public class AuditDto {
     private String pendingAuditorFirstName;
     private String pendingAuditorLastName;
     private String pendingAuditorDisplayName;
+
+    /** Parallel security architecture review for the application (owner-facing on my-audits). */
+    private ApplicationSecurityReviewSummaryDto securityArchitectureReview;
 }

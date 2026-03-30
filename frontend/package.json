@@ -9,11 +9,14 @@
     "preview": "vite preview",
     "test:unit": "vitest run",
     "test:integration": "vitest run src/integration",
+    "test:regression": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:smoke": "npm run test:unit",
-    "test:full": "npm run test:unit && npm run test:e2e"
+    "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
+    "test:e2e:regression": "playwright test e2e/regression.spec.ts",
+    "test:smoke": "vitest run src/services/api.spec.js src/stores/auth.spec.js src/router/permissionSmoke.spec.js src/utils/auditStatus.spec.js src/components/BsModal.spec.js src/views/selfservice/NewApplicationIntake.spec.js",
+    "test:full": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",

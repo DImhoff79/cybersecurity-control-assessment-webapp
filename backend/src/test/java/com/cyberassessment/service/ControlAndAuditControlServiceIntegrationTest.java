@@ -57,10 +57,10 @@ class ControlAndAuditControlServiceIntegrationTest {
         assertThat(hipaaEnabled).allMatch(c -> c.getFramework() == ControlFramework.HIPAA && Boolean.TRUE.equals(c.getEnabled()));
 
         ControlDto first = all.get(0);
-        ControlDto patched = controlService.patch(first.getId(), "Updated Control Name", null, null);
+        ControlDto patched = controlService.patch(first.getId(), "Updated Control Name", null, null, null);
         assertThat(patched.getName()).isEqualTo("Updated Control Name");
 
-        assertThatThrownBy(() -> controlService.update(999999L, "x", null, null))
+        assertThatThrownBy(() -> controlService.update(999999L, "x", null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Control not found");
     }
