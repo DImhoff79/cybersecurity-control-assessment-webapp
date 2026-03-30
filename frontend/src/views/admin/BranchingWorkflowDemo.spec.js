@@ -102,9 +102,6 @@ vi.mock('@vue-flow/background', () => ({
 vi.mock('@vue-flow/controls', () => ({
   Controls: { template: '<div class="vue-flow-controls"><slot /></div>' }
 }))
-vi.mock('@vue-flow/minimap', () => ({
-  MiniMap: { template: '<div />' }
-}))
 
 /** Renders in-document; mirrors BsModal by emitting `hidden` when v-model closes so parent can clear preview state. */
 const BsModalStub = {

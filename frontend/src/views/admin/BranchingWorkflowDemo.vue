@@ -145,11 +145,6 @@
                       </span>
                     </template>
                   </Controls>
-                  <MiniMap
-                    :pannable="flowMapActivated"
-                    :zoomable="flowMapActivated"
-                    class="branching-demo__minimap"
-                  />
                   <BranchingFlowMapTools
                     :layout-fit-tick="layoutFitTick"
                     @add-step="addDraftNode"
@@ -716,11 +711,9 @@
 import { MarkerType, VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
-import { MiniMap } from '@vue-flow/minimap'
 import { computed, markRaw, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
-import '@vue-flow/minimap/dist/style.css'
 import dagre from '@dagrejs/dagre'
 import api from '../../services/api'
 import { formatLoadError } from '../../utils/loadErrorFormat'
@@ -805,7 +798,7 @@ const connectModalEl = ref(null)
 const mapEditorEl = ref(null)
 /** Saved-flow preview modal (Bootstrap modal via BsModal). */
 const previewModalOpen = ref(false)
-/** Bordered map area (Vue Flow); pan/zoom/minimap controls require a click inside here first. */
+/** Bordered map area (Vue Flow); pan/zoom require a click inside here first. */
 const flowWrapRef = ref(null)
 const flowMapActivated = ref(false)
 
@@ -2175,11 +2168,6 @@ loadGraph()
   box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
 }
 
-.branching-demo__minimap {
-  bottom: 0.5rem;
-  right: 0.5rem;
-}
-
 .branching-demo__map-activate-hint {
   z-index: 9;
   pointer-events: none;
@@ -2191,8 +2179,7 @@ loadGraph()
   text-align: center;
 }
 
-.branching-demo__vue-flow.branching-demo--map-inactive .vue-flow__controls,
-.branching-demo__vue-flow.branching-demo--map-inactive .vue-flow__minimap {
+.branching-demo__vue-flow.branching-demo--map-inactive .vue-flow__controls {
   pointer-events: none;
   opacity: 0.48;
 }
@@ -2289,7 +2276,7 @@ loadGraph()
   background-color: #e4e8f0;
 }
 
-/* While a map card is in inline-edit mode, panels (controls, minimap, tools) sit above the viewport by default; send them behind so the node stays unobstructed. */
+/* While a map card is in inline-edit mode, panels (controls, tools) sit above the viewport by default; send them behind so the node stays unobstructed. */
 .branching-demo__vue-flow.branching-demo--card-editing .vue-flow__panel {
   z-index: 0 !important;
   opacity: 0.35;
