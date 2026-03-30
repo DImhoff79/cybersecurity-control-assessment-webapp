@@ -1,8 +1,10 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
 import RiskRegister from './RiskRegister.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 vi.mock('../../services/api', () => ({
   default: {
@@ -14,6 +16,13 @@ vi.mock('../../services/api', () => ({
 
 describe('RiskRegister', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
+    const authStore = useAuthStore()
+    authStore.user = {
+      id: 1,
+      role: 'AUDIT_MANAGER',
+      permissions: ['RISK_MANAGEMENT', 'REPORT_VIEW']
+    }
     vi.clearAllMocks()
     api.get.mockImplementation((url) => {
       if (url === '/api/risks') {

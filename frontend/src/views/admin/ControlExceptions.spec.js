@@ -1,8 +1,10 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
 import ControlExceptions from './ControlExceptions.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 vi.mock('../../services/api', () => ({
   default: {
@@ -13,6 +15,13 @@ vi.mock('../../services/api', () => ({
 
 describe('ControlExceptions', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
+    const authStore = useAuthStore()
+    authStore.user = {
+      id: 1,
+      role: 'AUDIT_MANAGER',
+      permissions: ['AUDIT_MANAGEMENT', 'REPORT_VIEW']
+    }
     vi.clearAllMocks()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.spyOn(window, 'prompt').mockImplementation((msg) => {
