@@ -18,7 +18,7 @@ public class FindingController {
     private final FindingService findingService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<FindingDto> list(@RequestParam(required = false) Long auditId) {
         return findingService.list(auditId);
     }

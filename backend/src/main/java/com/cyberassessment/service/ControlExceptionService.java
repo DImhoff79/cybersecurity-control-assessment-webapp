@@ -39,6 +39,9 @@ public class ControlExceptionService {
     @Transactional
     public List<ControlExceptionDto> list(Long auditId, Long findingId) {
         expireElapsedApprovals();
+        if (auditId != null) {
+            auditService.assertCanAccessAudit(auditId);
+        }
         List<ControlExceptionRequest> items;
         if (findingId != null && auditId != null) {
             items = controlExceptionRepository.findByAuditIdAndFinding_IdOrderByRequestedAtDesc(auditId, findingId);
@@ -49,7 +52,12 @@ public class ControlExceptionService {
         } else {
             items = controlExceptionRepository.findAllByOrderByRequestedAtDesc();
         }
-        return items.stream().map(ControlExceptionService::toDto).toList();
+        List<ControlExceptionDto> rows = items.stream().map(ControlExceptionService::toDto).toList();
+        if (!currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
+            List<Long> allowed = auditService.findAccessibleAuditIdsForCurrentUser();
+            return rows.stream().filter(d -> allowed.contains(d.getAuditId())).toList();
+        }
+        return rows;
     }
 
     @Transactional

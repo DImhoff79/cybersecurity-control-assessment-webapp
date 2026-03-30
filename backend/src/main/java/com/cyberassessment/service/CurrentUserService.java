@@ -6,6 +6,7 @@ import com.cyberassessment.entity.UserRole;
 import com.cyberassessment.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import org.springframework.http.HttpStatus;
@@ -69,6 +70,15 @@ public class CurrentUserService {
     public boolean hasPermission(UserPermission permission) {
         if (permission == null) {
             return false;
+        }
+        String authority = "PERM_" + permission.name();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && auth.getAuthorities() != null) {
+            for (GrantedAuthority a : auth.getAuthorities()) {
+                if (authority.equals(a.getAuthority())) {
+                    return true;
+                }
+            }
         }
         return getCurrentUser()
                 .map(u -> u.getPermissions() != null && u.getPermissions().contains(permission))

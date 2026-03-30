@@ -18,5 +18,7 @@ public class AuditQuestionItemDto {
     private String questionText;
     private String helpText;
     private Integer displayOrder;
+    /** Same mapping as control catalog / question–control studio; false = auditor review only. */
+    private Boolean askOwner;
     private String existingAnswerText;
 }

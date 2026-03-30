@@ -40,4 +40,4 @@ On **Windows PowerShell**, quote JVM/Maven flags that contain dots, e.g. `.\mvnw
 | `service` | Domain logic |
 | `repository` / `entity` | JPA |
 | `security` | `CustomUserDetailsService`, `AppOAuth2UserService` |
-| `resources/db/migration` | Flyway SQL (through **V50**; includes branching demo, regulatory scope, security review, intake, canonical flow) |
+| `resources/db/migration` | Flyway SQL (through **V52**; includes intake, canonical flow, NIST wording refresh, audit-program reset migration) |

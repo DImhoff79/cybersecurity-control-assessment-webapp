@@ -51,7 +51,7 @@ class AuditQuestionVisibilityAndDeleteTest {
     }
 
     @Test
-    void hiddenOwnerQuestionsAreExcludedFromOwnerAuditFeed() {
+    void auditorOnlyMappedQuestionsAreOmittedFromOwnerQuestionList() {
         User owner = userRepository.save(User.builder()
                 .email("owner-visibility@test.com")
                 .passwordHash("x")
@@ -118,11 +118,9 @@ class AuditQuestionVisibilityAndDeleteTest {
         questionService.update(control.getId(), hiddenQuestion.getId(), null, null, null, false);
 
         List<AuditQuestionItemDto> items = auditService.getQuestionsForAudit(audit.getId());
-        assertThat(items).extracting(AuditQuestionItemDto::getQuestionText)
-                .contains("Shown question?")
-                .doesNotContain("Hidden question?");
-        assertThat(items).extracting(AuditQuestionItemDto::getAuditControlId)
-                .containsOnly(auditControl.getId());
+        assertThat(items).extracting(AuditQuestionItemDto::getQuestionText).containsExactly("Shown question?");
+        assertThat(items).extracting(AuditQuestionItemDto::getAuditControlId).containsOnly(auditControl.getId());
+        assertThat(items.get(0).getAskOwner()).isTrue();
     }
 
     @Test

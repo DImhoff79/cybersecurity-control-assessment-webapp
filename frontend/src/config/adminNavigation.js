@@ -1,3 +1,4 @@
+/** Sidebar config; keep in sync with router meta and docs/persona-route-matrix.md */
 export const adminSections = [
   {
     key: 'workspace',
@@ -13,6 +14,7 @@ export const adminSections = [
     key: 'audit-program',
     label: 'Audit Program',
     items: [
+      { label: 'Program home', to: '/admin/program-home', permission: 'REPORT_VIEW' },
       { label: 'Audit Queue', to: '/admin/operations', permission: 'REPORT_VIEW' },
       { label: 'Audit Projects', to: '/admin/audit-projects', permission: 'REPORT_VIEW' },
       { label: 'Audits', to: '/admin/audits', permission: 'AUDIT_MANAGEMENT' },
@@ -41,15 +43,15 @@ export const adminSections = [
     key: 'risk',
     label: 'Risk & Remediation',
     items: [
-      { label: 'Issue Program Hub', to: '/admin/issue-program', permission: 'AUDIT_MANAGEMENT' },
-      { label: 'Findings', to: '/admin/findings', permission: 'AUDIT_MANAGEMENT' },
-      { label: 'Control Exceptions', to: '/admin/control-exceptions', permission: 'AUDIT_MANAGEMENT' },
+      { label: 'Issue Program Hub', to: '/admin/issue-program', permission: 'REPORT_VIEW' },
+      { label: 'Findings', to: '/admin/findings', permission: 'REPORT_VIEW' },
+      { label: 'Control Exceptions', to: '/admin/control-exceptions', permission: 'REPORT_VIEW' },
       {
         label: 'My control exceptions',
         to: '/admin/workspace-exceptions',
         roles: ['AUDITOR']
       },
-      { label: 'Risk Register', to: '/admin/risk-register', permission: 'RISK_MANAGEMENT' },
+      { label: 'Risk Register', to: '/admin/risk-register', permission: 'REPORT_VIEW' },
       { label: 'Remediation Plans', to: '/admin/remediation-plans', permission: 'REMEDIATION_MANAGEMENT' }
     ]
   },

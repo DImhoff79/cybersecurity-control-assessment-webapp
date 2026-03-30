@@ -27,12 +27,28 @@ public class FindingService {
     private final ControlExceptionRepository controlExceptionRepository;
     private final UserRepository userRepository;
     private final AuditActivityLogService auditActivityLogService;
+    private final CurrentUserService currentUserService;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<FindingDto> list(Long auditId) {
-        List<Finding> findings = auditId != null
-                ? findingRepository.findByAuditIdOrderByDueAtAscCreatedAtDesc(auditId)
-                : findingRepository.findAllByOrderByDueAtAscCreatedAtDesc();
+        boolean programMgmt = currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT);
+        List<Finding> findings;
+        if (programMgmt) {
+            findings = auditId != null
+                    ? findingRepository.findByAuditIdOrderByDueAtAscCreatedAtDesc(auditId)
+                    : findingRepository.findAllByOrderByDueAtAscCreatedAtDesc();
+        } else {
+            if (auditId != null) {
+                auditService.assertCanAccessAudit(auditId);
+                findings = findingRepository.findByAuditIdOrderByDueAtAscCreatedAtDesc(auditId);
+            } else {
+                List<Long> allowed = auditService.findAccessibleAuditIdsForCurrentUser();
+                findings = allowed.isEmpty()
+                        ? List.of()
+                        : findingRepository.findByAudit_IdInOrderByDueAtAscCreatedAtDesc(allowed);
+            }
+        }
         Map<Long, Long> exceptionCounts = exceptionCountsByFindingId(findings.stream().map(Finding::getId).toList());
         return findings.stream()
                 .map(f -> toDto(f, safeInt(exceptionCounts.getOrDefault(f.getId(), 0L))))

@@ -14,17 +14,23 @@ import com.cyberassessment.entity.AuditAssignmentRole;
 import com.cyberassessment.entity.ApplicationCriticality;
 import com.cyberassessment.entity.ApplicationLifecycleStatus;
 import com.cyberassessment.entity.Audit;
+import com.cyberassessment.entity.AuditControl;
+import com.cyberassessment.entity.AuditControlAnswer;
 import com.cyberassessment.entity.AuditStatus;
 import com.cyberassessment.entity.DataClassification;
 import com.cyberassessment.entity.Finding;
+import com.cyberassessment.entity.Question;
+import com.cyberassessment.entity.QuestionControlMapping;
 import com.cyberassessment.entity.FindingSeverity;
 import com.cyberassessment.entity.FindingStatus;
 import com.cyberassessment.entity.RiskStatus;
 import com.cyberassessment.entity.User;
 import com.cyberassessment.repository.ApplicationRepository;
+import com.cyberassessment.repository.AuditControlAnswerRepository;
 import com.cyberassessment.repository.AuditControlRepository;
 import com.cyberassessment.repository.AuditProjectRepository;
 import com.cyberassessment.repository.AuditRepository;
+import com.cyberassessment.repository.QuestionControlMappingRepository;
 import com.cyberassessment.repository.ComplianceRequirementRepository;
 import com.cyberassessment.repository.ControlExceptionRepository;
 import com.cyberassessment.repository.ControlRepository;
@@ -57,8 +63,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Idempotent rich demo data for local/staging so modules show realistic cross-links.
@@ -81,6 +89,8 @@ public class DemoDatasetSeeder implements ApplicationRunner {
     private final AuditService auditService;
     private final AuditRepository auditRepository;
     private final AuditControlRepository auditControlRepository;
+    private final AuditControlAnswerRepository auditControlAnswerRepository;
+    private final QuestionControlMappingRepository questionControlMappingRepository;
     private final AuditProjectRepository auditProjectRepository;
     private final AuditProjectService auditProjectService;
     private final FindingService findingService;
@@ -99,6 +109,9 @@ public class DemoDatasetSeeder implements ApplicationRunner {
 
     @Value("${app.seed.demo-dataset:true}")
     private boolean demoDatasetEnabled;
+
+    @Value("${app.seed.demo-assessment-answers:true}")
+    private boolean demoAssessmentAnswers;
 
     @Value("${app.auth.seed-local-users:true}")
     private boolean seedLocalUsers;
@@ -147,6 +160,14 @@ public class DemoDatasetSeeder implements ApplicationRunner {
         }
 
         ensureAuditsAndStatuses(apps, auditor);
+        if (demoAssessmentAnswers) {
+            int demoAnswers = ensureDemoAssessmentAnswers(apps);
+            if (demoAnswers > 0) {
+                log.info("Seeded {} demo assessment answers (owner-answerable questions from current mappings)", demoAnswers);
+            }
+        } else {
+            log.info("Skipping demo assessment answers (app.seed.demo-assessment-answers=false)");
+        }
         ensureAuditProject(apps);
         ensureFindings(apps, owner, auditor);
         ensureControlExceptions(apps);
@@ -243,6 +264,54 @@ public class DemoDatasetSeeder implements ApplicationRunner {
                 auditService.addAssignment(dto.getId(), auditor.getId(), AuditAssignmentRole.REVIEWER);
             }
         }
+    }
+
+    /**
+     * Fills {@link AuditControlAnswer} rows for every owner-answerable question in {@code question_control_mappings}
+     * so demo audits reflect the current question library (same linkage as control mapping / respond UI).
+     */
+    private int ensureDemoAssessmentAnswers(List<Application> apps) {
+        Instant answeredAt = Instant.now();
+        String[] templates = {
+                "Demo: Yes — control is implemented; evidence is tracked in the team wiki.",
+                "Demo: Policy reviewed this quarter; exceptions are tracked in the risk register.",
+                "Demo: In scope for this application; owners attest during quarterly review.",
+                "Demo: Partially met — remediation is tracked under the linked risk item."
+        };
+        int added = 0;
+        int t = 0;
+        for (Application app : apps) {
+            Audit audit = auditRepository.findByApplicationIdAndYear(app.getId(), DEMO_AUDIT_YEAR).orElse(null);
+            if (audit == null) {
+                continue;
+            }
+            List<AuditControl> acs = auditControlRepository.findByAuditId(audit.getId());
+            for (AuditControl ac : acs) {
+                Long controlId = ac.getControl().getId();
+                Set<Long> seenQuestionIds = new HashSet<>();
+                for (QuestionControlMapping m : questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(controlId)) {
+                    Question q = m.getQuestion();
+                    if (!seenQuestionIds.add(q.getId())) {
+                        continue;
+                    }
+                    if (!Boolean.TRUE.equals(q.getAskOwner())) {
+                        continue;
+                    }
+                    if (auditControlAnswerRepository.findByAuditControlIdAndQuestionId(ac.getId(), q.getId()).isPresent()) {
+                        continue;
+                    }
+                    auditControlAnswerRepository.save(AuditControlAnswer.builder()
+                            .auditControl(ac)
+                            .question(q)
+                            .answerText(templates[t % templates.length])
+                            .answeredAt(answeredAt)
+                            .build());
+                    t++;
+                    added++;
+                }
+            }
+        }
+        return added;
     }
 
     private void ensureAuditProject(List<Application> apps) {

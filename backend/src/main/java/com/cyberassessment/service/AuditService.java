@@ -214,6 +214,12 @@ public class AuditService {
     private void seedAuditControlsAndSnapshot(Audit audit) {
         Application app = audit.getApplication();
         List<Control> enabledControls = controlRepository.findAllEnabledWithRegulatoryScopes();
+        Optional<ControlFramework> frameworkOnly = auditSeedProperties.getNewAuditFrameworkFilter();
+        if (frameworkOnly.isPresent()) {
+            enabledControls = enabledControls.stream()
+                    .filter(c -> c.getFramework() == frameworkOnly.get())
+                    .toList();
+        }
         for (Control c : enabledControls) {
             if (auditSeedProperties.isRegulatoryScopeFilterEnabled()
                     && !RegulatoryScopeMatcher.controlAppliesToApplication(c, app)) {
@@ -413,7 +419,11 @@ public class AuditService {
      */
     @Transactional(readOnly = true)
     public List<Long> findAccessibleAuditIdsForCurrentUser() {
-        User current = currentUserService.getCurrentUserOrThrow();
+        Optional<User> currentOpt = currentUserService.getCurrentUser();
+        if (currentOpt.isEmpty()) {
+            return List.of();
+        }
+        User current = currentOpt.get();
         if (currentUserService.hasPermission(UserPermission.AUDIT_MANAGEMENT)) {
             return auditRepository.findAll().stream().map(Audit::getId).toList();
         }
@@ -433,6 +443,7 @@ public class AuditService {
                 .toList();
     }
 
+    /** Owner response UI only: questions with {@code ask_owner = true} in the library (auditor-only mappings are excluded). */
     @Transactional(readOnly = true)
     public List<AuditQuestionItemDto> getQuestionsForAudit(Long auditId) {
         Audit audit = auditRepository.findById(auditId).orElseThrow(() -> new IllegalArgumentException("Audit not found: " + auditId));
@@ -444,7 +455,10 @@ public class AuditService {
             if (!allowedControlIds.contains(c.getId())) {
                 continue;
             }
-            for (Question q : ownerQuestionsForAuditControl(ac)) {
+            for (Question q : allMappedQuestionsForAuditControl(ac)) {
+                if (!Boolean.TRUE.equals(q.getAskOwner())) {
+                    continue;
+                }
                 Optional<AuditControlAnswer> existing = ac.getAnswers().stream()
                         .filter(a -> a.getQuestion().getId().equals(q.getId()))
                         .findFirst();
@@ -457,11 +471,15 @@ public class AuditService {
                         .questionText(q.getQuestionText())
                         .helpText(q.getHelpText())
                         .displayOrder(q.getDisplayOrder())
+                        .askOwner(true)
                         .existingAnswerText(existing.map(AuditControlAnswer::getAnswerText).orElse(null))
                         .build());
             }
         }
-        result.sort(Comparator.comparing(AuditQuestionItemDto::getDisplayOrder).thenComparing(AuditQuestionItemDto::getControlControlId));
+        result.sort(Comparator
+                .comparing(AuditQuestionItemDto::getControlControlId, Comparator.nullsLast(String::compareTo))
+                .thenComparing(AuditQuestionItemDto::getDisplayOrder, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(AuditQuestionItemDto::getQuestionId, Comparator.nullsLast(Long::compareTo)));
         return result;
     }
 
@@ -653,18 +671,24 @@ public class AuditService {
     }
 
     /**
-     * Owner-facing questions for an audit control from the current {@code question_control_mappings},
-     * not the frozen audit questionnaire snapshot, so owner-facing content tracks the live library.
+     * All questions linked to the control via {@code question_control_mappings}, in the same order as
+     * {@link com.cyberassessment.service.QuestionService#findByControlId(Long)} and the control catalog.
      */
-    private List<Question> ownerQuestionsForAuditControl(AuditControl ac) {
+    private List<Question> allMappedQuestionsForAuditControl(AuditControl ac) {
         Map<Long, Question> byId = new LinkedHashMap<>();
         for (QuestionControlMapping m : questionControlMappingRepository.findByControl_IdOrderByQuestionDisplayOrderAsc(ac.getControl().getId())) {
-            Question q = m.getQuestion();
-            if (Boolean.TRUE.equals(q.getAskOwner())) {
-                byId.putIfAbsent(q.getId(), q);
-            }
+            byId.putIfAbsent(m.getQuestion().getId(), m.getQuestion());
         }
         return new ArrayList<>(byId.values());
+    }
+
+    /**
+     * Owner-answerable subset for completion checks (matches {@link #getQuestionsForAudit} and {@link #submitAnswers}).
+     */
+    private List<Question> ownerQuestionsForAuditControl(AuditControl ac) {
+        return allMappedQuestionsForAuditControl(ac).stream()
+                .filter(q -> Boolean.TRUE.equals(q.getAskOwner()))
+                .toList();
     }
 
     private void ensureCanAccessAudit(Audit audit) {

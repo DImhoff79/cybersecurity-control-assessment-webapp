@@ -71,8 +71,8 @@ class AccessGuardSmokeIntegrationTest {
                 "notes", "Should fail"
         ))).isInstanceOf(AccessDeniedException.class);
 
-        assertThatThrownBy(() -> findingController.list(null)).isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> controlExceptionController.list(null, null)).isInstanceOf(AccessDeniedException.class);
+        assertThatCode(() -> findingController.list(null)).doesNotThrowAnyException();
+        assertThatCode(() -> controlExceptionController.list(null, null)).doesNotThrowAnyException();
     }
 
     @Test

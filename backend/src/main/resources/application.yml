@@ -75,6 +75,8 @@ app:
     seed-local-users: ${APP_AUTH_SEED_LOCAL_USERS:true}
   seed:
     demo-dataset: ${APP_SEED_DEMO_DATASET:true}
+    # When demo dataset is on, pre-fill owner-answerable questions (can be thousands of rows; disable in CI via test application.properties).
+    demo-assessment-answers: ${APP_SEED_DEMO_ASSESSMENT_ANSWERS:true}
     test-policies: ${APP_SEED_TEST_POLICIES:true}
     test-policies-refresh: ${APP_SEED_TEST_POLICIES_REFRESH:true}
   cors-allowed-origins: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000
@@ -99,6 +101,9 @@ app:
   audit:
     # When true, PCI/PII/SOX/HIPAA-tagged controls are excluded from new audits if the app triage flag for that scope is explicitly false.
     regulatory-scope-filter-enabled: ${APP_AUDIT_REGULATORY_FILTER:false}
+    # New audits only include controls from this framework (e.g. KROGER_CCF) so questions match the mapping studio.
+    # Leave empty to include every enabled control (NIST sample + PCI + KCF, etc.).
+    new-audit-framework: ${APP_AUDIT_NEW_AUDIT_FRAMEWORK:KROGER_CCF}
   scalability:
     slos:
       api-p95-ms: 350

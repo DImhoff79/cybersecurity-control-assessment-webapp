@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div class="card workspace-card border-0 shadow-sm mb-3">
+    <div v-if="canEditRisks" class="card workspace-card border-0 shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Create Risk</h2>
         <form class="row g-2" @submit.prevent="createRisk">
@@ -122,7 +122,7 @@
                 <td>{{ row.applicationName || row.otherApplicationText || '-' }}</td>
                 <td>{{ row.ownerEmail || '-' }}</td>
                 <td>
-                  <div class="input-group input-group-sm mb-1">
+                  <div v-if="canEditRisks" class="input-group input-group-sm mb-1">
                     <select v-model="row._nextStatus" class="form-select form-select-sm">
                       <option value="OPEN">OPEN</option>
                       <option value="MONITORING">MONITORING</option>
@@ -131,6 +131,7 @@
                     </select>
                     <button class="btn btn-outline-secondary" @click="updateStatus(row)">Update</button>
                   </div>
+                  <span v-else class="small text-muted d-block mb-1">View only</span>
                   <router-link
                     :to="remediationLinkForRisk(row)"
                     class="btn btn-outline-primary btn-sm w-100"
@@ -152,9 +153,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const canEditRisks = computed(() => authStore.hasPermission('RISK_MANAGEMENT'))
 
 const applicationFilterId = ref(null)
 const applicationFilterName = ref('')

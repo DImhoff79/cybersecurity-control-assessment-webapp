@@ -19,7 +19,7 @@ public class ControlExceptionController {
     private final ControlExceptionService controlExceptionService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('PERM_AUDIT_MANAGEMENT')")
+    @PreAuthorize("hasAnyAuthority('PERM_AUDIT_MANAGEMENT','PERM_REPORT_VIEW')")
     public List<ControlExceptionDto> list(
             @RequestParam(required = false) Long auditId,
             @RequestParam(required = false) Long findingId) {

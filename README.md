@@ -51,6 +51,7 @@ Supports role-based administration, audit execution, governance snapshots, and r
   - **Regulatory scope tags** on controls (Flyway **V47**); optional filtering when seeding audit controls from application flags (`app.audit.regulatory-scope-filter-enabled` in `application.yml`).
   - **Application security review** lifecycle and APIs (Flyway **V48**), parallel to attestation flows in the UI.
   - **New application intake** backed by library questions and persisted answers (Flyway **V49**); **canonical intake flow** storage for branching demo alignment (Flyway **V50**).
+  - **Audit question alignment**: new audits default to **`KROGER_CCF`** controls only (`app.audit.new-audit-framework` / `APP_AUDIT_NEW_AUDIT_FRAMEWORK`) so assessment questions match the mapping studio catalog; leave empty for legacy “all enabled frameworks” behavior. Owner response UI lists **only** library questions with **`ask_owner = true`** (“Ask application owners” in Question Manager); auditor-only questions are excluded from `/api/audits/{id}/questions` and owner submit flows.
 
 ## Prerequisites
 
@@ -153,8 +154,19 @@ npm run dev -- --host
   - `config/SecurityConfig.java`: CORS, CSRF off, OAuth2 user service wiring
   - `service/CurrentUserService.java`: resolves current user from security context for service-layer permission checks
 - **Database migration**
-  - `resources/db/migration`: Flyway migrations (schema + seeds), current through **`V50`** (includes demo branching, regulatory scope, security review, intake answers, canonical intake flow)
+  - `resources/db/migration`: Flyway migrations (schema + seeds), current through **`V52`** (includes NIST wording refresh **V51**, one-time audit-program reset **V52**)
   - Run automatically on startup when Flyway is enabled
+
+### Audit and demo configuration (local)
+
+| Setting | Purpose |
+|--------|---------|
+| `app.audit.new-audit-framework` / `APP_AUDIT_NEW_AUDIT_FRAMEWORK` | Default **`KROGER_CCF`**: new audits seed only Kroger CCF controls (matches control mapping). Empty = all enabled controls (legacy). |
+| `app.audit.regulatory-scope-filter-enabled` | When `true`, omits tagged controls from new audits if the application explicitly marks that regulatory scope out of scope. |
+| `app.seed.demo-dataset` / `APP_SEED_DEMO_DATASET` | Rich demo apps, audits, GRC links (default **true** locally; **false** in prod). |
+| `app.seed.demo-assessment-answers` / `APP_SEED_DEMO_ASSESSMENT_ANSWERS` | Pre-fill `audit_control_answers` for owner-tagged questions on demo audits (default **true** locally; **false** in `src/test/resources/application.properties` for CI speed). |
+
+Integration tests set `app.audit.new-audit-framework=` (empty) and `spring.mail.host=localhost` via `backend/src/test/resources/application.properties` so fixtures stay small and mail autoconfig loads.
 
 ## Test Commands
 
@@ -270,6 +282,7 @@ Serve the contents of `frontend/dist/` from your CDN or reverse proxy and route 
 
 ### Operations
 
-- See **`docs/ops-runbook.md`** for CI parity commands, incident triage, and demo-seed toggles.
+- See **`docs/ops-runbook.md`** for CI parity commands, incident triage, demo-seed toggles, and audit/V52 notes.
+- See **`docs/persona-route-matrix.md`** for persona → route → permission alignment (keep in sync with router and admin navigation).
 - See **`docs/dependency-upgrades.md`** for how to review Dependabot PRs safely.
 - See `docs/scalability.md` for scalability guidance.

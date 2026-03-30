@@ -48,6 +48,95 @@
       </div>
     </div>
 
+    <!-- Audit cockpit: shared program context (findings, risks, exceptions) for every persona with access -->
+    <div v-if="audit && !loading" class="card shadow-sm mb-3 border-secondary-subtle">
+      <div class="card-body">
+        <h2 class="h6 text-secondary text-uppercase mb-3">Program context</h2>
+        <p class="small text-muted mb-3">
+          Same data as the risk and findings registers—scoped to this application and audit. Use the links to open the full lists.
+        </p>
+        <div v-if="cockpitLoading" class="text-muted small">Loading context…</div>
+        <div v-else class="row g-3">
+          <div class="col-md-4">
+            <div class="border rounded p-3 h-100 bg-light bg-opacity-50">
+              <div class="fw-semibold mb-2">Findings</div>
+              <div class="h4 mb-2">{{ activeFindingsCount }}</div>
+              <p class="small text-muted mb-2">Open or in progress for this audit.</p>
+              <ul v-if="cockpitFindingsPreview.length" class="small mb-2 ps-3">
+                <li v-for="f in cockpitFindingsPreview" :key="f.id">{{ f.title || `Finding #${f.id}` }}</li>
+              </ul>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" @click="goTimeline('finding')">Timeline</button>
+                <router-link
+                  v-if="canManageAudits"
+                  class="btn btn-outline-secondary btn-sm"
+                  :to="{ name: 'AdminFindings', query: { auditId: String(auditId) } }"
+                >
+                  All findings
+                </router-link>
+                <router-link
+                  v-else-if="hasReportView"
+                  class="btn btn-outline-secondary btn-sm"
+                  :to="{ name: 'AdminIssueProgram', query: { auditId: String(auditId) } }"
+                >
+                  Issue program
+                </router-link>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded p-3 h-100 bg-light bg-opacity-50">
+              <div class="fw-semibold mb-2">Risk register</div>
+              <div class="h4 mb-2">{{ activeRisksCount }}</div>
+              <p class="small text-muted mb-2">Risks linked to this application (open or monitoring).</p>
+              <ul v-if="cockpitRisksPreview.length" class="small mb-2 ps-3">
+                <li v-for="r in cockpitRisksPreview" :key="r.id">{{ r.title || `Risk #${r.id}` }}</li>
+              </ul>
+              <router-link
+                v-if="hasReportView && audit.applicationId"
+                class="btn btn-outline-secondary btn-sm"
+                :to="{
+                  name: 'AdminRiskRegister',
+                  query: { applicationId: String(audit.applicationId), applicationName: audit.applicationName || '' }
+                }"
+              >
+                Open risk register
+              </router-link>
+              <p v-else class="small text-muted mb-0">Risk list requires report access.</p>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded p-3 h-100 bg-light bg-opacity-50">
+              <div class="fw-semibold mb-2">Control exceptions</div>
+              <div class="h4 mb-2">{{ pendingExceptionsCount }}</div>
+              <p class="small text-muted mb-2">Requests awaiting decision for this audit.</p>
+              <ul v-if="cockpitExceptionsPreview.length" class="small mb-2 ps-3">
+                <li v-for="x in cockpitExceptionsPreview" :key="x.id">{{ x.controlName || x.controlId }} — {{ x.status }}</li>
+              </ul>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" @click="goTimeline('exception')">Timeline</button>
+                <router-link
+                  v-if="canManageAudits"
+                  class="btn btn-outline-secondary btn-sm"
+                  :to="{ name: 'AdminControlExceptions', query: { auditId: String(auditId) } }"
+                >
+                  Program exceptions
+                </router-link>
+                <router-link
+                  v-else-if="authStore.hasRole('AUDITOR')"
+                  class="btn btn-outline-secondary btn-sm"
+                  to="/admin/workspace-exceptions"
+                >
+                  My exceptions
+                </router-link>
+                <router-link v-else class="btn btn-outline-secondary btn-sm" to="/my-exceptions">My exceptions</router-link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="activeWorkspaceTab === 'overview'" class="card shadow-sm mb-3">
       <div class="card-body">
         <h2 class="h5 mb-3">Collaborators</h2>
@@ -343,7 +432,33 @@ const workflowDraftIds = ref([])
 const workflowAddUserId = ref(null)
 const returnNotes = ref('')
 
+const cockpitLoading = ref(false)
+const cockpitFindings = ref([])
+const cockpitRisks = ref([])
+const cockpitExceptions = ref([])
+
+const hasReportView = computed(() => authStore.hasPermission('REPORT_VIEW'))
 const canManageAudits = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
+
+const cockpitFindingsActive = computed(() =>
+  cockpitFindings.value.filter((f) => f.status === 'OPEN' || f.status === 'IN_PROGRESS')
+)
+const activeFindingsCount = computed(() => cockpitFindingsActive.value.length)
+const cockpitFindingsPreview = computed(() => cockpitFindingsActive.value.slice(0, 5))
+
+const cockpitRisksForApp = computed(() => {
+  const aid = audit.value?.applicationId
+  if (aid == null) return []
+  return cockpitRisks.value.filter(
+    (r) => r.applicationId === aid && (r.status === 'OPEN' || r.status === 'MONITORING')
+  )
+})
+const activeRisksCount = computed(() => cockpitRisksForApp.value.length)
+const cockpitRisksPreview = computed(() => cockpitRisksForApp.value.slice(0, 5))
+
+const cockpitExceptionsPending = computed(() => cockpitExceptions.value.filter((x) => x.status === 'REQUESTED'))
+const pendingExceptionsCount = computed(() => cockpitExceptionsPending.value.length)
+const cockpitExceptionsPreview = computed(() => cockpitExceptionsPending.value.slice(0, 5))
 const canEditWorkflow = computed(() => audit.value && audit.value.status !== 'COMPLETE')
 const pendingStep = computed(() => approvalSteps.value.find((s) => s.stepStatus === 'PENDING'))
 const canActOnApproval = computed(() => {
@@ -384,10 +499,37 @@ onMounted(async () => {
     users.value = usersRes.data || []
     auditorPool.value = auditorsRes.data || []
     await loadApproval()
+    await loadCockpit()
   } finally {
     loading.value = false
   }
 })
+
+async function loadCockpit() {
+  if (!audit.value) return
+  cockpitLoading.value = true
+  try {
+    const [fr, rr, er] = await Promise.all([
+      api.get('/api/workspace/findings', { params: { auditId } }),
+      hasReportView.value ? api.get('/api/risks') : Promise.resolve({ data: [] }),
+      api.get('/api/workspace/control-exceptions')
+    ])
+    cockpitFindings.value = fr.data || []
+    cockpitRisks.value = rr.data || []
+    cockpitExceptions.value = (er.data || []).filter((e) => e.auditId === auditId)
+  } catch {
+    cockpitFindings.value = []
+    cockpitRisks.value = []
+    cockpitExceptions.value = []
+  } finally {
+    cockpitLoading.value = false
+  }
+}
+
+function goTimeline(category) {
+  activeWorkspaceTab.value = 'timeline'
+  activityFilter.value.category = category
+}
 
 async function loadApproval() {
   approvalLoading.value = true

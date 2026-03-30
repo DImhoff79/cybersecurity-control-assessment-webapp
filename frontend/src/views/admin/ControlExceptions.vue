@@ -25,7 +25,7 @@
               </option>
             </select>
           </div>
-          <div class="col-md-auto">
+          <div v-if="canManageProgram" class="col-md-auto">
             <button class="btn btn-primary" @click="openModal()">Request exception</button>
           </div>
           <div class="col-md-auto">
@@ -75,20 +75,23 @@
                   <div v-if="item.compensatingControl" class="text-muted">Compensating: {{ item.compensatingControl }}</div>
                 </td>
                 <td class="text-nowrap">
-                  <button
-                    v-if="item.status === 'REQUESTED'"
-                    class="btn btn-success btn-sm me-2"
-                    @click="approve(item.id)"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    v-if="item.status === 'REQUESTED'"
-                    class="btn btn-outline-danger btn-sm"
-                    @click="reject(item.id)"
-                  >
-                    Reject
-                  </button>
+                  <template v-if="canManageProgram">
+                    <button
+                      v-if="item.status === 'REQUESTED'"
+                      class="btn btn-success btn-sm me-2"
+                      @click="approve(item.id)"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      v-if="item.status === 'REQUESTED'"
+                      class="btn btn-outline-danger btn-sm"
+                      @click="reject(item.id)"
+                    >
+                      Reject
+                    </button>
+                  </template>
+                  <span v-else class="text-muted small">View only — use My control exceptions to act as an auditor.</span>
                 </td>
               </tr>
             </tbody>
@@ -156,8 +159,11 @@ import { useRoute } from 'vue-router'
 import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const canManageProgram = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
 
 const exceptions = ref([])
 const audits = ref([])

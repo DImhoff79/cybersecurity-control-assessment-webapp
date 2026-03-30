@@ -122,8 +122,8 @@
         </div>
       </div>
 
-      <div v-if="authStore.hasPermission('RISK_MANAGEMENT') || authStore.hasPermission('REMEDIATION_MANAGEMENT')" class="row g-3 mt-1">
-        <div v-if="authStore.hasPermission('RISK_MANAGEMENT')" class="col-md-6">
+      <div v-if="authStore.hasPermission('REPORT_VIEW') || authStore.hasPermission('REMEDIATION_MANAGEMENT')" class="row g-3 mt-1">
+        <div v-if="authStore.hasPermission('REPORT_VIEW')" class="col-md-6">
           <div class="card shadow-sm">
             <div class="card-body">
               <h2 class="h6 mb-2">Risks for this application</h2>
@@ -251,9 +251,9 @@ const summaryCards = computed(() => {
     {
       key: 'risks',
       label: 'App risks',
-      value: authStore.hasPermission('RISK_MANAGEMENT') ? appRisks.value.length : '—',
-      to: authStore.hasPermission('RISK_MANAGEMENT') ? riskRegisterDeepLink.value : null,
-      linkLabel: authStore.hasPermission('RISK_MANAGEMENT') ? 'Risk register →' : ''
+      value: authStore.hasPermission('REPORT_VIEW') ? appRisks.value.length : '—',
+      to: authStore.hasPermission('REPORT_VIEW') ? riskRegisterDeepLink.value : null,
+      linkLabel: authStore.hasPermission('REPORT_VIEW') ? 'Risk register →' : ''
     },
     {
       key: 'plans',
@@ -307,7 +307,7 @@ async function reload() {
     exceptions.value = xRes.data || []
 
     const extras = []
-    if (authStore.hasPermission('RISK_MANAGEMENT')) {
+    if (authStore.hasPermission('REPORT_VIEW')) {
       extras.push(
         api.get('/api/risks').then((r) => {
           risks.value = r.data || []

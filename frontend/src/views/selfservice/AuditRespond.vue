@@ -102,6 +102,7 @@
         <span class="fw-semibold">Submitted or locked.</span>
         <span class="text-muted"> You can review responses below; editing is disabled.</span>
       </div>
+
       <!-- Progress -->
       <div class="respond-progress card respond-surface--progress mb-4">
         <div class="card-body px-3 py-3 px-sm-4">
@@ -355,9 +356,9 @@ const answerOptions = [
   { value: 'NOT_APPLICABLE', label: 'Not applicable to my application' }
 ]
 
-const guidedQuestions = computed(() => {
+function buildGroupedQuestions(items) {
   const byId = new Map()
-  for (const item of questionItems.value) {
+  for (const item of items) {
     if (!byId.has(item.questionId)) {
       byId.set(item.questionId, {
         questionId: item.questionId,
@@ -383,6 +384,12 @@ const guidedQuestions = computed(() => {
     if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder
     return a.questionId - b.questionId
   })
+}
+
+/** Library questions explicitly tagged for application owners (ask_owner = true); matches backend /questions + submit rules. */
+const guidedQuestions = computed(() => {
+  const ownerItems = questionItems.value.filter((i) => i.askOwner === true)
+  return buildGroupedQuestions(ownerItems)
 })
 
 const guidedSections = computed(() => {
@@ -431,7 +438,9 @@ function notesForControl(auditControlId) {
 async function refreshControls() {
   const controlsRes = await api.get(`/api/audits/${auditId}/controls`)
   controls.value = controlsRes.data || []
-  const controlsWithOwnerQuestions = new Set(questionItems.value.map((item) => item.auditControlId))
+  const controlsWithOwnerQuestions = new Set(
+    questionItems.value.filter((item) => item.askOwner === true).map((item) => item.auditControlId)
+  )
   additionalControls.value = controls.value.filter((c) => !controlsWithOwnerQuestions.has(c.id))
   additionalControls.value.forEach((c) => {
     if (!additionalResponses[c.id]) {
@@ -614,7 +623,9 @@ async function load() {
       answers[key] = normalizeExistingAnswer(q.existingAnswerText)
     })
 
-    const controlsWithOwnerQuestions = new Set(questionItems.value.map((item) => item.auditControlId))
+    const controlsWithOwnerQuestions = new Set(
+      questionItems.value.filter((item) => item.askOwner === true).map((item) => item.auditControlId)
+    )
     additionalControls.value = controls.value.filter((c) => !controlsWithOwnerQuestions.has(c.id))
 
     additionalControls.value.forEach((c) => {
@@ -631,6 +642,16 @@ async function load() {
 }
 
 function initializeStartingStep() {
+  if (guidedSections.value.length === 0 && additionalControls.value.length > 0) {
+    const firstUnansweredAdditional = additionalControls.value.findIndex((c) => {
+      const response = additionalResponses[c.id]
+      return !response || !['PASS', 'FAIL', 'NA'].includes(response.status)
+    })
+    currentStage.value = 'additional'
+    currentAdditionalIndex.value = firstUnansweredAdditional >= 0 ? firstUnansweredAdditional : 0
+    return
+  }
+
   const firstUnansweredHumanQuestion = guidedQuestions.value.find((q) => {
     return !isHumanAnswered(answers[questionKey(q.questionId)])
   })

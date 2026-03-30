@@ -95,18 +95,23 @@ class AuditServiceIntegrationTest {
         assertThat(questions).isNotEmpty();
         assertThat(questions).allMatch(q -> q.getQuestionText() != null && !q.getQuestionText().isBlank());
 
+        AuditQuestionItemDto answerable = questions.stream()
+                .filter(q -> Boolean.TRUE.equals(q.getAskOwner()))
+                .findFirst()
+                .orElseThrow();
+
         SubmitAnswersRequest request = new SubmitAnswersRequest(List.of(
                 new SubmitAnswersRequest.AnswerItem(
-                        questions.get(0).getQuestionId(),
-                        questions.get(0).getAuditControlId(),
+                        answerable.getQuestionId(),
+                        answerable.getAuditControlId(),
                         "YES"
                 )
         ));
         auditService.submitAnswers(created.getId(), request);
 
         assertThat(auditControlAnswerRepository.findByAuditControlIdAndQuestionId(
-                questions.get(0).getAuditControlId(),
-                questions.get(0).getQuestionId()
+                answerable.getAuditControlId(),
+                answerable.getQuestionId()
         )).isPresent();
 
         List<AuditControlAnswerDto> answers = auditService.getAnswersForAudit(created.getId());

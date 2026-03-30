@@ -16,7 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.url=jdbc:h2:mem:default_users_test;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=validate"
+        "spring.jpa.hibernate.ddl-auto=validate",
+        // Demo audits assign the default auditor; deleting that user in a test would violate audit_assignments FK.
+        "app.seed.demo-dataset=false"
 })
 @Transactional
 class DefaultUsersIntegrationTest {

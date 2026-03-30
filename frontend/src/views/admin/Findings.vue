@@ -27,7 +27,7 @@
               </option>
             </select>
           </div>
-          <div class="col-md-auto">
+          <div v-if="canManageProgram" class="col-md-auto">
             <button class="btn btn-primary" @click="openModal()">Add finding</button>
           </div>
           <div class="col-md-auto">
@@ -102,7 +102,8 @@
                   </router-link>
                 </td>
                 <td class="text-nowrap">
-                  <button class="btn btn-secondary btn-sm" @click="openModal(finding)">Edit</button>
+                  <button v-if="canManageProgram" class="btn btn-secondary btn-sm" @click="openModal(finding)">Edit</button>
+                  <span v-else class="text-muted small">View only</span>
                 </td>
               </tr>
             </tbody>
@@ -188,8 +189,11 @@ import BsModal from '../../components/BsModal.vue'
 import api from '../../services/api'
 import { toastError, toastSuccess } from '../../services/toast'
 import { useTableSort } from '../../composables/useTableSort'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const canManageProgram = computed(() => authStore.hasPermission('AUDIT_MANAGEMENT'))
 
 const findings = ref([])
 const audits = ref([])

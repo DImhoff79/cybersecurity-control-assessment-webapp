@@ -42,6 +42,7 @@ describe('AuditRespond', () => {
               questionText: 'Do you review access annually?',
               helpText: '',
               displayOrder: 0,
+              askOwner: true,
               existingAnswerText: ''
             },
             {
@@ -53,6 +54,7 @@ describe('AuditRespond', () => {
               questionText: 'Do you review access annually?',
               helpText: '',
               displayOrder: 0,
+              askOwner: true,
               existingAnswerText: ''
             }
           ]
@@ -136,6 +138,7 @@ describe('AuditRespond', () => {
               questionText: 'Do you review access annually?',
               helpText: '',
               displayOrder: 0,
+              askOwner: true,
               existingAnswerText: 'YES'
             }
           ]
@@ -176,6 +179,7 @@ describe('AuditRespond', () => {
               questionText: 'Do you review access annually?',
               helpText: '',
               displayOrder: 0,
+              askOwner: true,
               existingAnswerText: 'YES'
             }
           ]
@@ -217,6 +221,7 @@ describe('AuditRespond', () => {
               questionText: 'Do you review user access regularly?',
               helpText: '',
               displayOrder: 0,
+              askOwner: true,
               existingAnswerText: ''
             },
             {
@@ -228,6 +233,7 @@ describe('AuditRespond', () => {
               questionText: 'Do users sign in with MFA?',
               helpText: '',
               displayOrder: 1,
+              askOwner: true,
               existingAnswerText: ''
             }
           ]

@@ -8,11 +8,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findAllByOrderByDueAtAscCreatedAtDesc();
     List<Finding> findByAuditIdOrderByDueAtAscCreatedAtDesc(Long auditId);
+
+    List<Finding> findByAudit_IdInOrderByDueAtAscCreatedAtDesc(Collection<Long> auditIds);
 
     long countByAudit_Id(Long auditId);
     List<Finding> findByStatusInAndDueAtBefore(List<FindingStatus> statuses, Instant dueAtBefore);

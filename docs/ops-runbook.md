@@ -18,6 +18,12 @@ Run these **before** tagging or promoting a build; they mirror `.github/workflow
 
 Artifacts: CI uploads `backend-jacoco-report` and `frontend-coverage-report` for regression triage.
 
+### Audit catalog and owner questions
+
+- **New audit scope**: `APP_AUDIT_NEW_AUDIT_FRAMEWORK` (default `KROGER_CCF` in `application.yml`) controls which enabled controls are copied into a new audit. Aligns assessment questions with the same framework as **Question → control mapping** in admin. Set empty to restore multi-framework seeding.
+- **Owner-facing questions only**: the owner respond flow and `GET /api/audits/{id}/questions` return only questions with **`ask_owner = true`** in the library. Questions unchecked in Question Manager (“Ask application owners”) are auditor-only and are not shown to owners.
+- **Migration V52** (`V52__reset_audit_program_data.sql`): one-time purge of audit-program rows (audits, findings linked to audits, control exceptions, projects, etc.). Applied automatically on upgrade; if a deploy fails mid-migration, remove the failed row for that version from `flyway_schema_history` (or run `flyway repair`) and restart after fixing SQL—**never** rewrite applied migrations in shared environments.
+
 ## CI quality gates
 - Backend pipeline runs `mvn verify` and fails on test or JaCoCo coverage gate failure.
 - Frontend pipeline runs `npm run test:coverage` and fails if tests fail (coverage is reported; global percentage thresholds are optional in `vitest.config.js`).
@@ -46,6 +52,7 @@ Artifacts: CI uploads `backend-jacoco-report` and `frontend-coverage-report` for
 - **Extra demo rows after local startup**
   - With `app.auth.seed-local-users=true` (default locally), the backend runs an idempotent **demo dataset** seeder (`DemoDatasetSeeder`) so applications, audits, findings, exceptions, risks, remediation, and sample compliance obligations each have several linked records for UI walkthroughs.
   - Toggle with `app.seed.demo-dataset` / env `APP_SEED_DEMO_DATASET` (default **true** in `application.yml`; **false** in `application-prod.yml`). Integration tests force it off via `src/test/resources/application.properties`.
+  - Optional bulk demo answers: `app.seed.demo-assessment-answers` / `APP_SEED_DEMO_ASSESSMENT_ANSWERS` (default **true** locally) fills owner-tagged question answers for demo audits; **false** in test `application.properties` to keep CI fast.
 
 ## Recovery playbook
 - Restart backend and frontend services.

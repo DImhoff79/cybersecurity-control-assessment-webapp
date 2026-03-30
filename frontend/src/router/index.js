@@ -33,7 +33,13 @@ const router = createRouter({
       component: () => import('../layouts/AdminLayout.vue'),
       meta: { appShell: 'admin' },
       children: [
-        { path: '', redirect: '/admin/operations' },
+        { path: '', redirect: '/admin/program-home' },
+        {
+          path: 'program-home',
+          name: 'AdminProgramHome',
+          component: () => import('../views/admin/ProgramHome.vue'),
+          meta: { permission: 'REPORT_VIEW', section: 'Audit Program', pageTitle: 'Program home' }
+        },
         {
           path: 'my-audits',
           name: 'AdminWorkspaceMyAudits',
@@ -80,19 +86,19 @@ const router = createRouter({
           path: 'issue-program',
           name: 'AdminIssueProgram',
           component: () => import('../views/admin/IssueProgramHub.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Issue Program Hub' }
+          meta: { permission: 'REPORT_VIEW', section: 'Risk & Remediation', pageTitle: 'Issue Program Hub' }
         },
         {
           path: 'findings',
           name: 'AdminFindings',
           component: () => import('../views/admin/Findings.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Findings' }
+          meta: { permission: 'REPORT_VIEW', section: 'Risk & Remediation', pageTitle: 'Findings' }
         },
         {
           path: 'control-exceptions',
           name: 'AdminControlExceptions',
           component: () => import('../views/admin/ControlExceptions.vue'),
-          meta: { permission: 'AUDIT_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Control Exceptions' }
+          meta: { permission: 'REPORT_VIEW', section: 'Risk & Remediation', pageTitle: 'Control Exceptions' }
         },
         {
           path: 'workspace-exceptions',
@@ -133,7 +139,7 @@ const router = createRouter({
           path: 'risk-register',
           name: 'AdminRiskRegister',
           component: () => import('../views/admin/RiskRegister.vue'),
-          meta: { permission: 'RISK_MANAGEMENT', section: 'Risk & Remediation', pageTitle: 'Risk Register' }
+          meta: { permission: 'REPORT_VIEW', section: 'Risk & Remediation', pageTitle: 'Risk Register' }
         },
         {
           path: 'remediation-plans',
@@ -229,6 +235,7 @@ router.beforeEach(async (to, from, next) => {
   }
   if (to.path === '/admin') {
     if (!authStore.canAccessAdmin) return next('/my-audits')
+    if (authStore.user?.role === 'AUDIT_MANAGER') return next('/admin/program-home')
     if (authStore.hasPermission('AUDIT_MANAGEMENT')) return next('/admin/audit-projects')
     if (authStore.hasPermission('REPORT_VIEW')) return next('/admin/operations')
     if (authStore.hasPermission('POLICY_MANAGEMENT')) return next('/admin/policies')
